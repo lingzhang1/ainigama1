@@ -1,0 +1,94 @@
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AppProvider, useAppContext } from './context/AppContext';
+import { useWebSocket } from './hooks/useWebSocket';
+import { LoginScreen } from './components/Auth/LoginScreen';
+import { ForumFeed } from './components/ForumFeed/ForumFeed';
+import { PrivateChat } from './components/PrivateChat/PrivateChat';
+import { PublicThread } from './components/PublicThread/PublicThread';
+import { User } from './types';
+
+const AppContent: React.FC = () => {
+  const { state, dispatch } = useAppContext();
+  
+  // Initialize WebSocket connection
+  useWebSocket(state.currentUser?.id || '');
+
+  const handleLogin = (user: User) => {
+    // Save user to localStorage for persistence
+    localStorage.setItem('ainigama_user', JSON.stringify(user));
+    dispatch({ type: 'SET_USER', payload: user });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('ainigama_user');
+    dispatch({ type: 'LOGOUT' });
+  };
+
+  const renderCurrentView = () => {
+    switch (state.viewMode) {
+      case 'private':
+        return <PrivateChat onLogout={handleLogout} />;
+      case 'public-thread':
+        return <PublicThread onLogout={handleLogout} />;
+      case 'forum':
+      default:
+        return <ForumFeed onLogout={handleLogout} />;
+    }
+  };
+
+  if (state.isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading Ainigama...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (state.error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{state.error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login screen if not authenticated
+  if (!state.isAuthenticated) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {renderCurrentView()}
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AppProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<AppContent />} />
+          <Route path="/thread/:id" element={<AppContent />} />
+          <Route path="/private" element={<AppContent />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Router>
+    </AppProvider>
+  );
+};
+
+export default App;

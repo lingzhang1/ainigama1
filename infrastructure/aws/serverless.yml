@@ -1,0 +1,268 @@
+service: ainigama-backend
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  stage: ${opt:stage, 'dev'}
+  environment:
+    DYNAMODB_TABLE_USERS: ${self:service}-${self:provider.stage}-users
+    DYNAMODB_TABLE_CONVERSATIONS: ${self:service}-${self:provider.stage}-conversations
+    DYNAMODB_TABLE_THREADS: ${self:service}-${self:provider.stage}-threads
+    DYNAMODB_TABLE_MESSAGES: ${self:service}-${self:provider.stage}-messages
+    DYNAMODB_TABLE_ANSWERS: ${self:service}-${self:provider.stage}-answers
+    DYNAMODB_TABLE_COMMENTS: ${self:service}-${self:provider.stage}-comments
+    DEEPSEEK_API_KEY: ${env:DEEPSEEK_API_KEY}
+  
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource:
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_USERS}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONVERSATIONS}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_THREADS}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_MESSAGES}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_ANSWERS}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_COMMENTS}"
+
+functions:
+  # WebSocket API
+  websocketConnect:
+    handler: src/handlers/websocket.connect
+    events:
+      - websocket:
+          route: $connect
+  
+  websocketDisconnect:
+    handler: src/handlers/websocket.disconnect
+    events:
+      - websocket:
+          route: $disconnect
+  
+  websocketDefault:
+    handler: src/handlers/websocket.default
+    events:
+      - websocket:
+          route: $default
+
+  # Private Chat API
+  sendPrivateMessage:
+    handler: src/handlers/privateChat.sendMessage
+    events:
+      - websocket:
+          route: private_message
+
+  # Public Thread API
+  joinThread:
+    handler: src/handlers/publicThread.joinThread
+    events:
+      - websocket:
+          route: join_thread
+  
+  addAnswer:
+    handler: src/handlers/publicThread.addAnswer
+    events:
+      - websocket:
+          route: add_answer
+  
+  addComment:
+    handler: src/handlers/publicThread.addComment
+    events:
+      - websocket:
+          route: add_comment
+
+  # REST API
+  getThreads:
+    handler: src/handlers/api.getThreads
+    events:
+      - http:
+          path: /threads
+          method: get
+          cors: true
+  
+  getConversations:
+    handler: src/handlers/api.getConversations
+    events:
+      - http:
+          path: /conversations
+          method: get
+          cors: true
+
+resources:
+  Resources:
+    # DynamoDB Tables
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_USERS}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    ConversationsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_CONVERSATIONS}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UserIdIndex
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    ThreadsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_THREADS}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: CreatedAtIndex
+            KeySchema:
+              - AttributeName: createdAt
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    MessagesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_MESSAGES}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: conversationId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: ConversationIdIndex
+            KeySchema:
+              - AttributeName: conversationId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    AnswersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_ANSWERS}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: questionId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: QuestionIdIndex
+            KeySchema:
+              - AttributeName: questionId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    CommentsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_COMMENTS}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: answerId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: AnswerIdIndex
+            KeySchema:
+              - AttributeName: answerId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    # Cognito User Pool
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${self:service}-${self:provider.stage}-user-pool
+        UsernameAttributes:
+          - email
+        AutoVerifiedAttributes:
+          - email
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireUppercase: false
+            RequireLowercase: false
+            RequireNumbers: false
+            RequireSymbols: false
+
+    CognitoUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: ${self:service}-${self:provider.stage}-user-pool-client
+        UserPoolId:
+          Ref: CognitoUserPool
+        ExplicitAuthFlows:
+          - ADMIN_NO_SRP_AUTH
+        GenerateSecret: false
+
+  Outputs:
+    WebSocketURI:
+      Description: "WebSocket URI"
+      Value:
+        Fn::Join:
+          - ""
+          - - "wss://"
+            - Ref: WebsocketsApi
+            - ".execute-api."
+            - ${self:provider.region}
+            - ".amazonaws.com/"
+            - ${self:provider.stage}
+    
+    UserPoolId:
+      Description: "Cognito User Pool ID"
+      Value:
+        Ref: CognitoUserPool
+    
+    UserPoolClientId:
+      Description: "Cognito User Pool Client ID"
+      Value:
+        Ref: CognitoUserPoolClient
+
+plugins:
+  - serverless-offline

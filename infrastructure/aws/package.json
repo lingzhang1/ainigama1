@@ -1,0 +1,24 @@
+{
+  "name": "ainigama-backend",
+  "version": "1.0.0",
+  "description": "Ainigama Backend Infrastructure",
+  "main": "index.js",
+  "scripts": {
+    "deploy": "serverless deploy",
+    "deploy:dev": "serverless deploy --stage dev",
+    "deploy:prod": "serverless deploy --stage prod",
+    "remove": "serverless remove",
+    "offline": "serverless offline start",
+    "logs": "serverless logs -f websocketConnect -t"
+  },
+  "dependencies": {
+    "aws-sdk": "^2.1692.0",
+    "@ai-sdk/deepseek": "^1.0.17",
+    "ai": "^5.0.44",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "serverless": "^3.38.0",
+    "serverless-offline": "^13.3.0"
+  }
+}
