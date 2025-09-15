@@ -128,10 +128,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           } : { thinking: '', content, isComplete: false });
         },
         onComplete: (fullContent) => {
-          // Mark streaming as complete
+          // Mark streaming as complete but keep the message visible
           setStreamingMessage(prev => prev ? {
             ...prev,
-            content: fullContent,
             isComplete: true
           } : null);
 
@@ -363,7 +362,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               ))}
 
               {/* Streaming AI Response - show while streaming */}
-              {streamingMessage && (
+              {isTyping && streamingMessage && (
                 <div className="flex justify-start">
                   <div className="flex items-start space-x-3 max-w-[70%]">
                     <Avatar className="w-8 h-8 flex-shrink-0">
@@ -408,12 +407,14 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                             )}
                           </CardContent>
                         </Card>
-                      ) : !streamingMessage.thinking && (
+                      ) : (
                         <Card className="bg-white border-gray-200">
                           <CardContent className="p-3">
                             <div className="flex items-center space-x-2">
                               <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                              <span className="text-sm text-gray-500">AI is thinking...</span>
+                              <span className="text-sm text-gray-500">
+                                {streamingMessage.thinking ? 'Generating response...' : 'AI is thinking...'}
+                              </span>
                             </div>
                           </CardContent>
                         </Card>
