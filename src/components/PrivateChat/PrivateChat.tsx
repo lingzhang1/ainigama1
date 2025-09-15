@@ -116,38 +116,33 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     try {
       await deepSeekService.streamChat(chatMessages, {
         onThinking: (thinking) => {
-          setStreamingMessage(prev => prev ? {
-            ...prev,
-            thinking: prev.thinking + thinking
-          } : { thinking, content: '', isComplete: false });
+          setStreamingMessage(prev => ({
+            thinking: (prev?.thinking || '') + thinking,
+            content: prev?.content || '',
+            isComplete: false
+          }));
         },
         onContent: (content) => {
-          setStreamingMessage(prev => prev ? {
-            ...prev,
-            content: prev.content + content
-          } : { thinking: '', content, isComplete: false });
+          setStreamingMessage(prev => ({
+            thinking: prev?.thinking || '',
+            content: (prev?.content || '') + content,
+            isComplete: false
+          }));
         },
         onComplete: (fullContent) => {
-          // Mark streaming as complete but keep the message visible
-          setStreamingMessage(prev => prev ? {
-            ...prev,
+          // Mark streaming as complete and ensure we have the full content
+          setStreamingMessage(prev => ({
+            thinking: prev?.thinking || '',
+            content: fullContent || prev?.content || '',
             isComplete: true
-          } : null);
+          }));
 
           // Add a delay to show the complete message before adding to conversation
           setTimeout(() => {
-            // Only add message if we have actual content
-            if (!fullContent || fullContent.trim() === '') {
-              console.warn('No content received from DeepSeek');
-              setIsTyping(false);
-              setStreamingMessage(null);
-              return;
-            }
-
             // Add the complete AI message to conversation
             const aiMessage: Message = {
               id: uuidv4(),
-              content: fullContent,
+              content: fullContent || streamingMessage?.content || '',
               timestamp: new Date(),
               sender: 'ai'
             };
@@ -373,7 +368,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                     
                     <div className="space-y-2 flex-1">
                       {/* Thinking Process - Always show first if available */}
-                      {showThinking && streamingMessage.thinking && (
+                      {showThinking && streamingMessage.thinking && streamingMessage.thinking.trim() && (
                         <Card className="bg-gray-50 border-gray-200">
                           <CardContent className="p-3">
                             <div className="flex items-center mb-2">
@@ -381,7 +376,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                               <span className="text-xs font-medium text-gray-600">
                                 {streamingMessage.isComplete ? 'Thought Process' : 'Thinking...'}
                               </span>
-                              {!streamingMessage.isComplete && !streamingMessage.content && (
+                              {!streamingMessage.isComplete && (
                                 <Loader2 className="w-3 h-3 text-gray-400 ml-2 animate-spin" />
                               )}
                             </div>
@@ -393,7 +388,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                       )}
 
                       {/* Main Response - Show below thinking */}
-                      {streamingMessage.content ? (
+                      {streamingMessage.content && streamingMessage.content.trim() ? (
                         <Card className="bg-white border-gray-200">
                           <CardContent className="p-3">
                             <div className="text-sm whitespace-pre-wrap">
@@ -407,13 +402,13 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                             )}
                           </CardContent>
                         </Card>
-                      ) : (
+                      ) : !streamingMessage.thinking && (
                         <Card className="bg-white border-gray-200">
                           <CardContent className="p-3">
                             <div className="flex items-center space-x-2">
                               <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
                               <span className="text-sm text-gray-500">
-                                {streamingMessage.thinking ? 'Generating response...' : 'AI is thinking...'}
+                                AI is thinking...
                               </span>
                             </div>
                           </CardContent>
