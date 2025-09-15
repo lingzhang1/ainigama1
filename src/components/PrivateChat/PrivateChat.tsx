@@ -128,40 +128,43 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           } : { thinking: '', content, isComplete: false });
         },
         onComplete: (fullContent) => {
+          // Mark streaming as complete but keep the message visible
           setStreamingMessage(prev => prev ? {
             ...prev,
             isComplete: true
           } : null);
 
-          // Only add message if we have actual content
-          if (!fullContent || fullContent.trim() === '') {
-            console.warn('No content received from DeepSeek');
+          // Add a delay to show the complete streaming message before adding to conversation
+          setTimeout(() => {
+            // Only add message if we have actual content
+            if (!fullContent || fullContent.trim() === '') {
+              console.warn('No content received from DeepSeek');
+              setIsTyping(false);
+              setStreamingMessage(null);
+              return;
+            }
+
+            // Add the complete AI message to conversation
+            const aiMessage: Message = {
+              id: uuidv4(),
+              content: fullContent,
+              timestamp: new Date(),
+              sender: 'ai'
+            };
+
+            const finalConversation = {
+              ...updatedConversation,
+              messages: [...updatedConversation.messages, aiMessage],
+              updatedAt: new Date()
+            };
+
+            setCurrentConversation(finalConversation);
+            setConversations(prev => 
+              prev.map(c => c.id === finalConversation.id ? finalConversation : c)
+            );
             setIsTyping(false);
             setStreamingMessage(null);
-            return;
-          }
-
-          // Add the complete AI message to conversation
-          const aiMessage: Message = {
-            id: uuidv4(),
-            content: fullContent,
-            timestamp: new Date(),
-            sender: 'ai'
-          };
-
-          const finalConversation = {
-            ...updatedConversation,
-            messages: [...updatedConversation.messages, aiMessage],
-            updatedAt: new Date()
-          };
-
-          setCurrentConversation(finalConversation);
-          setConversations(prev => 
-            prev.map(c => c.id === finalConversation.id ? finalConversation : c)
-          );
-          setIsTyping(false);
-          // Keep the streaming message visible to show the thinking process
-          // setStreamingMessage(null);
+          }, 1000); // Show complete streaming message for 1 second
         },
         onError: (error) => {
           console.error('DeepSeek error:', error);
@@ -383,9 +386,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </div>
               ))}
 
-              {/* Streaming AI Response - only show if no messages yet or still streaming content */}
-              {streamingMessage && (!streamingMessage.isComplete || currentConversation.messages.length === 0 || 
-                currentConversation.messages[currentConversation.messages.length - 1]?.sender !== 'ai') && (
+              {/* Streaming AI Response - show while streaming or briefly after completion */}
+              {streamingMessage && (
                 <StreamingMessage
                   thinking={streamingMessage.thinking}
                   content={streamingMessage.content}

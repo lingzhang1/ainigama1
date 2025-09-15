@@ -52,8 +52,13 @@ export const StreamingMessage: React.FC<StreamingMessageProps> = ({
               <CardContent className="p-3">
                 <div className="text-sm whitespace-pre-wrap">
                   {content}
-                  {!isComplete && <span className="animate-pulse">|</span>}
+                  {!isComplete && <span className="animate-pulse text-blue-500">▋</span>}
                 </div>
+                {isComplete && (
+                  <div className="text-xs text-gray-500 mt-2">
+                    Response complete
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
