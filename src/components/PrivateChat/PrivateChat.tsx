@@ -124,16 +124,15 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         },
         onContent: (content) => {
           setStreamingMessage(prev => ({
-            thinking: prev?.thinking || '',
+            thinking: prev?.thinking || '', // Keep existing thinking
             content: (prev?.content || '') + content,
             isComplete: false
           }));
         },
         onComplete: (fullContent) => {
-          // Mark streaming as complete and ensure we have the full content
           setStreamingMessage(prev => ({
-            thinking: prev?.thinking || '',
-            content: fullContent || prev?.content || '',
+            thinking: prev?.thinking || '', // Preserve thinking
+            content: prev?.content || fullContent || '', // Keep accumulated content
             isComplete: true
           }));
 
@@ -142,7 +141,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             // Add the complete AI message to conversation
             const aiMessage: Message = {
               id: uuidv4(),
-              content: fullContent || streamingMessage?.content || '',
+              content: fullContent || '',
               timestamp: new Date(),
               sender: 'ai'
             };
