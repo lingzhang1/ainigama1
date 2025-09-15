@@ -273,48 +273,6 @@ resources:
           - ADMIN_NO_SRP_AUTH
         GenerateSecret: false
 
-  Outputs:
-    WebSocketURI:
-      Description: "WebSocket URI"
-      Value:
-        Fn::Join:
-          - ""
-          - - "wss://"
-            - Ref: WebsocketsApi
-            - ".execute-api."
-            - ${self:provider.region}
-            - ".amazonaws.com/"
-            - ${self:provider.stage}
-      Export:
-        Name: ${self:service}-${self:provider.stage}-WebSocketURI
-    
-    RestApiURI:
-      Description: "REST API URI"
-      Value:
-        Fn::Join:
-          - ""
-          - - "https://"
-            - Ref: RestApi
-            - ".execute-api."
-            - ${self:provider.region}
-            - ".amazonaws.com/"
-            - ${self:provider.stage}
-      Export:
-        Name: ${self:service}-${self:provider.stage}-RestApiURI
-    
-    UserPoolId:
-      Description: "Cognito User Pool ID"
-      Value:
-        Ref: CognitoUserPool
-      Export:
-        Name: ${self:service}-${self:provider.stage}-UserPoolId
-    
-    UserPoolClientId:
-      Description: "Cognito User Pool Client ID"
-      Value:
-        Ref: CognitoUserPoolClient
-      Export:
-        Name: ${self:service}-${self:provider.stage}-UserPoolClientId
 
 plugins:
   - serverless-offline
