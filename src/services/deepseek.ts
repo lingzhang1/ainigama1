@@ -45,7 +45,6 @@ export class DeepSeekService {
 
       // Use fullStream to get both reasoning and content
       for await (const delta of result.fullStream) {
-        console.log('Delta received:', delta.type, delta);
         
         switch (delta.type) {
           case 'text-delta':
@@ -57,28 +56,22 @@ export class DeepSeekService {
             break;
           case 'reasoning-delta':
             if (delta.text) {
-              console.log('Reasoning delta:', delta.text);
               callbacks.onThinking?.(delta.text);
             }
             break;
           case 'step-delta':
-            console.log('Step delta:', delta.stepDelta);
             if (delta.stepDelta) {
               // Handle different step types
               if (delta.stepDelta.type === 'reasoning-delta' && delta.stepDelta.reasoningDelta) {
-                console.log('Step reasoning delta:', delta.stepDelta.reasoningDelta);
                 callbacks.onThinking?.(delta.stepDelta.reasoningDelta);
               } else if (delta.stepDelta.type === 'reasoning' && delta.stepDelta.reasoning) {
-                console.log('Step reasoning:', delta.stepDelta.reasoning);
                 callbacks.onThinking?.(delta.stepDelta.reasoning);
               }
             }
             break;
           case 'step-start':
-            console.log('Step start:', delta);
             break;
           case 'step-finish':
-            console.log('Step finish:', delta);
             break;
           default:
             console.log('Unknown delta type:', delta.type, delta);
