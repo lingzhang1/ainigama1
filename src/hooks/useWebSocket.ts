@@ -23,31 +23,8 @@ export const useWebSocket = (userId: string) => {
 };
 
 export const usePrivateChat = (conversationId: string, onNewMessage: (message: Message) => void) => {
-  const ws = wsService;
-
-  useEffect(() => {
-    const handlePrivateMessage = (data: { conversationId: string; message: Message }) => {
-      if (data.conversationId === conversationId) {
-        onNewMessage(data.message);
-      }
-    };
-
-    const handleAIResponse = (data: { conversationId: string; message: Message }) => {
-      if (data.conversationId === conversationId) {
-        onNewMessage(data.message);
-      }
-    };
-
-    ws.onPrivateMessage(handlePrivateMessage);
-    ws.onAIResponse(handleAIResponse);
-
-    return () => {
-      // Cleanup listeners
-    };
-  }, [conversationId, onNewMessage, ws]);
-
   const sendMessage = (message: string) => {
-    ws.sendPrivateMessage(conversationId, message);
+    wsService.sendPrivateMessage(conversationId, message);
   };
 
   return { sendMessage };

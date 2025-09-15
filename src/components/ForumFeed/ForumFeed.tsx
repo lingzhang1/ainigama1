@@ -7,69 +7,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Thread } from '../../types';
 import { useAppContext } from '../../context/AppContext';
-import { awsService } from '../../services/aws';
 import { formatDistanceToNow } from 'date-fns';
 
 interface ForumFeedProps {
   onLogout: () => void;
 }
-
-const mockThreads: Thread[] = [
-  {
-    id: '1',
-    title: 'How to maintain healthy long-term relationships?',
-    creator: {
-      id: '1',
-      name: 'Sarah Johnson',
-      avatar: '/img-4.svg',
-      handle: '@sarahjohnson'
-    },
-    isPublic: true,
-    createdAt: new Date('2025-02-15'),
-    updatedAt: new Date('2025-02-15'),
-    questionCount: 8,
-    answerCount: 23,
-    interactionCount: 45,
-    questions: [],
-    category: 'Relationships'
-  },
-  {
-    id: '2',
-    title: 'The psychology of emotional intelligence in friendships',
-    creator: {
-      id: '2',
-      name: 'David Chen',
-      avatar: '/img-1.svg',
-      handle: '@davidchen'
-    },
-    isPublic: true,
-    createdAt: new Date('2025-03-02'),
-    updatedAt: new Date('2025-03-02'),
-    questionCount: 5,
-    answerCount: 17,
-    interactionCount: 32,
-    questions: [],
-    category: 'Friendship'
-  },
-  {
-    id: '3',
-    title: 'Navigating intimacy issues in modern relationships',
-    creator: {
-      id: '3',
-      name: 'Dr. Emily Rodriguez',
-      avatar: '/img-3.svg',
-      handle: '@emilyrodriguez'
-    },
-    isPublic: true,
-    createdAt: new Date('2025-01-28'),
-    updatedAt: new Date('2025-01-28'),
-    questionCount: 12,
-    answerCount: 34,
-    interactionCount: 67,
-    questions: [],
-    category: 'Intimacy'
-  }
-];
 
 const suggestedTopics = [
   'Trust in long-distance relationships',
@@ -100,24 +42,25 @@ const popularQuestions = [
 export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
   const [searchQuery, setSearchQuery] = useState('');
-  const [threads, setThreads] = useState<Thread[]>(mockThreads);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     const loadThreads = async () => {
       try {
-        dispatch({ type: 'SET_LOADING', payload: true });
-        const loadedThreads = await awsService.getPublicThreads(state.feedFilter);
-        if (loadedThreads.length === 0) {
-          setThreads(mockThreads); // Use mock data for demo
-        } else {
+        setIsLoading(true);
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+        const response = await fetch(`${apiUrl}/threads?filter=${state.feedFilter}`);
+        
+        if (response.ok) {
+          const loadedThreads = await response.json();
           setThreads(loadedThreads);
+          dispatch({ type: 'SET_THREADS', payload: loadedThreads });
         }
-        dispatch({ type: 'SET_THREADS', payload: threads });
       } catch (error) {
         console.error('Failed to load threads:', error);
-        setThreads(mockThreads); // Fallback to mock data
       } finally {
-        dispatch({ type: 'SET_LOADING', payload: false });
+        setIsLoading(false);
       }
     };
 
@@ -252,7 +195,20 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         </header>
 
         {/* Thread List */}
-        <div className="p-6 overflow-y-auto">
+        <div className="p-6 overflow-y-auto h-full">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <span className="ml-3 text-gray-600">Loading threads...</span>
+            </div>
+          ) : threads.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-gray-500 mb-4">No threads found</p>
+              <Button onClick={handleNewThread}>
+                Create the first thread
+              </Button>
+            </div>
+          ) : (
           <div className="space-y-4">
             {filteredThreads.map((thread) => (
               <Card 
@@ -293,6 +249,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
               </Card>
             ))}
           </div>
+          )}
         </div>
       </main>
 

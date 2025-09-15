@@ -2,7 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import { Message, Answer, Comment, Thread } from '../types';
 
 class WebSocketService {
-  private socket: Socket | null = null;
+  public socket: Socket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
 

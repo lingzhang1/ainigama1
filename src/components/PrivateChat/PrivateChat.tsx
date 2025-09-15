@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { StreamingMessage } from './StreamingMessage';
 import { Message, PrivateConversation } from '../../types';
 import { useAppContext } from '../../context/AppContext';
-import { usePrivateChat } from '../../hooks/useWebSocket';
+import { usePrivateChat, useWebSocket } from '../../hooks/useWebSocket';
 import { deepSeekService, ChatMessage } from '../../services/deepseek';
 import { formatDistanceToNow } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,36 +16,11 @@ interface PrivateChatProps {
   onLogout: () => void;
 }
 
-const mockConversations: PrivateConversation[] = [
-  {
-    id: '1',
-    userId: 'user-123',
-    createdAt: new Date('2025-01-15'),
-    updatedAt: new Date('2025-01-15'),
-    title: 'Relationship advice',
-    messages: [
-      {
-        id: '1',
-        content: 'How to maintain healthy long-term relationships?',
-        timestamp: new Date('2025-01-15T10:00:00'),
-        sender: 'user',
-        userId: 'user-123'
-      },
-      {
-        id: '2',
-        content: 'Maintaining healthy long-term relationships requires consistent effort, open communication, and mutual respect. Here are some key strategies:\n\n1. **Communication**: Practice active listening and express your feelings honestly\n2. **Quality time**: Regularly spend meaningful time together\n3. **Trust**: Build and maintain trust through transparency\n4. **Individual growth**: Support each other\'s personal development\n5. **Conflict resolution**: Learn to disagree constructively',
-        timestamp: new Date('2025-01-15T10:00:30'),
-        sender: 'ai'
-      }
-    ]
-  }
-];
-
 export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
-  const [conversations, setConversations] = useState<PrivateConversation[]>(mockConversations);
+  const [conversations, setConversations] = useState<PrivateConversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<PrivateConversation | null>(
-    conversations[0] || null
+    null
   );
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -57,6 +32,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   } | null>(null);
   const [showThinking, setShowThinking] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Initialize WebSocket connection
+  const ws = useWebSocket(state.currentUser?.id || '');
 
   const { sendMessage } = usePrivateChat(
     currentConversation?.id || '',
@@ -76,137 +54,174 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     }
   );
 
+  // Load conversations from backend on component mount
+  useEffect(() => {
+    const loadConversations = async () => {
+      if (!state.currentUser?.id) return;
+      
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+        const response = await fetch(`${apiUrl}/conversations/${state.currentUser.id}`);
+        
+        if (response.ok) {
+          const loadedConversations = await response.json();
+          setConversations(loadedConversations);
+          
+          // Set first conversation as current if none selected
+          if (loadedConversations.length > 0 && !currentConversation) {
+            setCurrentConversation(loadedConversations[0]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load conversations:', error);
+      }
+    };
+
+    loadConversations();
+  }, [state.currentUser?.id]);
+
+  // Load messages for current conversation
+  useEffect(() => {
+    const loadMessages = async () => {
+      if (!currentConversation?.id) return;
+      
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+        const response = await fetch(`${apiUrl}/conversations/${currentConversation.id}/messages`);
+        
+        if (response.ok) {
+          const messages = await response.json();
+          setCurrentConversation(prev => prev ? {
+            ...prev,
+            messages
+          } : null);
+        }
+      } catch (error) {
+        console.error('Failed to load messages:', error);
+      }
+    };
+
+    loadMessages();
+  }, [currentConversation?.id]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [currentConversation?.messages, streamingMessage]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = () => {
     if (!newMessage.trim() || !currentConversation) return;
 
-    const userMessage: Message = {
-      id: uuidv4(),
-      content: newMessage,
-      timestamp: new Date(),
-      sender: 'user',
-      userId: state.currentUser?.id
-    };
-
-    // Add user message immediately
-    const updatedConversation = {
-      ...currentConversation,
-      messages: [...currentConversation.messages, userMessage],
-      updatedAt: new Date()
-    };
-    setCurrentConversation(updatedConversation);
-    setConversations(prev => 
-      prev.map(c => c.id === updatedConversation.id ? updatedConversation : c)
-    );
-
+    // Send message through WebSocket
+    sendMessage(newMessage);
     setNewMessage('');
     setIsTyping(true);
-    setStreamingMessage({ thinking: '', content: '', isComplete: false });
+  };
 
-    // Prepare messages for DeepSeek
-    const chatMessages: ChatMessage[] = updatedConversation.messages.map(msg => ({
-      role: msg.sender === 'user' ? 'user' : 'assistant',
-      content: msg.content
-    }));
-
-    // Stream AI response using DeepSeek
+  const handleNewConversation = async () => {
+    if (!state.currentUser?.id) return;
+    
     try {
-      await deepSeekService.streamChat(chatMessages, {
-        onThinking: (thinking) => {
-          setStreamingMessage(prev => prev ? {
-            ...prev,
-            thinking: prev.thinking + thinking
-          } : { thinking, content: '', isComplete: false });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/conversations`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        onContent: (content) => {
-          setStreamingMessage(prev => prev ? {
-            ...prev,
-            content: prev.content + content
-          } : { thinking: '', content, isComplete: false });
-        },
-        onComplete: (fullContent) => {
-          setStreamingMessage(prev => prev ? {
-            ...prev,
-            isComplete: true
-          } : null);
-
-          // Only add message if we have actual content
-          if (!fullContent || fullContent.trim() === '') {
-            console.warn('No content received from DeepSeek');
-            setIsTyping(false);
-            setStreamingMessage(null);
-            return;
-          }
-
-          // Add the complete AI message to conversation
-          const aiMessage: Message = {
-            id: uuidv4(),
-            content: fullContent,
-            timestamp: new Date(),
-            sender: 'ai'
-          };
-
-          const finalConversation = {
-            ...updatedConversation,
-            messages: [...updatedConversation.messages, aiMessage],
-            updatedAt: new Date()
-          };
-
-          setCurrentConversation(finalConversation);
-          setConversations(prev => 
-            prev.map(c => c.id === finalConversation.id ? finalConversation : c)
-          );
-          setIsTyping(false);
-          // Keep the streaming message visible to show the thinking process
-          // setStreamingMessage(null);
-        },
-        onError: (error) => {
-          console.error('DeepSeek error:', error);
-          setIsTyping(false);
-          setStreamingMessage(null);
-          
-          // Add error message
-          const errorMessage: Message = {
-            id: uuidv4(),
-            content: 'Sorry, I encountered an error while processing your request. Please try again.',
-            timestamp: new Date(),
-            sender: 'ai'
-          };
-
-          const errorConversation = {
-            ...updatedConversation,
-            messages: [...updatedConversation.messages, errorMessage],
-            updatedAt: new Date()
-          };
-
-          setCurrentConversation(errorConversation);
-          setConversations(prev => 
-            prev.map(c => c.id === errorConversation.id ? errorConversation : c)
-          );
-        }
+        body: JSON.stringify({
+          userId: state.currentUser.id,
+          title: null
+        })
       });
+      
+      if (response.ok) {
+        const newConversation = await response.json();
+        setConversations(prev => [newConversation, ...prev]);
+        setCurrentConversation(newConversation);
+      }
     } catch (error) {
-      console.error('Failed to get DeepSeek response:', error);
-      setIsTyping(false);
-      setStreamingMessage(null);
+      console.error('Failed to create conversation:', error);
     }
   };
 
-  const handleNewConversation = () => {
-    const newConversation: PrivateConversation = {
-      id: uuidv4(),
-      userId: state.currentUser?.id || '',
-      messages: [],
-      createdAt: new Date(),
-      updatedAt: new Date()
+  // Handle WebSocket events
+  useEffect(() => {
+    if (!ws) return;
+
+    // Handle AI content streaming
+    const handleAIContentDelta = (data: { conversationId: string; content: string }) => {
+      if (data.conversationId === currentConversation?.id) {
+        setStreamingMessage(prev => prev ? {
+          ...prev,
+          content: prev.content + data.content
+        } : { thinking: '', content: data.content, isComplete: false });
+      }
     };
 
-    setConversations(prev => [newConversation, ...prev]);
-    setCurrentConversation(newConversation);
-  };
+    // Handle AI thinking streaming
+    const handleAIThinkingDelta = (data: { conversationId: string; thinking: string }) => {
+      if (data.conversationId === currentConversation?.id) {
+        setStreamingMessage(prev => prev ? {
+          ...prev,
+          thinking: prev.thinking + data.thinking
+        } : { thinking: data.thinking, content: '', isComplete: false });
+      }
+    };
+
+    // Handle AI response completion
+    const handleAIResponseComplete = (data: { conversationId: string; message: Message }) => {
+      if (data.conversationId === currentConversation?.id) {
+        setStreamingMessage(prev => prev ? {
+          ...prev,
+          isComplete: true
+        } : null);
+        
+        // Add the complete message to conversation
+        setCurrentConversation(prev => prev ? {
+          ...prev,
+          messages: [...prev.messages, data.message],
+          updatedAt: new Date()
+        } : null);
+        
+        setIsTyping(false);
+        
+        // Clear streaming message after a delay
+        setTimeout(() => {
+          setStreamingMessage(null);
+        }, 2000);
+      }
+    };
+
+    // Handle user message confirmation
+    const handlePrivateMessageResponse = (data: { conversationId: string; message: Message }) => {
+      if (data.conversationId === currentConversation?.id) {
+        setCurrentConversation(prev => prev ? {
+          ...prev,
+          messages: [...prev.messages, data.message],
+          updatedAt: new Date()
+        } : null);
+      }
+    };
+
+    // Set up event listeners
+    ws.socket?.on('ai_content_delta', handleAIContentDelta);
+    ws.socket?.on('ai_thinking_delta', handleAIThinkingDelta);
+    ws.socket?.on('ai_response_complete', handleAIResponseComplete);
+    ws.socket?.on('private_message_response', handlePrivateMessageResponse);
+
+    return () => {
+      ws.socket?.off('ai_content_delta', handleAIContentDelta);
+      ws.socket?.off('ai_thinking_delta', handleAIThinkingDelta);
+      ws.socket?.off('ai_response_complete', handleAIResponseComplete);
+      ws.socket?.off('private_message_response', handlePrivateMessageResponse);
+    };
+  }, [ws, currentConversation?.id]);
+
+  // Initialize streaming message when typing starts
+  useEffect(() => {
+    if (isTyping && !streamingMessage) {
+      setStreamingMessage({ thinking: '', content: '', isComplete: false });
+    }
+  }, [isTyping]);
 
   const handleMakePublic = () => {
     setShowPublishModal(true);
