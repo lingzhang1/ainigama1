@@ -246,6 +246,9 @@ io.on('connection', (socket) => {
               }
             }
 
+            console.log('AI streaming complete. Full content length:', fullContent.length);
+            console.log('AI thinking length:', thinking.length);
+
             // Save AI response
             const aiMessageId = uuidv4();
             db.run(

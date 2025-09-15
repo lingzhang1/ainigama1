@@ -5,8 +5,6 @@ class WebSocketService {
   public socket: Socket | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private eventBuffer: Array<{ event: string; data: any }> = [];
-  private bufferTimeout: NodeJS.Timeout | null = null;
 
   connect(userId: string) {
     if (this.socket?.connected) return;
@@ -40,45 +38,10 @@ class WebSocketService {
 
     this.socket.on('reconnect_failed', () => {
       console.log('Failed to reconnect to WebSocket server');
-      this.clearEventBuffer();
     });
-  }
-
-  private clearEventBuffer() {
-    if (this.bufferTimeout) {
-      clearTimeout(this.bufferTimeout);
-      this.bufferTimeout = null;
-    }
-    this.eventBuffer = [];
-  }
-
-  private bufferEvent(event: string, data: any) {
-    // Buffer rapid events to reduce filesystem pressure
-    this.eventBuffer.push({ event, data });
-    
-    if (this.bufferTimeout) {
-      clearTimeout(this.bufferTimeout);
-    }
-    
-    this.bufferTimeout = setTimeout(() => {
-      this.flushEventBuffer();
-    }, 50); // Flush every 50ms
-  }
-
-  private flushEventBuffer() {
-    if (this.eventBuffer.length === 0) return;
-    
-    // Process buffered events
-    this.eventBuffer.forEach(({ event, data }) => {
-      this.socket?.emit(event, data);
-    });
-    
-    this.eventBuffer = [];
-    this.bufferTimeout = null;
   }
 
   disconnect() {
-    this.clearEventBuffer();
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
@@ -87,7 +50,9 @@ class WebSocketService {
 
   // Private chat events
   sendPrivateMessage(conversationId: string, message: string) {
-    this.socket?.emit('private_message', { conversationId, message });
+    if (this.socket?.connected) {
+      this.socket.emit('private_message', { conversationId, message });
+    }
   }
 
   onPrivateMessage(callback: (data: { conversationId: string; message: Message }) => void) {

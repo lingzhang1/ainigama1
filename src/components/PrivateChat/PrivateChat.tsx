@@ -32,6 +32,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   } | null>(null);
   const [showThinking, setShowThinking] = useState(true);
   const streamingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Initialize WebSocket connection
@@ -112,10 +113,14 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const handleSendMessage = () => {
     if (!newMessage.trim() || !currentConversation) return;
 
+    console.log('Sending message:', newMessage);
     // Send message through WebSocket
     sendMessage(newMessage);
     setNewMessage('');
     setIsTyping(true);
+    
+    // Initialize streaming state
+    setStreamingMessage({ thinking: '', content: '', isComplete: false });
   };
 
   const handleNewConversation = async () => {
@@ -148,15 +153,22 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   useEffect(() => {
     if (!ws) return;
 
-    // Direct state updates for better streaming performance
-    const updateStreamingMessage = (updater: (prev: any) => any) => {
-      setStreamingMessage(updater);
+    // Debounced state updates to prevent filesystem overload
+    const debouncedUpdateStreamingMessage = (updater: (prev: any) => any) => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+      
+      updateTimeoutRef.current = setTimeout(() => {
+        setStreamingMessage(updater);
+      }, 16); // ~60fps to prevent overwhelming filesystem
     };
 
     // Handle AI content streaming
     const handleAIContentDelta = (data: { conversationId: string; content: string }) => {
       if (data.conversationId === currentConversation?.id) {
-        updateStreamingMessage(prev => prev ? {
+        console.log('AI Content Delta:', data.content);
+        debouncedUpdateStreamingMessage(prev => prev ? {
           ...prev,
           content: prev.content + data.content
         } : { thinking: '', content: data.content, isComplete: false });
@@ -166,7 +178,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     // Handle AI thinking streaming
     const handleAIThinkingDelta = (data: { conversationId: string; thinking: string }) => {
       if (data.conversationId === currentConversation?.id) {
-        updateStreamingMessage(prev => prev ? {
+        console.log('AI Thinking Delta:', data.thinking);
+        debouncedUpdateStreamingMessage(prev => prev ? {
           ...prev,
           thinking: prev.thinking + data.thinking
         } : { thinking: data.thinking, content: '', isComplete: false });
@@ -176,7 +189,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     // Handle AI response completion
     const handleAIResponseComplete = (data: { conversationId: string; message: Message }) => {
       if (data.conversationId === currentConversation?.id) {
+        console.log('AI Response Complete:', data.message);
         // Mark as complete and add to conversation
+        if (updateTimeoutRef.current) {
+          clearTimeout(updateTimeoutRef.current);
+        }
         setStreamingMessage(null);
         
         setCurrentConversation(prev => prev ? {
@@ -192,6 +209,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     // Handle user message confirmation
     const handlePrivateMessageResponse = (data: { conversationId: string; message: Message }) => {
       if (data.conversationId === currentConversation?.id) {
+        console.log('Private Message Response:', data.message);
+        // Clear any existing streaming state when user message is confirmed
+        setStreamingMessage(null);
         setCurrentConversation(prev => prev ? {
           ...prev,
           messages: [...prev.messages, data.message],
@@ -215,6 +235,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       // Clean up timeout
       if (streamingTimeoutRef.current) {
         clearTimeout(streamingTimeoutRef.current);
+      }
+      
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
       }
     };
   }, [ws, currentConversation?.id]);
