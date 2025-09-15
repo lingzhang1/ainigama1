@@ -116,32 +116,38 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     try {
       await deepSeekService.streamChat(chatMessages, {
         onThinking: (thinking) => {
-          setStreamingMessage(prev => ({
-            thinking: (prev?.thinking || '') + thinking,
-            content: prev?.content || '',
-            isComplete: false
-          }));
+          setStreamingMessage(prev => prev ? {
+            ...prev,
+            thinking: prev.thinking + thinking
+          } : { thinking, content: '', isComplete: false });
         },
         onContent: (content) => {
-          setStreamingMessage(prev => ({
-            thinking: prev?.thinking || '', // Keep existing thinking
-            content: (prev?.content || '') + content,
-            isComplete: false
-          }));
+          setStreamingMessage(prev => prev ? {
+            ...prev,
+            content: prev.content + content
+          } : { thinking: '', content, isComplete: false });
         },
         onComplete: (fullContent) => {
-          setStreamingMessage(prev => ({
-            thinking: prev?.thinking || '', // Preserve thinking
-            content: prev?.content || fullContent || '', // Keep accumulated content
+          // Mark streaming as complete but keep the message visible
+          setStreamingMessage(prev => prev ? {
+            ...prev,
             isComplete: true
-          }));
+          } : null);
 
-          // Add a delay to show the complete message before adding to conversation
+          // Add a delay to show the complete streaming message before adding to conversation
           setTimeout(() => {
+            // Only add message if we have actual content
+            if (!fullContent || fullContent.trim() === '') {
+              console.warn('No content received from DeepSeek');
+              setIsTyping(false);
+              setStreamingMessage(null);
+              return;
+            }
+
             // Add the complete AI message to conversation
             const aiMessage: Message = {
               id: uuidv4(),
-              content: fullContent || '',
+              content: fullContent,
               timestamp: new Date(),
               sender: 'ai'
             };
@@ -158,7 +164,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             );
             setIsTyping(false);
             setStreamingMessage(null);
-          }, 2000); // Show complete streaming message for 2 seconds
+          }, 1000); // Show complete streaming message for 1 second
         },
         onError: (error) => {
           console.error('DeepSeek error:', error);
@@ -335,7 +341,32 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                         </>
                       )}
                     </Avatar>
-                    <div className="flex-1">
+                    <div className="space-y-2 flex-1">
+                      {/* Show thinking process for AI messages if we have streaming data and this is the last AI message */}
+                      {message.sender === 'ai' && 
+                       streamingMessage && 
+                       showThinking && 
+                       streamingMessage.thinking && 
+                       index === currentConversation.messages.length - 1 && (
+                        <Card className="bg-gray-50 border-gray-200">
+                          <CardContent className="p-3">
+                            <div className="flex items-center mb-2">
+                              <Brain className="w-4 h-4 text-gray-500 mr-2" />
+                              <span className="text-xs font-medium text-gray-600">
+                                {streamingMessage.isComplete ? 'Thought Process' : 'Thinking...'}
+                              </span>
+                              {!streamingMessage.isComplete && (
+                                <Loader2 className="w-3 h-3 text-gray-400 ml-2 animate-spin" />
+                              )}
+                            </div>
+                            <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
+                              {streamingMessage.thinking}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                      
+                      {/* Main message content */}
                       <Card className={`${
                         message.sender === 'user' 
                           ? 'bg-blue-500 text-white' 
@@ -355,68 +386,16 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </div>
               ))}
 
-              {/* Streaming AI Response - show while streaming */}
-              {isTyping && streamingMessage && (
-                <div className="flex justify-start">
-                  <div className="flex items-start space-x-3 max-w-[70%]">
-                    <Avatar className="w-8 h-8 flex-shrink-0">
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">AI</span>
-                      </div>
-                    </Avatar>
-                    
-                    <div className="space-y-2 flex-1">
-                      {/* Thinking Process - Always show first if available */}
-                      {showThinking && streamingMessage.thinking && streamingMessage.thinking.trim() && (
-                        <Card className="bg-gray-50 border-gray-200">
-                          <CardContent className="p-3">
-                            <div className="flex items-center mb-2">
-                              <Brain className="w-4 h-4 text-gray-500 mr-2" />
-                              <span className="text-xs font-medium text-gray-600">
-                                {streamingMessage.isComplete ? 'Thought Process' : 'Thinking...'}
-                              </span>
-                              {!streamingMessage.isComplete && (
-                                <Loader2 className="w-3 h-3 text-gray-400 ml-2 animate-spin" />
-                              )}
-                            </div>
-                            <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
-                              {streamingMessage.thinking}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Main Response - Show below thinking */}
-                      {streamingMessage.content && streamingMessage.content.trim() ? (
-                        <Card className="bg-white border-gray-200">
-                          <CardContent className="p-3">
-                            <div className="text-sm whitespace-pre-wrap">
-                              {streamingMessage.content}
-                              {!streamingMessage.isComplete && <span className="animate-pulse text-blue-500">▋</span>}
-                            </div>
-                            {streamingMessage.isComplete && (
-                              <div className="text-xs text-gray-500 mt-2">
-                                Just now
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ) : !streamingMessage.thinking && (
-                        <Card className="bg-white border-gray-200">
-                          <CardContent className="p-3">
-                            <div className="flex items-center space-x-2">
-                              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                              <span className="text-sm text-gray-500">
-                                AI is thinking...
-                              </span>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
-                  </div>
-                </div>
+              {/* Streaming AI Response - show while streaming or briefly after completion */}
+              {streamingMessage && (
+                <StreamingMessage
+                  thinking={streamingMessage.thinking}
+                  content={streamingMessage.content}
+                  isComplete={streamingMessage.isComplete}
+                  showThinking={showThinking}
+                />
               )}
+
               <div ref={messagesEndRef} />
             </div>
 
