@@ -294,13 +294,12 @@ resources:
         Fn::Join:
           - ""
           - - "https://"
-            - Ref: RestApiApigEvent
+            - Ref: HttpApi
             - ".execute-api."
             - ${self:provider.region}
             - ".amazonaws.com/"
             - ${self:provider.stage}
       Export:
-        Name: ${self:service}-${self:provider.stage}-RestApiURI
     
     UserPoolId:
       Description: "Cognito User Pool ID"
