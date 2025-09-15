@@ -20,7 +20,10 @@ const io = socketIo(server, {
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true
+}));
 app.use(express.json());
 
 // Database setup
@@ -109,11 +112,38 @@ db.serialize(() => {
     FOREIGN KEY (user_id) REFERENCES users (id),
     FOREIGN KEY (parent_id) REFERENCES comments (id)
   )`);
+
+  // WebSocket connections tracking
+  db.run(`CREATE TABLE IF NOT EXISTS connections (
+    connection_id TEXT PRIMARY KEY,
+    user_id TEXT,
+    thread_id TEXT,
+    connected_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 });
+
+// Store active connections
+const activeConnections = new Map();
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
+  
+  // Store connection
+  activeConnections.set(socket.id, {
+    socket,
+    userId: null,
+    threadId: null
+  });
+
+  // Handle user authentication
+  socket.on('authenticate', (data) => {
+    const connection = activeConnections.get(socket.id);
+    if (connection) {
+      connection.userId = data.userId;
+      activeConnections.set(socket.id, connection);
+    }
+  });
 
   // Private message handling
   socket.on('private_message', async (data) => {
@@ -135,6 +165,12 @@ io.on('connection', (socket) => {
         [userMessageId, conversationId, message, 'user', new Date().toISOString()]
       );
 
+      // Emit user message back to confirm receipt
+      socket.emit('private_message_response', {
+        conversationId,
+        message: userMessage
+      });
+
       // Get conversation history
       db.all(
         'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
@@ -142,6 +178,7 @@ io.on('connection', (socket) => {
         async (err, messages) => {
           if (err) {
             console.error('Database error:', err);
+            socket.emit('error', { message: 'Database error' });
             return;
           }
 
@@ -183,6 +220,15 @@ io.on('connection', (socket) => {
                     });
                   }
                   break;
+                case 'step-delta':
+                  if (delta.stepDelta && delta.stepDelta.type === 'reasoning-delta' && delta.stepDelta.reasoningDelta) {
+                    thinking += delta.stepDelta.reasoningDelta;
+                    socket.emit('ai_thinking_delta', {
+                      conversationId,
+                      thinking: delta.stepDelta.reasoningDelta
+                    });
+                  }
+                  break;
               }
             }
 
@@ -206,7 +252,7 @@ io.on('connection', (socket) => {
 
           } catch (aiError) {
             console.error('AI error:', aiError);
-            socket.emit('error', { message: 'Failed to get AI response' });
+            socket.emit('error', { message: 'Failed to get AI response: ' + aiError.message });
           }
         }
       );
@@ -219,23 +265,44 @@ io.on('connection', (socket) => {
 
   // Thread management
   socket.on('join_thread', (data) => {
-    socket.join(data.threadId);
+    const { threadId } = data;
+    socket.join(threadId);
+    
+    const connection = activeConnections.get(socket.id);
+    if (connection) {
+      connection.threadId = threadId;
+      activeConnections.set(socket.id, connection);
+    }
+    
+    console.log(`Socket ${socket.id} joined thread ${threadId}`);
   });
 
   socket.on('leave_thread', (data) => {
-    socket.leave(data.threadId);
+    const { threadId } = data;
+    socket.leave(threadId);
+    
+    const connection = activeConnections.get(socket.id);
+    if (connection) {
+      connection.threadId = null;
+      activeConnections.set(socket.id, connection);
+    }
+    
+    console.log(`Socket ${socket.id} left thread ${threadId}`);
   });
 
   socket.on('add_answer', async (data) => {
     const { threadId, questionId, content } = data;
     const answerId = uuidv4();
+    const connection = activeConnections.get(socket.id);
+    const userId = connection?.userId || 'anonymous';
 
     db.run(
       'INSERT INTO answers (id, question_id, content, user_id, created_at) VALUES (?, ?, ?, ?, ?)',
-      [answerId, questionId, content, socket.userId, new Date().toISOString()],
+      [answerId, questionId, content, userId, new Date().toISOString()],
       function(err) {
         if (err) {
           console.error('Database error:', err);
+          socket.emit('error', { message: 'Failed to add answer' });
           return;
         }
 
@@ -243,24 +310,86 @@ io.on('connection', (socket) => {
           id: answerId,
           questionId,
           content,
-          userId: socket.userId,
+          userId,
           isAI: false,
           isPinned: false,
           interactionCount: 0,
           timestamp: new Date()
         };
 
+        // Broadcast to all sockets in the thread
         io.to(threadId).emit('new_answer', { threadId, answer });
       }
     );
   });
 
+  socket.on('add_comment', async (data) => {
+    const { answerId, content, parentId } = data;
+    const commentId = uuidv4();
+    const connection = activeConnections.get(socket.id);
+    const userId = connection?.userId || 'anonymous';
+
+    db.run(
+      'INSERT INTO comments (id, answer_id, content, user_id, parent_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [commentId, answerId, content, userId, parentId || null, new Date().toISOString()],
+      function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          socket.emit('error', { message: 'Failed to add comment' });
+          return;
+        }
+
+        const comment = {
+          id: commentId,
+          answerId,
+          content,
+          userId,
+          parentId: parentId || null,
+          timestamp: new Date()
+        };
+
+        // Broadcast to all connected sockets
+        io.emit('new_comment', { answerId, comment });
+      }
+    );
+  });
+
+  // Typing indicators
+  socket.on('typing_start', (data) => {
+    const { threadId, type, targetId } = data;
+    const connection = activeConnections.get(socket.id);
+    if (connection && connection.userId) {
+      socket.to(threadId).emit('user_typing', {
+        userId: connection.userId,
+        type,
+        targetId
+      });
+    }
+  });
+
+  socket.on('typing_stop', (data) => {
+    const { threadId, type, targetId } = data;
+    const connection = activeConnections.get(socket.id);
+    if (connection && connection.userId) {
+      socket.to(threadId).emit('user_stop_typing', {
+        userId: connection.userId,
+        type,
+        targetId
+      });
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
+    activeConnections.delete(socket.id);
   });
 });
 
 // REST API endpoints
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.get('/api/threads', (req, res) => {
   const { filter = 'recent' } = req.query;
   
@@ -270,9 +399,11 @@ app.get('/api/threads', (req, res) => {
   }
 
   db.all(
-    `SELECT t.*, u.name as creator_name, u.avatar as creator_avatar, u.handle as creator_handle
+    `SELECT t.*, u.name as creator_name, u.avatar as creator_avatar, u.handle as creator_handle,
+     (SELECT COUNT(*) FROM questions WHERE thread_id = t.id) as question_count,
+     (SELECT COUNT(*) FROM answers a JOIN questions q ON a.question_id = q.id WHERE q.thread_id = t.id) as answer_count
      FROM threads t 
-     JOIN users u ON t.creator_id = u.id 
+     LEFT JOIN users u ON t.creator_id = u.id 
      WHERE t.is_public = 1 
      ORDER BY ${orderBy} 
      LIMIT 20`,
@@ -281,7 +412,28 @@ app.get('/api/threads', (req, res) => {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to fetch threads' });
       }
-      res.json(threads);
+      
+      // Transform the data to match frontend expectations
+      const transformedThreads = threads.map(thread => ({
+        id: thread.id,
+        title: thread.title,
+        creator: {
+          id: thread.creator_id,
+          name: thread.creator_name || 'Unknown User',
+          avatar: thread.creator_avatar || '/img-5.svg',
+          handle: thread.creator_handle || '@user'
+        },
+        isPublic: Boolean(thread.is_public),
+        createdAt: new Date(thread.created_at),
+        updatedAt: new Date(thread.updated_at),
+        questionCount: thread.question_count || 0,
+        answerCount: thread.answer_count || 0,
+        interactionCount: (thread.question_count || 0) + (thread.answer_count || 0),
+        questions: [],
+        category: thread.category
+      }));
+      
+      res.json(transformedThreads);
     }
   );
 });
@@ -290,19 +442,163 @@ app.get('/api/conversations/:userId', (req, res) => {
   const { userId } = req.params;
   
   db.all(
-    'SELECT * FROM private_conversations WHERE user_id = ? ORDER BY updated_at DESC',
+    `SELECT c.*, 
+     (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count,
+     (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message
+     FROM private_conversations c 
+     WHERE c.user_id = ? 
+     ORDER BY c.updated_at DESC`,
     [userId],
     (err, conversations) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to fetch conversations' });
       }
-      res.json(conversations);
+      
+      // Transform the data to match frontend expectations
+      const transformedConversations = conversations.map(conv => ({
+        id: conv.id,
+        userId: conv.user_id,
+        title: conv.title,
+        createdAt: new Date(conv.created_at),
+        updatedAt: new Date(conv.updated_at),
+        messages: [] // Messages will be loaded separately when needed
+      }));
+      
+      res.json(transformedConversations);
     }
   );
 });
 
-const PORT = process.env.PORT || 3001;
+app.get('/api/conversations/:conversationId/messages', (req, res) => {
+  const { conversationId } = req.params;
+  
+  db.all(
+    'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
+    [conversationId],
+    (err, messages) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch messages' });
+      }
+      
+      // Transform the data to match frontend expectations
+      const transformedMessages = messages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        timestamp: new Date(msg.created_at),
+        sender: msg.sender,
+        userId: msg.user_id
+      }));
+      
+      res.json(transformedMessages);
+    }
+  );
+});
+
+app.post('/api/conversations', (req, res) => {
+  const { userId, title } = req.body;
+  const conversationId = uuidv4();
+  
+  db.run(
+    'INSERT INTO private_conversations (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+    [conversationId, userId, title || null, new Date().toISOString(), new Date().toISOString()],
+    function(err) {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to create conversation' });
+      }
+      
+      res.json({
+        id: conversationId,
+        userId,
+        title,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        messages: []
+      });
+    }
+  );
+});
+
+app.get('/api/threads/:threadId', (req, res) => {
+  const { threadId } = req.params;
+  
+  // Get thread with questions and answers
+  db.get(
+    `SELECT t.*, u.name as creator_name, u.avatar as creator_avatar, u.handle as creator_handle
+     FROM threads t 
+     LEFT JOIN users u ON t.creator_id = u.id 
+     WHERE t.id = ?`,
+    [threadId],
+    (err, thread) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch thread' });
+      }
+      
+      if (!thread) {
+        return res.status(404).json({ error: 'Thread not found' });
+      }
+      
+      // Get questions for this thread
+      db.all(
+        'SELECT * FROM questions WHERE thread_id = ? ORDER BY created_at ASC',
+        [threadId],
+        (err, questions) => {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Failed to fetch questions' });
+          }
+          
+          const transformedThread = {
+            id: thread.id,
+            title: thread.title,
+            creator: {
+              id: thread.creator_id,
+              name: thread.creator_name || 'Unknown User',
+              avatar: thread.creator_avatar || '/img-5.svg',
+              handle: thread.creator_handle || '@user'
+            },
+            isPublic: Boolean(thread.is_public),
+            createdAt: new Date(thread.created_at),
+            updatedAt: new Date(thread.updated_at),
+            questionCount: questions.length,
+            answerCount: 0, // Will be calculated
+            interactionCount: 0, // Will be calculated
+            questions: questions.map(q => ({
+              id: q.id,
+              content: q.content,
+              timestamp: new Date(q.created_at),
+              userId: q.user_id,
+              threadId: q.thread_id
+            })),
+            category: thread.category
+          };
+          
+          res.json(transformedThread);
+        }
+      );
+    }
+  );
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// 404 handler
+app.use((req, res) => {
+  console.log('404 - Route not found:', req.method, req.url);
+  res.status(404).json({ error: 'Route not found' });
+});
+
+const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
-  console.log(`Ainigama server running on port ${PORT}`);
+  console.log(`🚀 Ainigama server running on port ${PORT}`);
+  console.log(`📡 WebSocket server ready`);
+  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+  console.log(`🔑 DeepSeek API configured: ${process.env.DEEPSEEK_API_KEY ? 'Yes' : 'No'}`);
 });
