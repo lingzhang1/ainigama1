@@ -300,6 +300,7 @@ resources:
             - ".amazonaws.com/"
             - ${self:provider.stage}
       Export:
+        Name: ${self:service}-${self:provider.stage}-RestApiURI
     
     UserPoolId:
       Description: "Cognito User Pool ID"
