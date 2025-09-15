@@ -26,6 +26,20 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Serve static files and handle root route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Ainigama Backend Server',
+    status: 'running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      threads: '/api/threads',
+      conversations: '/api/conversations/:userId'
+    }
+  });
+});
+
 // Database setup
 const db = new sqlite3.Database('./ainigama.db');
 
@@ -390,6 +404,14 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Add OPTIONS handler for CORS preflight requests
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5173');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
+
 app.get('/api/threads', (req, res) => {
   const { filter = 'recent' } = req.query;
   
@@ -592,7 +614,20 @@ app.use((err, req, res, next) => {
 // 404 handler
 app.use((req, res) => {
   console.log('404 - Route not found:', req.method, req.url);
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ 
+    error: 'Route not found',
+    method: req.method,
+    url: req.url,
+    availableRoutes: [
+      'GET /',
+      'GET /api/health',
+      'GET /api/threads',
+      'GET /api/conversations/:userId',
+      'GET /api/conversations/:conversationId/messages',
+      'POST /api/conversations',
+      'GET /api/threads/:threadId'
+    ]
+  });
 });
 
 const PORT = process.env.PORT || 3002;
