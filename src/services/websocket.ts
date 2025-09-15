@@ -33,7 +33,6 @@ class WebSocketService {
 
     this.socket.on('disconnect', () => {
       console.log('Disconnected from WebSocket server');
-      this.clearEventBuffer();
     });
 
     this.socket.on('reconnect_failed', () => {
