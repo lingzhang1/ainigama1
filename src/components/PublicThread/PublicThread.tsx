@@ -145,7 +145,7 @@ const mockComments: { [answerId: string]: Comment[] } = {
 };
 
 export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
-  const { state } = useAppContext();
+  const { state, dispatch } = useAppContext();
   const [thread, setThread] = useState<Thread>(mockThread);
   const [answers, setAnswers] = useState<{ [questionId: string]: Answer[] }>(mockAnswers);
   const [comments, setComments] = useState<{ [answerId: string]: Comment[] }>(mockComments);
@@ -155,13 +155,46 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [newAnswerContent, setNewAnswerContent] = useState<{ [questionId: string]: string }>({});
   const [newCommentContent, setNewCommentContent] = useState('');
   const [newQuestionContent, setNewQuestionContent] = useState('');
+  const [typingUsers, setTypingUsers] = useState<{ [key: string]: string[] }>({});
+  const [isLoading, setIsLoading] = useState(true);
 
-  const { addAnswer, addComment } = usePublicThread(
+  // Load thread data from backend
+  useEffect(() => {
+    const loadThread = async () => {
+      if (!state.currentThreadId) return;
+      
+      try {
+        setIsLoading(true);
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+        const response = await fetch(`${apiUrl}/threads/${state.currentThreadId}`);
+        
+        if (response.ok) {
+          const threadData = await response.json();
+          setThread(threadData);
+        }
+      } catch (error) {
+        console.error('Failed to load thread:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadThread();
+  }, [state.currentThreadId]);
+
+  const { addAnswer, addComment, startTyping, stopTyping } = usePublicThread(
     thread.id,
     (answer: Answer) => {
       setAnswers(prev => ({
         ...prev,
         [answer.questionId]: [...(prev[answer.questionId] || []), answer]
+      }));
+      
+      // Update thread answer count
+      setThread(prev => ({
+        ...prev,
+        answerCount: prev.answerCount + 1,
+        updatedAt: new Date()
       }));
     },
     (comment: Comment) => {
@@ -172,6 +205,22 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     },
     (updatedThread: Thread) => {
       setThread(updatedThread);
+    },
+    (data: { userId: string; type: 'answer' | 'comment'; targetId: string }) => {
+      // Handle typing indicators
+      const key = `${data.type}-${data.targetId}`;
+      setTypingUsers(prev => ({
+        ...prev,
+        [key]: [...(prev[key] || []), data.userId]
+      }));
+    },
+    (data: { userId: string; type: 'answer' | 'comment'; targetId: string }) => {
+      // Handle stop typing
+      const key = `${data.type}-${data.targetId}`;
+      setTypingUsers(prev => ({
+        ...prev,
+        [key]: (prev[key] || []).filter(id => id !== data.userId)
+      }));
     }
   );
 

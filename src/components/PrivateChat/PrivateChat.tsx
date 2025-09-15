@@ -148,20 +148,15 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   useEffect(() => {
     if (!ws) return;
 
-    // Debounced state update to reduce filesystem pressure
-    const debouncedSetStreamingMessage = (updater: (prev: any) => any) => {
-      if (streamingTimeoutRef.current) {
-        clearTimeout(streamingTimeoutRef.current);
-      }
-      streamingTimeoutRef.current = setTimeout(() => {
-        setStreamingMessage(updater);
-      }, 16); // ~60fps
+    // Direct state updates for better streaming performance
+    const updateStreamingMessage = (updater: (prev: any) => any) => {
+      setStreamingMessage(updater);
     };
 
     // Handle AI content streaming
     const handleAIContentDelta = (data: { conversationId: string; content: string }) => {
       if (data.conversationId === currentConversation?.id) {
-        debouncedSetStreamingMessage(prev => prev ? {
+        updateStreamingMessage(prev => prev ? {
           ...prev,
           content: prev.content + data.content
         } : { thinking: '', content: data.content, isComplete: false });
@@ -171,7 +166,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     // Handle AI thinking streaming
     const handleAIThinkingDelta = (data: { conversationId: string; thinking: string }) => {
       if (data.conversationId === currentConversation?.id) {
-        debouncedSetStreamingMessage(prev => prev ? {
+        updateStreamingMessage(prev => prev ? {
           ...prev,
           thinking: prev.thinking + data.thinking
         } : { thinking: data.thinking, content: '', isComplete: false });
@@ -181,12 +176,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     // Handle AI response completion
     const handleAIResponseComplete = (data: { conversationId: string; message: Message }) => {
       if (data.conversationId === currentConversation?.id) {
-        setStreamingMessage(prev => prev ? {
-          ...prev,
-          isComplete: true
-        } : null);
+        // Mark as complete and add to conversation
+        setStreamingMessage(null);
         
-        // Add the complete message to conversation
         setCurrentConversation(prev => prev ? {
           ...prev,
           messages: [...prev.messages, data.message],
@@ -194,11 +186,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         } : null);
         
         setIsTyping(false);
-        
-        // Clear streaming message after a delay
-        setTimeout(() => {
-          setStreamingMessage(null);
-        }, 2000);
       }
     };
 

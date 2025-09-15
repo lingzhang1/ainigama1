@@ -44,11 +44,15 @@ export const usePublicThread = (
   threadId: string,
   onNewAnswer: (answer: Answer) => void,
   onNewComment: (comment: Comment) => void,
-  onThreadUpdate: (thread: Thread) => void
+  onThreadUpdate: (thread: Thread) => void,
+  onTyping?: (data: { userId: string; type: 'answer' | 'comment'; targetId: string }) => void,
+  onStopTyping?: (data: { userId: string; type: 'answer' | 'comment'; targetId: string }) => void
 ) => {
   const ws = wsService;
 
   useEffect(() => {
+    if (!threadId) return;
+    
     ws.joinThread(threadId);
 
     const handleNewAnswer = (data: { threadId: string; answer: Answer }) => {
@@ -67,14 +71,24 @@ export const usePublicThread = (
       }
     };
 
+    const handleTyping = (data: { userId: string; type: 'answer' | 'comment'; targetId: string }) => {
+      onTyping?.(data);
+    };
+
+    const handleStopTyping = (data: { userId: string; type: 'answer' | 'comment'; targetId: string }) => {
+      onStopTyping?.(data);
+    };
+
     ws.onNewAnswer(handleNewAnswer);
     ws.onNewComment(handleNewComment);
     ws.onThreadUpdate(handleThreadUpdate);
+    ws.onTyping(handleTyping);
+    ws.onStopTyping(handleStopTyping);
 
     return () => {
       ws.leaveThread(threadId);
     };
-  }, [threadId, onNewAnswer, onNewComment, onThreadUpdate, ws]);
+  }, [threadId, onNewAnswer, onNewComment, onThreadUpdate, onTyping, onStopTyping, ws]);
 
   const addAnswer = (questionId: string, content: string) => {
     ws.addAnswer(threadId, questionId, content);
@@ -84,5 +98,13 @@ export const usePublicThread = (
     ws.addComment(answerId, content, parentId);
   };
 
-  return { addAnswer, addComment };
+  const startTyping = (type: 'answer' | 'comment', targetId: string) => {
+    ws.startTyping(threadId, type, targetId);
+  };
+
+  const stopTyping = (type: 'answer' | 'comment', targetId: string) => {
+    ws.stopTyping(threadId, type, targetId);
+  };
+
+  return { addAnswer, addComment, startTyping, stopTyping };
 };
