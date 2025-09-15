@@ -106,7 +106,7 @@ functions:
     handler: src/handlers/api.getConversations
     events:
       - http:
-          path: /conversations
+          path: /conversations/{userId}
           method: get
           cors: true
 
@@ -294,7 +294,7 @@ resources:
         Fn::Join:
           - ""
           - - "https://"
-            - Ref: HttpApi
+            - Ref: RestApi
             - ".execute-api."
             - ${self:provider.region}
             - ".amazonaws.com/"
