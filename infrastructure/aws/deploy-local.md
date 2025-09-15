@@ -70,7 +70,7 @@ aws configure
 
 ```bash
 # Set your DeepSeek API key
-export DEEPSEEK_API_KEY=your_deepseek_api_key_here
+export DEEPSEEK_API_KEY=sk-0dcbd0d5eca74684919812e175de65b7
 
 # Verify it's set
 echo $DEEPSEEK_API_KEY
