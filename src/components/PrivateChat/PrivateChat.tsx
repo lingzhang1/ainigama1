@@ -31,6 +31,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     isComplete: boolean;
   } | null>(null);
   const [showThinking, setShowThinking] = useState(true);
+  const streamingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Initialize WebSocket connection
@@ -147,10 +148,20 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   useEffect(() => {
     if (!ws) return;
 
+    // Debounced state update to reduce filesystem pressure
+    const debouncedSetStreamingMessage = (updater: (prev: any) => any) => {
+      if (streamingTimeoutRef.current) {
+        clearTimeout(streamingTimeoutRef.current);
+      }
+      streamingTimeoutRef.current = setTimeout(() => {
+        setStreamingMessage(updater);
+      }, 16); // ~60fps
+    };
+
     // Handle AI content streaming
     const handleAIContentDelta = (data: { conversationId: string; content: string }) => {
       if (data.conversationId === currentConversation?.id) {
-        setStreamingMessage(prev => prev ? {
+        debouncedSetStreamingMessage(prev => prev ? {
           ...prev,
           content: prev.content + data.content
         } : { thinking: '', content: data.content, isComplete: false });
@@ -160,7 +171,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     // Handle AI thinking streaming
     const handleAIThinkingDelta = (data: { conversationId: string; thinking: string }) => {
       if (data.conversationId === currentConversation?.id) {
-        setStreamingMessage(prev => prev ? {
+        debouncedSetStreamingMessage(prev => prev ? {
           ...prev,
           thinking: prev.thinking + data.thinking
         } : { thinking: data.thinking, content: '', isComplete: false });
@@ -213,6 +224,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       ws.socket?.off('ai_thinking_delta', handleAIThinkingDelta);
       ws.socket?.off('ai_response_complete', handleAIResponseComplete);
       ws.socket?.off('private_message_response', handlePrivateMessageResponse);
+      
+      // Clean up timeout
+      if (streamingTimeoutRef.current) {
+        clearTimeout(streamingTimeoutRef.current);
+      }
     };
   }, [ws, currentConversation?.id]);
 
