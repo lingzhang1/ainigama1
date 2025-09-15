@@ -31,12 +31,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     isComplete: boolean;
   } | null>(null);
   const [showThinking, setShowThinking] = useState(true);
-  const throttleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const pendingUpdatesRef = useRef<{
-    thinking?: string;
-    content?: string;
-    isComplete?: boolean;
-  }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Initialize WebSocket connection
@@ -157,43 +151,23 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   useEffect(() => {
     if (!ws) return;
 
-    // Throttled state updates to prevent filesystem overload
-    const throttledUpdateStreamingMessage = () => {
-      if (throttleTimeoutRef.current) return; // Already scheduled
-      
-      throttleTimeoutRef.current = setTimeout(() => {
-        const updates = pendingUpdatesRef.current;
-        if (Object.keys(updates).length > 0) {
-          setStreamingMessage(prev => ({
-            thinking: updates.thinking !== undefined ? updates.thinking : (prev?.thinking || ''),
-            content: updates.content !== undefined ? updates.content : (prev?.content || ''),
-            isComplete: updates.isComplete !== undefined ? updates.isComplete : (prev?.isComplete || false)
-          }));
-          pendingUpdatesRef.current = {};
-        }
-        throttleTimeoutRef.current = null;
-      }, 100); // Update every 100ms instead of on every event
-    };
-
-    const queueUpdate = (update: { thinking?: string; content?: string; isComplete?: boolean }) => {
-      // Accumulate updates instead of applying immediately
-      if (update.thinking !== undefined) {
-        pendingUpdatesRef.current.thinking = (pendingUpdatesRef.current.thinking || '') + update.thinking;
-      }
-      if (update.content !== undefined) {
-        pendingUpdatesRef.current.content = (pendingUpdatesRef.current.content || '') + update.content;
-      }
-      if (update.isComplete !== undefined) {
-        pendingUpdatesRef.current.isComplete = update.isComplete;
-      }
-      throttledUpdateStreamingMessage();
-    };
+    // Simple throttling to reduce filesystem pressure
+    let lastUpdate = 0;
+    const UPDATE_INTERVAL = 50; // 50ms between updates
 
     // Handle AI content streaming
     const handleAIContentDelta = (data: { conversationId: string; content: string }) => {
       if (data.conversationId === currentConversation?.id) {
         console.log('AI Content Delta:', data.content);
-        queueUpdate({ content: data.content });
+        const now = Date.now();
+        if (now - lastUpdate > UPDATE_INTERVAL) {
+          setStreamingMessage(prev => ({
+            thinking: prev?.thinking || '',
+            content: (prev?.content || '') + data.content,
+            isComplete: false
+          }));
+          lastUpdate = now;
+        }
       }
     };
 
@@ -201,7 +175,15 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     const handleAIThinkingDelta = (data: { conversationId: string; thinking: string }) => {
       if (data.conversationId === currentConversation?.id) {
         console.log('AI Thinking Delta:', data.thinking);
-        queueUpdate({ thinking: data.thinking });
+        const now = Date.now();
+        if (now - lastUpdate > UPDATE_INTERVAL) {
+          setStreamingMessage(prev => ({
+            thinking: (prev?.thinking || '') + data.thinking,
+            content: prev?.content || '',
+            isComplete: false
+          }));
+          lastUpdate = now;
+        }
       }
     };
 
@@ -209,12 +191,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     const handleAIResponseComplete = (data: { conversationId: string; message: Message }) => {
       if (data.conversationId === currentConversation?.id) {
         console.log('AI Response Complete:', data.message);
-        // Mark as complete and add to conversation
-        if (throttleTimeoutRef.current) {
-          clearTimeout(throttleTimeoutRef.current);
-          throttleTimeoutRef.current = null;
-        }
-        pendingUpdatesRef.current = {};
+        // Clear streaming and add final message
         setStreamingMessage(null);
         
         setCurrentConversation(prev => prev ? {
@@ -231,7 +208,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     const handlePrivateMessageResponse = (data: { conversationId: string; message: Message }) => {
       if (data.conversationId === currentConversation?.id) {
         console.log('Private Message Response:', data.message);
-        // Clear any existing streaming state when user message is confirmed
         setStreamingMessage(null);
         setCurrentConversation(prev => prev ? {
           ...prev,
@@ -253,12 +229,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       ws.socket?.off('ai_response_complete', handleAIResponseComplete);
       ws.socket?.off('private_message_response', handlePrivateMessageResponse);
       
-      // Clean up timeout
-      if (throttleTimeoutRef.current) {
-        clearTimeout(throttleTimeoutRef.current);
-        throttleTimeoutRef.current = null;
-      }
-      pendingUpdatesRef.current = {};
     };
   }, [ws, currentConversation?.id]);
 
