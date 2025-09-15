@@ -3,6 +3,19 @@
 echo "🚀 Ainigama AWS Deployment Script"
 echo "=================================="
 
+# Check if we're in WebContainer
+if [ -f "/.dockerenv" ] || [ -n "$WEBCONTAINER" ]; then
+    echo "❌ WebContainer detected. AWS CLI installation is not supported in this environment."
+    echo ""
+    echo "📋 Please follow these steps instead:"
+    echo "1. Download the project files to your local machine"
+    echo "2. Install AWS CLI on your local machine"
+    echo "3. Run this deployment script from your local machine"
+    echo ""
+    echo "📖 See infrastructure/aws/deploy-local.md for detailed instructions"
+    exit 1
+fi
+
 # Check if AWS CLI is installed
 if ! command -v aws &> /dev/null; then
     echo "❌ AWS CLI not found. Please install AWS CLI first."

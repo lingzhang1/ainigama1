@@ -5,6 +5,7 @@ provider:
   runtime: nodejs18.x
   region: us-east-1
   stage: ${opt:stage, 'dev'}
+  timeout: 30
   environment:
     DYNAMODB_TABLE_USERS: ${self:service}-${self:provider.stage}-users
     DYNAMODB_TABLE_CONVERSATIONS: ${self:service}-${self:provider.stage}-conversations
@@ -13,6 +14,15 @@ provider:
     DYNAMODB_TABLE_ANSWERS: ${self:service}-${self:provider.stage}-answers
     DYNAMODB_TABLE_COMMENTS: ${self:service}-${self:provider.stage}-comments
     DEEPSEEK_API_KEY: ${env:DEEPSEEK_API_KEY}
+    WEBSOCKET_ENDPOINT: 
+      Fn::Join:
+        - ""
+        - - "https://"
+          - Ref: WebsocketsApi
+          - ".execute-api."
+          - ${self:provider.region}
+          - ".amazonaws.com/"
+          - ${self:provider.stage}
   
   iamRoleStatements:
     - Effect: Allow
@@ -30,6 +40,12 @@ provider:
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_MESSAGES}"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_ANSWERS}"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_COMMENTS}"
+
+    - Effect: Allow
+      Action:
+        - execute-api:ManageConnections
+      Resource:
+        - "arn:aws:execute-api:${self:provider.region}:*:**/@connections/*"
 
 functions:
   # WebSocket API
@@ -96,6 +112,22 @@ functions:
 
 resources:
   Resources:
+    # WebSocket Connections Table
+    ConnectionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-connections
+        AttributeDefinitions:
+          - AttributeName: connectionId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: connectionId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+
     # DynamoDB Tables
     UsersTable:
       Type: AWS::DynamoDB::Table
@@ -253,16 +285,36 @@ resources:
             - ${self:provider.region}
             - ".amazonaws.com/"
             - ${self:provider.stage}
+      Export:
+        Name: ${self:service}-${self:provider.stage}-WebSocketURI
+    
+    RestApiURI:
+      Description: "REST API URI"
+      Value:
+        Fn::Join:
+          - ""
+          - - "https://"
+            - Ref: RestApiApigEvent
+            - ".execute-api."
+            - ${self:provider.region}
+            - ".amazonaws.com/"
+            - ${self:provider.stage}
+      Export:
+        Name: ${self:service}-${self:provider.stage}-RestApiURI
     
     UserPoolId:
       Description: "Cognito User Pool ID"
       Value:
         Ref: CognitoUserPool
+      Export:
+        Name: ${self:service}-${self:provider.stage}-UserPoolId
     
     UserPoolClientId:
       Description: "Cognito User Pool Client ID"
       Value:
         Ref: CognitoUserPoolClient
+      Export:
+        Name: ${self:service}-${self:provider.stage}-UserPoolClientId
 
 plugins:
   - serverless-offline
