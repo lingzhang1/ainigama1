@@ -130,6 +130,7 @@ class WebSocketService {
     }
     this.eventHandlers.clear();
   }
+}
 import { Message, Answer, Comment, Thread } from '../types';
 
 class WebSocketService {
