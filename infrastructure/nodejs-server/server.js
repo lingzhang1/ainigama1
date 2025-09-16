@@ -453,7 +453,7 @@ app.get('/api/threads', (req, res) => {
   );
 });
 
-app.get('/api/conversations/:userId', (req, res) => {
+app.get('/api/users/:userId/conversations', (req, res) => {
   const { userId } = req.params;
   
   db.all(

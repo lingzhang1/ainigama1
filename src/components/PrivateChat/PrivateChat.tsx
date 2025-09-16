@@ -57,7 +57,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-        const response = await fetch(`${apiUrl}/conversations/${state.currentUser.id}`);
+        const response = await fetch(`${apiUrl}/users/${state.currentUser.id}/conversations`);
         
         if (response.ok) {
           const loadedConversations = await response.json();
