@@ -173,41 +173,92 @@ io.on('connection', (socket) => {
     })));
     
     try {
-      // Save all messages in batch
-      const stmt = db.prepare('INSERT INTO messages (id, conversation_id, content, sender, thinking, created_at) VALUES (?, ?, ?, ?, ?, ?)');
-      
-      for (const message of messages) {
-        console.log(`💾 Saving message ${message.id} (${message.sender}) with thinking:`, !!message.thinking);
-        stmt.run([
-          message.id,
-          conversationId,
-          message.content,
-          message.sender,
-          message.thinking || null,
-          message.timestamp || new Date().toISOString()
-        ]);
-      }
-      
-      stmt.finalize();
-
-      // Update conversation timestamp
-      db.run(
-        'UPDATE private_conversations SET updated_at = ? WHERE id = ?',
-        [new Date().toISOString(), conversationId],
-        (err) => {
-          if (err) {
-            console.error('Failed to update conversation:', err);
-          }
+      // First, ensure the conversation exists
+      db.get('SELECT id FROM private_conversations WHERE id = ?', [conversationId], (err, row) => {
+        if (err) {
+          console.error('Error checking conversation:', err);
+          return;
         }
-      );
-
-      // Confirm save to client
-      socket.emit('conversation_saved', {
-        conversationId,
-        success: true
+        
+        if (!row) {
+          console.error('❌ Conversation not found:', conversationId);
+          socket.emit('conversation_saved', {
+            conversationId,
+            success: false,
+            error: 'Conversation not found'
+          });
+          return;
+        }
+        
+        console.log('✅ Conversation exists:', conversationId);
+        
+        // Save messages one by one to ensure proper conversation association
+        const saveMessage = (message, callback) => {
+          console.log(`💾 Saving message ${message.id} to conversation ${conversationId}`);
+          
+          db.run(
+            'INSERT INTO messages (id, conversation_id, content, sender, thinking, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [
+              message.id,
+              conversationId, // Ensure we use the correct conversation ID
+              message.content,
+              message.sender,
+              message.thinking || null,
+              message.timestamp || new Date().toISOString()
+            ],
+            function(err) {
+              if (err) {
+                console.error(`❌ Failed to save message ${message.id}:`, err);
+                callback(err);
+              } else {
+                console.log(`✅ Saved message ${message.id} to conversation ${conversationId}`);
+                callback(null);
+              }
+            }
+          );
+        };
+        
+        // Save all messages sequentially
+        let savedCount = 0;
+        let hasError = false;
+        
+        messages.forEach((message, index) => {
+          saveMessage(message, (err) => {
+            if (err && !hasError) {
+              hasError = true;
+              socket.emit('conversation_saved', {
+                conversationId,
+                success: false,
+                error: err.message
+              });
+              return;
+            }
+            
+            savedCount++;
+            if (savedCount === messages.length && !hasError) {
+              // Update conversation timestamp
+              db.run(
+                'UPDATE private_conversations SET updated_at = ? WHERE id = ?',
+                [new Date().toISOString(), conversationId],
+                (updateErr) => {
+                  if (updateErr) {
+                    console.error('Failed to update conversation timestamp:', updateErr);
+                  }
+                  
+                  // Confirm save to client
+                  socket.emit('conversation_saved', {
+                    conversationId,
+                    success: true
+                  });
+                  
+                  console.log(`✅ Successfully saved ${messages.length} messages to conversation ${conversationId}`);
+                }
+              );
+            }
+          });
+        });
       });
-
-      console.log(`Saved ${messages.length} messages to conversation ${conversationId}`);
+      
 
     } catch (error) {
       console.error('Save conversation error:', error);
@@ -437,6 +488,8 @@ app.get('/api/conversations/:userId', (req, res) => {
 app.get('/api/conversations/:conversationId/messages', (req, res) => {
   const { conversationId } = req.params;
   
+  console.log('🔍 Loading messages for conversation:', conversationId);
+  
   db.all(
     'SELECT id, conversation_id, content, sender, user_id, thinking, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
     [conversationId],
@@ -446,9 +499,10 @@ app.get('/api/conversations/:conversationId/messages', (req, res) => {
         return res.status(500).json({ error: 'Failed to fetch messages' });
       }
       
-      console.log('Loading messages for conversation:', conversationId, {
+      console.log('📨 Loaded messages for conversation:', conversationId, {
         messageCount: messages.length,
-        messagesWithThinking: messages.filter(m => m.thinking).length
+        messagesWithThinking: messages.filter(m => m.thinking).length,
+        messageIds: messages.map(m => m.id)
       });
       
       // Transform the data to match frontend expectations
@@ -461,10 +515,11 @@ app.get('/api/conversations/:conversationId/messages', (req, res) => {
         thinking: msg.thinking ? msg.thinking : undefined
       }));
       
-      console.log('Transformed messages:', transformedMessages.map(m => ({
+      console.log('📤 Sending transformed messages:', transformedMessages.map(m => ({
         id: m.id,
         sender: m.sender,
-        hasThinking: !!m.thinking
+        hasThinking: !!m.thinking,
+        conversationId: conversationId
       })));
       
       res.json(transformedMessages);

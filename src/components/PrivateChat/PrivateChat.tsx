@@ -88,16 +88,25 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     const loadMessages = async () => {
       if (!currentConversation?.id) return;
       
+      console.log('🔄 Loading messages for conversation:', currentConversation.id);
+      
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
         const response = await fetch(`${apiUrl}/conversations/${currentConversation.id}/messages`);
         
         if (response.ok) {
           const messages = await response.json();
+          console.log('📥 Received messages for conversation:', currentConversation.id, {
+            messageCount: messages.length,
+            messageIds: messages.map(m => m.id)
+          });
+          
           setCurrentConversation(prev => prev ? {
             ...prev,
             messages
           } : null);
+        } else {
+          console.error('Failed to load messages:', response.status, response.statusText);
         }
       } catch (error) {
         console.error('Failed to load messages:', error);
