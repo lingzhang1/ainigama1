@@ -57,7 +57,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-        const response = await fetch(`${apiUrl}/users/${state.currentUser.id}/conversations`);
+        const response = await fetch(`${apiUrl}/user-conversations/${state.currentUser.id}`);
         
         if (response.ok) {
           const loadedConversations = await response.json();
@@ -92,7 +92,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-        const response = await fetch(`${apiUrl}/conversations/${currentConversation.id}/messages`);
+        const response = await fetch(`${apiUrl}/messages/${currentConversation.id}`);
         
         if (response.ok) {
           const messages = await response.json();
@@ -287,7 +287,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-      const response = await fetch(`${apiUrl}/conversations`, {
+      const response = await fetch(`${apiUrl}/new-conversation`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

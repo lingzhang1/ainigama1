@@ -54,7 +54,7 @@ exports.getThreads = async (event) => {
   }
 };
 
-exports.getConversations = async (event) => {
+exports.getUserConversations = async (event) => {
   try {
     const { userId } = event.pathParameters || {};
     
@@ -102,7 +102,7 @@ exports.getConversations = async (event) => {
 };
 
 // Get messages for a specific conversation
-exports.getConversationMessages = async (event) => {
+exports.getMessages = async (event) => {
   try {
     const { conversationId } = event.pathParameters || {};
     
@@ -159,7 +159,7 @@ exports.getConversationMessages = async (event) => {
 };
 
 // Create new conversation
-exports.createConversation = async (event) => {
+exports.createNewConversation = async (event) => {
   try {
     const { userId, title } = JSON.parse(event.body || '{}');
     

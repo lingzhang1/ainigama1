@@ -102,27 +102,27 @@ functions:
           method: get
           cors: true
   
-  getConversations:
-    handler: src/handlers/api.getConversations
+  getUserConversations:
+    handler: src/handlers/api.getUserConversations
     events:
       - http:
-          path: /users/{userId}/conversations
+          path: /user-conversations/{userId}
           method: get
           cors: true
 
-  getConversationMessages:
-    handler: src/handlers/api.getConversationMessages
+  getMessages:
+    handler: src/handlers/api.getMessages
     events:
       - http:
-          path: /conversations/{conversationId}/messages
+          path: /messages/{conversationId}
           method: get
           cors: true
 
-  createConversation:
-    handler: src/handlers/api.createConversation
+  createNewConversation:
+    handler: src/handlers/api.createNewConversation
     events:
       - http:
-          path: /conversations
+          path: /new-conversation
           method: post
           cors: true
 
