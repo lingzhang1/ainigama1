@@ -54,8 +54,10 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         
         if (response.ok) {
           const loadedThreads = await response.json();
-          setThreads(loadedThreads);
-          dispatch({ type: 'SET_THREADS', payload: loadedThreads });
+          // Extract threads array from response object
+          const threadsArray = loadedThreads.threads || loadedThreads;
+          setThreads(threadsArray);
+          dispatch({ type: 'SET_THREADS', payload: threadsArray });
         }
       } catch (error) {
         console.error('Failed to load threads:', error);

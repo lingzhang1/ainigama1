@@ -453,6 +453,55 @@ app.get('/api/threads', (req, res) => {
   );
 });
 
+app.get('/api/threads', (req, res) => {
+  const { filter = 'recent' } = req.query;
+  
+  let orderBy = 'created_at DESC';
+  if (filter === 'trending') {
+    orderBy = 'updated_at DESC';
+  }
+
+  db.all(
+    `SELECT t.*, u.name as creator_name, u.avatar as creator_avatar, u.handle as creator_handle,
+     (SELECT COUNT(*) FROM questions WHERE thread_id = t.id) as question_count,
+     (SELECT COUNT(*) FROM answers a JOIN questions q ON a.question_id = q.id WHERE q.thread_id = t.id) as answer_count
+     FROM threads t 
+     LEFT JOIN users u ON t.creator_id = u.id 
+     WHERE t.is_public = 1 
+     ORDER BY ${orderBy} 
+     LIMIT 20`,
+    (err, threads) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch threads' });
+      }
+      
+      // Transform the data to match frontend expectations
+      const transformedThreads = threads.map(thread => ({
+        id: thread.id,
+        title: thread.title,
+        creator: {
+          id: thread.creator_id,
+          name: thread.creator_name || 'Unknown User',
+          avatar: thread.creator_avatar || '/img-5.svg',
+          handle: thread.creator_handle || '@user'
+        },
+        isPublic: Boolean(thread.is_public),
+        createdAt: new Date(thread.created_at),
+        updatedAt: new Date(thread.updated_at),
+        questionCount: thread.question_count || 0,
+        answerCount: thread.answer_count || 0,
+        interactionCount: (thread.question_count || 0) + (thread.answer_count || 0),
+        questions: [],
+        category: thread.category
+      }));
+      
+      // Return consistent format with threads wrapped in an object
+      res.json({ threads: transformedThreads });
+    }
+  );
+});
+
 app.get('/api/users/:userId/conversations', (req, res) => {
   const { userId } = req.params;
   
