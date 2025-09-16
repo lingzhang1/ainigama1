@@ -32,13 +32,6 @@ export const useWebSocket = (userId: string) => {
   return wsService;
 };
 
-export const usePrivateChat = (conversationId: string, onNewMessage: (message: Message) => void) => {
-  const sendMessage = (message: string) => {
-    wsService.sendPrivateMessage(conversationId, message);
-  };
-
-  return { sendMessage };
-};
 
 export const usePublicThread = (
   threadId: string,

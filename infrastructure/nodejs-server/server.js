@@ -159,124 +159,52 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Private message handling
-  socket.on('private_message', async (data) => {
-    const { conversationId, message } = data;
+  // Save conversation (both user and AI messages)
+  socket.on('save_conversation', async (data) => {
+    const { conversationId, messages } = data;
     
     try {
-      // Save user message
-      const userMessageId = uuidv4();
-      const userMessage = {
-        id: userMessageId,
-        conversationId,
-        content: message,
-        sender: 'user',
-        timestamp: new Date().toISOString()
-      };
+      // Save all messages in batch
+      const stmt = db.prepare('INSERT INTO messages (id, conversation_id, content, sender, created_at) VALUES (?, ?, ?, ?, ?)');
+      
+      for (const message of messages) {
+        stmt.run([
+          message.id,
+          conversationId,
+          message.content,
+          message.sender,
+          message.timestamp || new Date().toISOString()
+        ]);
+      }
+      
+      stmt.finalize();
 
+      // Update conversation timestamp
       db.run(
-        'INSERT INTO messages (id, conversation_id, content, sender, created_at) VALUES (?, ?, ?, ?, ?)',
-        [userMessageId, conversationId, message, 'user', new Date().toISOString()]
-      );
-
-      // Emit user message back to confirm receipt
-      socket.emit('private_message_response', {
-        conversationId,
-        message: userMessage
-      });
-
-      // Get conversation history
-      db.all(
-        'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
-        [conversationId],
-        async (err, messages) => {
+        'UPDATE private_conversations SET updated_at = ? WHERE id = ?',
+        [new Date().toISOString(), conversationId],
+        (err) => {
           if (err) {
-            console.error('Database error:', err);
-            socket.emit('error', { message: 'Database error' });
-            return;
-          }
-
-          // Prepare messages for AI
-          const chatMessages = messages.map(msg => ({
-            role: msg.sender === 'user' ? 'user' : 'assistant',
-            content: msg.content
-          }));
-
-          try {
-            // Stream AI response
-            const result = await streamText({
-              model: deepseek('deepseek-reasoner'),
-              system: "You are a helpful assistant that provides thoughtful and accurate responses.",
-              messages: chatMessages,
-            });
-
-            let fullContent = '';
-            let thinking = '';
-
-            // Stream response back to client
-            for await (const delta of result.fullStream) {
-              switch (delta.type) {
-                case 'text-delta':
-                  if (delta.textDelta) {
-                    fullContent += delta.textDelta;
-                    socket.emit('ai_content_delta', {
-                      conversationId,
-                      content: delta.textDelta
-                    });
-                  }
-                  break;
-                case 'reasoning-delta':
-                  if (delta.text) {
-                    thinking += delta.text;
-                    socket.emit('ai_thinking_delta', {
-                      conversationId,
-                      thinking: delta.text
-                    });
-                  }
-                  break;
-                case 'step-delta':
-                  if (delta.stepDelta && delta.stepDelta.type === 'reasoning-delta' && delta.stepDelta.reasoningDelta) {
-                    thinking += delta.stepDelta.reasoningDelta;
-                    socket.emit('ai_thinking_delta', {
-                      conversationId,
-                      thinking: delta.stepDelta.reasoningDelta
-                    });
-                  }
-                  break;
-              }
-            }
-
-            console.log('AI streaming complete. Full content length:', fullContent.length);
-            console.log('AI thinking length:', thinking.length);
-
-            // Save AI response
-            const aiMessageId = uuidv4();
-            db.run(
-              'INSERT INTO messages (id, conversation_id, content, sender, created_at) VALUES (?, ?, ?, ?, ?)',
-              [aiMessageId, conversationId, fullContent, 'ai', new Date().toISOString()]
-            );
-
-            // Send completion
-            socket.emit('ai_response_complete', {
-              conversationId,
-              message: {
-                id: aiMessageId,
-                content: fullContent,
-                sender: 'ai',
-                timestamp: new Date().toISOString()
-              }
-            });
-
-          } catch (aiError) {
-            console.error('AI error:', aiError);
-            socket.emit('error', { message: 'Failed to get AI response: ' + aiError.message });
+            console.error('Failed to update conversation:', err);
           }
         }
       );
 
+      // Confirm save to client
+      socket.emit('conversation_saved', {
+        conversationId,
+        success: true
+      });
+
+      console.log(`Saved ${messages.length} messages to conversation ${conversationId}`);
+
     } catch (error) {
-      console.error('Message handling error:', error);
-      socket.emit('error', { message: 'Failed to process message' });
+      console.error('Save conversation error:', error);
+      socket.emit('conversation_saved', {
+        conversationId,
+        success: false,
+        error: error.message
+      });
     }
   });
 
