@@ -21,25 +21,27 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const [currentConversation, setCurrentConversation] = useState<PrivateConversation | null>(
     null
   );
-  const [newMessage, setNewMessage] = useState('');
-  const [isTyping, setIsTyping] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showThinking, setShowThinking] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Use refs for streaming to avoid filesystem pressure
+  // Use refs for streaming to completely avoid state updates
   const streamingRef = useRef<{
     thinking: string;
     content: string;
     isActive: boolean;
+    isTyping: boolean;
     thinkingElement: HTMLDivElement | null;
     contentElement: HTMLDivElement | null;
+    streamingContainer: HTMLDivElement | null;
   }>({
     thinking: '',
     content: '',
     isActive: false,
+    isTyping: false,
     thinkingElement: null,
     contentElement: null
+    streamingContainer: null,
   });
   
   const [isStreaming, setIsStreaming] = useState(false);
@@ -130,16 +132,30 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     );
 
     setNewMessage('');
-    setIsTyping(true);
-    setIsStreaming(true);
     
-    // Reset streaming refs
+    // Reset streaming refs and show streaming UI
     streamingRef.current = {
       thinking: '',
       content: '',
       isActive: true,
+      isTyping: true,
       thinkingElement: null,
       contentElement: null
+      streamingContainer: null,
+    };
+
+    // Show streaming container via DOM manipulation
+    const showStreamingUI = () => {
+      if (streamingRef.current.streamingContainer) {
+        streamingRef.current.streamingContainer.style.display = 'block';
+      }
+    };
+
+    // Hide streaming container via DOM manipulation
+    const hideStreamingUI = () => {
+      if (streamingRef.current.streamingContainer) {
+        streamingRef.current.streamingContainer.style.display = 'none';
+      }
     };
 
     try {
@@ -151,6 +167,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
       // Direct DOM manipulation for streaming display
       const updateStreamingDisplay = () => {
+        showStreamingUI();
         if (streamingRef.current.thinkingElement) {
           streamingRef.current.thinkingElement.textContent = streamingRef.current.thinking;
         }
@@ -178,6 +195,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         onComplete: (fullContent) => {
           // Mark streaming as inactive
           streamingRef.current.isActive = false;
+          streamingRef.current.isTyping = false;
+          
+          // Hide streaming UI
+          hideStreamingUI();
           
           const aiMessage: Message = {
             id: uuidv4(),
@@ -199,10 +220,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             prev.map(c => c.id === finalConversation.id ? finalConversation : c)
           );
 
-          // Clear streaming state - single state update
-          setIsStreaming(false);
-          setIsTyping(false);
-
           // Send both messages to backend for persistence
           if (ws.socket?.connected) {
             ws.socket.emit('save_conversation', {
@@ -214,8 +231,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         onError: (error) => {
           console.error('AI streaming error:', error);
           streamingRef.current.isActive = false;
-          setIsStreaming(false);
-          setIsTyping(false);
+          streamingRef.current.isTyping = false;
+          
+          // Hide streaming UI
+          hideStreamingUI();
           
           // Show error message
           const errorMessage: Message = {
@@ -240,8 +259,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
     } catch (error) {
       console.error('Failed to send message:', error);
-      setIsTyping(false);
-      setStreamingMessage(null);
+      streamingRef.current.isTyping = false;
+      hideStreamingUI();
     }
   };
 
@@ -493,6 +512,60 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Streaming AI Response - Always present, controlled via DOM */}
+            <div 
+              ref={(el) => { streamingRef.current.streamingContainer = el; }}
+              className="flex justify-start px-4"
+              style={{ display: 'none' }}
+            >
+              <div className="flex items-start space-x-3 max-w-[70%]">
+                <Avatar className="w-8 h-8 flex-shrink-0">
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">AI</span>
+                  </div>
+                </Avatar>
+                
+                <div className="space-y-2 flex-1">
+                  {/* Thinking Process */}
+                  {showThinking && (
+                    <Card className="bg-gray-50 border-gray-200">
+                      <CardContent className="p-3">
+                        <div className="flex items-center mb-2">
+                          <Brain className="w-4 h-4 text-gray-500 mr-2" />
+                          <span className="text-xs font-medium text-gray-600">
+                            Thought Process
+                          </span>
+                          <Loader2 className="w-3 h-3 text-gray-400 ml-2 animate-spin" />
+                        </div>
+                        <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
+                          <div 
+                            ref={(el) => { streamingRef.current.thinkingElement = el; }}
+                            className="min-h-[1em]"
+                          />
+                          <span className="animate-pulse">|</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Main Response */}
+                  <Card className="bg-white border-gray-200">
+                    <CardContent className="p-3">
+                      <div className="text-sm whitespace-pre-wrap">
+                        <div 
+                          ref={(el) => { streamingRef.current.contentElement = el; }}
+                          className="min-h-[1em]"
+                        />
+                        <span className="animate-pulse">|</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </div>
+
+            <div ref={messagesEndRef} />
+
             {/* Message Input */}
             <div className="bg-white border-t p-4">
               <div className="flex space-x-2">
@@ -502,9 +575,57 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                   placeholder="Ask DeepSeek anything..."
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   className="flex-1"
-                  disabled={isTyping}
+                  disabled={streamingRef.current.isTyping}
                 />
-                <Button onClick={handleSendMessage} disabled={!newMessage.trim() || isTyping}>
+                <Button onClick={handleSendMessage} disabled={!newMessage.trim() || streamingRef.current.isTyping}>
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-800 mb-2">No conversation selected</h3>
+              <p className="text-gray-500 mb-4">Start a new conversation to begin chatting with AI</p>
+              <Button onClick={handleNewConversation}>
+                Start Chatting with DeepSeek
+              </Button>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Publish Modal */}
+      {showPublishModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-lg mx-4 bg-white">
+            <CardContent className="p-0">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b">
+                <h3 className="text-xl font-semibold text-gray-900">Publish to Community</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setShowPublishModal(false)}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-6">
+                <Input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Ask DeepSeek anything..."
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  className="flex-1"
+                  disabled={streamingRef.current.isTyping}
+                />
+                <Button onClick={handleSendMessage} disabled={!newMessage.trim() || streamingRef.current.isTyping}>
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
@@ -590,12 +711,35 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                         Your conversation will be visible to all community members. Others can add answers and engage in discussions.
                       </p>
                     </div>
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Footer */}
               <div className="flex items-center justify-end space-x-3 p-6 border-t bg-gray-50">
+                <Button 
+                  onClick={() => setShowPublishModal(false)} 
+                  variant="outline"
+                  className="px-4 py-2"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handlePublish} 
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Publish Thread
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </div>
+  );
+};
                 <Button 
                   onClick={() => setShowPublishModal(false)} 
                   variant="outline"
