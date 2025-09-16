@@ -164,16 +164,26 @@ io.on('connection', (socket) => {
   socket.on('save_conversation', async (data) => {
     const { conversationId, messages } = data;
     
+    console.log('💾 Saving conversation:', conversationId);
+    console.log('📝 Messages to save:', messages.map(m => ({
+      id: m.id,
+      sender: m.sender,
+      hasThinking: !!m.thinking,
+      thinkingLength: m.thinking ? m.thinking.length : 0
+    })));
+    
     try {
       // Save all messages in batch
-      const stmt = db.prepare('INSERT INTO messages (id, conversation_id, content, sender, created_at) VALUES (?, ?, ?, ?, ?)');
+      const stmt = db.prepare('INSERT INTO messages (id, conversation_id, content, sender, thinking, created_at) VALUES (?, ?, ?, ?, ?, ?)');
       
       for (const message of messages) {
+        console.log(`💾 Saving message ${message.id} (${message.sender}) with thinking:`, !!message.thinking);
         stmt.run([
           message.id,
           conversationId,
           message.content,
           message.sender,
+          message.thinking || null,
           message.timestamp || new Date().toISOString()
         ]);
       }
