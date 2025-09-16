@@ -4,7 +4,6 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { StreamingMessage } from './StreamingMessage';
 import { Message, PrivateConversation } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { usePrivateChat, useWebSocket } from '../../hooks/useWebSocket';
@@ -107,7 +106,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentConversation?.messages, streamingMessage]);
+  }, [currentConversation?.messages]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !currentConversation) return;
