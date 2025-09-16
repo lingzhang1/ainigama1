@@ -110,6 +110,29 @@ functions:
           method: get
           cors: true
 
+  getConversationMessages:
+    handler: src/handlers/api.getConversationMessages
+    events:
+      - http:
+          path: /conversations/{conversationId}/messages
+          method: get
+          cors: true
+
+  createConversation:
+    handler: src/handlers/api.createConversation
+    events:
+      - http:
+          path: /conversations
+          method: post
+          cors: true
+
+  # Private Chat WebSocket handlers
+  saveConversation:
+    handler: src/handlers/privateChat.saveConversation
+    events:
+      - websocket:
+          route: save_conversation
+
 resources:
   Resources:
     # WebSocket Connections Table
@@ -120,9 +143,18 @@ resources:
         AttributeDefinitions:
           - AttributeName: connectionId
             AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
         KeySchema:
           - AttributeName: connectionId
             KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UserIdIndex
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
         TimeToLiveSpecification:
           AttributeName: ttl
