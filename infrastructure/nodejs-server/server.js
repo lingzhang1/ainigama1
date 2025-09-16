@@ -614,6 +614,105 @@ app.get('/api/threads/:threadId', (req, res) => {
   );
 });
 
+app.get('/api/user-conversations/:userId', (req, res) => {
+  const { userId } = req.params;
+  
+  db.all(
+    `SELECT c.*, 
+     (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count,
+     (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message
+     FROM private_conversations c 
+     WHERE c.user_id = ? 
+     ORDER BY c.updated_at DESC`,
+    [userId],
+    (err, conversations) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch conversations' });
+      }
+      
+      // Transform the data to match frontend expectations
+      const transformedConversations = conversations.map(conv => ({
+        id: conv.id,
+        userId: conv.user_id,
+        title: conv.title,
+        createdAt: new Date(conv.created_at),
+        updatedAt: new Date(conv.updated_at),
+        messages: [] // Messages will be loaded separately when needed
+      }));
+      
+      res.json(transformedConversations);
+    }
+  );
+});
+
+app.post('/api/new-conversation', (req, res) => {
+  const { userId, title } = req.body;
+  const conversationId = uuidv4();
+  
+  db.run(
+    'INSERT INTO private_conversations (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+    [conversationId, userId, title || null, new Date().toISOString(), new Date().toISOString()],
+    function(err) {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to create conversation' });
+      }
+      
+      res.json({
+        id: conversationId,
+        userId,
+        title,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        messages: []
+      });
+    }
+  );
+});
+
+app.get('/api/messages/:conversationId', (req, res) => {
+  const { conversationId } = req.params;
+  
+  console.log('🔍 Loading messages for conversation:', conversationId);
+  
+  db.all(
+    'SELECT id, conversation_id, content, sender, user_id, thinking, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
+    [conversationId],
+    (err, messages) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch messages' });
+      }
+      
+      console.log('📨 Loaded messages for conversation:', conversationId, {
+        messageCount: messages.length,
+        messagesWithThinking: messages.filter(m => m.thinking).length,
+        messageIds: messages.map(m => m.id)
+      });
+      
+      // Transform the data to match frontend expectations
+      const transformedMessages = messages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        timestamp: new Date(msg.created_at),
+        sender: msg.sender,
+        userId: msg.user_id,
+        thinking: msg.thinking ? msg.thinking : undefined
+      }));
+      
+      console.log('📤 Sending transformed messages:', transformedMessages.map(m => ({
+        id: m.id,
+        sender: m.sender,
+        hasThinking: !!m.thinking,
+        conversationId: conversationId
+      })));
+      
+      res.json(transformedMessages);
+    }
+  );
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
