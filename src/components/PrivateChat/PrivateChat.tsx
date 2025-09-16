@@ -31,6 +31,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     isComplete: boolean;
   } | null>(null);
   const [showThinking, setShowThinking] = useState(true);
+  const streamingBufferRef = useRef<{
+    thinking: string;
+    content: string;
+    lastUpdate: number;
+  }>({ thinking: '', content: '', lastUpdate: 0 });
+  const updateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Initialize WebSocket connection for persistence only
@@ -61,6 +67,15 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
     loadConversations();
   }, [state.currentUser?.id]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Load messages for current conversation
   useEffect(() => {
@@ -113,7 +128,16 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
     setNewMessage('');
     setIsTyping(true);
+    
+    // Reset streaming buffer
+    streamingBufferRef.current = { thinking: '', content: '', lastUpdate: 0 };
     setStreamingMessage({ thinking: '', content: '', isComplete: false });
+    
+    // Clear any pending updates
+    if (updateTimeoutRef.current) {
+      clearTimeout(updateTimeoutRef.current);
+      updateTimeoutRef.current = null;
+    }
 
     try {
       // Prepare conversation history for AI
@@ -122,28 +146,49 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         content: msg.content
       }));
 
-      let finalThinking = '';
-      let finalContent = '';
+      const batchUpdate = () => {
+        const now = Date.now();
+        if (now - streamingBufferRef.current.lastUpdate >= 100) { // Update every 100ms max
+          setStreamingMessage({
+            thinking: streamingBufferRef.current.thinking,
+            content: streamingBufferRef.current.content,
+            isComplete: false
+          });
+          streamingBufferRef.current.lastUpdate = now;
+        }
+        
+        // Schedule next update if needed
+        if (updateTimeoutRef.current) {
+          clearTimeout(updateTimeoutRef.current);
+        }
+        updateTimeoutRef.current = setTimeout(() => {
+          if (!streamingMessage?.isComplete) {
+            setStreamingMessage({
+              thinking: streamingBufferRef.current.thinking,
+              content: streamingBufferRef.current.content,
+              isComplete: false
+            });
+          }
+        }, 100);
+      };
 
       // Stream AI response using DeepSeek service
       await deepSeekService.streamChat(chatMessages, {
         onThinking: (thinking) => {
-          finalThinking += thinking;
-          setStreamingMessage(prev => ({
-            thinking: (prev?.thinking || '') + thinking,
-            content: prev?.content || '',
-            isComplete: false
-          }));
+          streamingBufferRef.current.thinking += thinking;
+          batchUpdate();
         },
         onContent: (content) => {
-          finalContent += content;
-          setStreamingMessage(prev => ({
-            thinking: prev?.thinking || '',
-            content: (prev?.content || '') + content,
-            isComplete: false
-          }));
+          streamingBufferRef.current.content += content;
+          batchUpdate();
         },
         onComplete: (fullContent) => {
+          // Clear any pending updates
+          if (updateTimeoutRef.current) {
+            clearTimeout(updateTimeoutRef.current);
+            updateTimeoutRef.current = null;
+          }
+          
           const aiMessage: Message = {
             id: uuidv4(),
             content: fullContent,
@@ -163,8 +208,18 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             prev.map(c => c.id === finalConversation.id ? finalConversation : c)
           );
 
-          // Clear streaming state
-          setStreamingMessage(null);
+          // Set final streaming state
+          setStreamingMessage({
+            thinking: streamingBufferRef.current.thinking,
+            content: fullContent,
+            isComplete: true
+          });
+          
+          // Clear streaming state after a brief delay
+          setTimeout(() => {
+            setStreamingMessage(null);
+          }, 500);
+          
           setIsTyping(false);
 
           // Send both messages to backend for persistence
@@ -177,6 +232,13 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         },
         onError: (error) => {
           console.error('AI streaming error:', error);
+          
+          // Clear any pending updates
+          if (updateTimeoutRef.current) {
+            clearTimeout(updateTimeoutRef.current);
+            updateTimeoutRef.current = null;
+          }
+          
           setStreamingMessage(null);
           setIsTyping(false);
           
