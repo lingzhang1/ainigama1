@@ -201,13 +201,19 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           // Hide streaming UI
           hideStreamingUI();
           
+          // Ensure we capture the thinking process
+          const finalThinking = streamingRef.current.thinking;
+          console.log('Captured thinking for persistence:', finalThinking); // Debug log
+          
           const aiMessage: Message = {
             id: uuidv4(),
             content: fullContent,
             timestamp: new Date(),
             sender: 'ai',
-            thinking: streamingRef.current.thinking || undefined
+            thinking: finalThinking || undefined
           };
+
+          console.log('AI message with thinking:', aiMessage); // Debug log
 
           // Add AI message to conversation
           const finalConversation = {
@@ -223,6 +229,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
           // Send both messages to backend for persistence
           if (ws.socket?.connected) {
+            console.log('Sending to backend - User message:', userMessage);
+            console.log('Sending to backend - AI message:', aiMessage);
             ws.socket.emit('save_conversation', {
               conversationId: currentConversation.id,
               messages: [userMessage, aiMessage]

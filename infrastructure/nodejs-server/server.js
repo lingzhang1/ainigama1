@@ -428,13 +428,18 @@ app.get('/api/conversations/:conversationId/messages', (req, res) => {
   const { conversationId } = req.params;
   
   db.all(
-    'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
+    'SELECT id, conversation_id, content, sender, user_id, thinking, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
     [conversationId],
     (err, messages) => {
       if (err) {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Failed to fetch messages' });
       }
+      
+      console.log('Loading messages for conversation:', conversationId, {
+        messageCount: messages.length,
+        messagesWithThinking: messages.filter(m => m.thinking).length
+      });
       
       // Transform the data to match frontend expectations
       const transformedMessages = messages.map(msg => ({
@@ -443,8 +448,14 @@ app.get('/api/conversations/:conversationId/messages', (req, res) => {
         timestamp: new Date(msg.created_at),
         sender: msg.sender,
         userId: msg.user_id,
-        thinking: msg.thinking || undefined
+        thinking: msg.thinking ? msg.thinking : undefined
       }));
+      
+      console.log('Transformed messages:', transformedMessages.map(m => ({
+        id: m.id,
+        sender: m.sender,
+        hasThinking: !!m.thinking
+      })));
       
       res.json(transformedMessages);
     }
