@@ -97,14 +97,14 @@ chmod +x ../../deploy-aws.sh
 
 After successful deployment, you'll get output like:
 ```
-WebSocket URI: wss://abc123.execute-api.us-east-1.amazonaws.com/dev
+WebSocket URI: wss://sqi8k7pny5.execute-api.us-east-1.amazonaws.com/dev
 API URL: https://abc123.execute-api.us-east-1.amazonaws.com/dev
 ```
 
 Update your `.env` file in the project:
 ```env
-VITE_WEBSOCKET_URL=wss://abc123.execute-api.us-east-1.amazonaws.com/dev
-VITE_API_URL=https://abc123.execute-api.us-east-1.amazonaws.com/dev
+VITE_WEBSOCKET_URL=wss://sqi8k7pny5.execute-api.us-east-1.amazonaws.com/dev
+VITE_API_URL=https://t9ir58i9z9.execute-api.us-east-1.amazonaws.com/dev
 VITE_DEEPSEEK_API_KEY=sk-0dcbd0d5eca74684919812e175de65b7
 ```
 
