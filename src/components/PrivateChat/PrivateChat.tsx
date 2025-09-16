@@ -25,13 +25,25 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
-  const [streamingMessage, setStreamingMessage] = useState<{
-    thinking: string;
-    content: string;
-    isComplete: boolean;
-  } | null>(null);
   const [showThinking, setShowThinking] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Use refs for streaming to avoid filesystem pressure
+  const streamingRef = useRef<{
+    thinking: string;
+    content: string;
+    isActive: boolean;
+    thinkingElement: HTMLDivElement | null;
+    contentElement: HTMLDivElement | null;
+  }>({
+    thinking: '',
+    content: '',
+    isActive: false,
+    thinkingElement: null,
+    contentElement: null
+  });
+  
+  const [isStreaming, setIsStreaming] = useState(false);
 
   // Initialize WebSocket connection for persistence only
   const ws = useWebSocket(state.currentUser?.id || '');
@@ -120,9 +132,16 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
     setNewMessage('');
     setIsTyping(true);
+    setIsStreaming(true);
     
-    // Initialize streaming state
-    setStreamingMessage({ thinking: '', content: '', isComplete: false });
+    // Reset streaming refs
+    streamingRef.current = {
+      thinking: '',
+      content: '',
+      isActive: true,
+      thinkingElement: null,
+      contentElement: null
+    };
 
     try {
       // Prepare conversation history for AI
@@ -131,48 +150,42 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         content: msg.content
       }));
 
-      // Track accumulated content
-      let accumulatedThinking = '';
-      let accumulatedContent = '';
-      let lastUpdate = 0;
+      // Direct DOM manipulation for streaming display
+      const updateStreamingDisplay = () => {
+        if (streamingRef.current.thinkingElement) {
+          streamingRef.current.thinkingElement.textContent = streamingRef.current.thinking;
+        }
+        if (streamingRef.current.contentElement) {
+          streamingRef.current.contentElement.textContent = streamingRef.current.content;
+        }
+        // Auto-scroll
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      };
 
       // Stream AI response using DeepSeek service
       await deepSeekService.streamChat(chatMessages, {
         onThinking: (thinking) => {
-          accumulatedThinking += thinking;
-          
-          // Throttle updates to reduce filesystem pressure
-          const now = Date.now();
-          if (now - lastUpdate > 150) { // Update every 150ms max
-            setStreamingMessage(prev => ({
-              thinking: accumulatedThinking,
-              content: prev?.content || accumulatedContent,
-              isComplete: false
-            }));
-            lastUpdate = now;
+          if (streamingRef.current.isActive) {
+            streamingRef.current.thinking += thinking;
+            updateStreamingDisplay();
           }
         },
         onContent: (content) => {
-          accumulatedContent += content;
-          
-          // Throttle updates to reduce filesystem pressure
-          const now = Date.now();
-          if (now - lastUpdate > 150) { // Update every 150ms max
-            setStreamingMessage(prev => ({
-              thinking: prev?.thinking || accumulatedThinking,
-              content: accumulatedContent,
-              isComplete: false
-            }));
-            lastUpdate = now;
+          if (streamingRef.current.isActive) {
+            streamingRef.current.content += content;
+            updateStreamingDisplay();
           }
         },
         onComplete: (fullContent) => {
+          // Mark streaming as inactive
+          streamingRef.current.isActive = false;
+          
           const aiMessage: Message = {
             id: uuidv4(),
             content: fullContent,
             timestamp: new Date(),
             sender: 'ai',
-            thinking: accumulatedThinking // Store thinking with the message
+            thinking: streamingRef.current.thinking
           };
 
           // Add AI message to conversation
@@ -187,9 +200,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             prev.map(c => c.id === finalConversation.id ? finalConversation : c)
           );
 
-          // Clear streaming state
-          setStreamingMessage(null);
-          
+          // Clear streaming state - single state update
+          setIsStreaming(false);
           setIsTyping(false);
 
           // Send both messages to backend for persistence
@@ -202,7 +214,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         },
         onError: (error) => {
           console.error('AI streaming error:', error);
-          setStreamingMessage(null);
+          streamingRef.current.isActive = false;
+          setIsStreaming(false);
           setIsTyping(false);
           
           // Show error message
@@ -428,14 +441,54 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </div>
               ))}
 
-              {/* Streaming AI Response - show when we have streaming data */}
-              {streamingMessage && !streamingMessage.isComplete && (
-                <StreamingMessage
-                  thinking={streamingMessage.thinking}
-                  content={streamingMessage.content}
-                  isComplete={streamingMessage.isComplete}
-                  showThinking={showThinking}
-                />
+              {/* Streaming AI Response - Direct DOM manipulation */}
+              {isStreaming && (
+                <div className="flex justify-start">
+                  <div className="flex items-start space-x-3 max-w-[70%]">
+                    <Avatar className="w-8 h-8 flex-shrink-0">
+                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">AI</span>
+                      </div>
+                    </Avatar>
+                    
+                    <div className="space-y-2 flex-1">
+                      {/* Thinking Process */}
+                      {showThinking && (
+                        <Card className="bg-gray-50 border-gray-200">
+                          <CardContent className="p-3">
+                            <div className="flex items-center mb-2">
+                              <Brain className="w-4 h-4 text-gray-500 mr-2" />
+                              <span className="text-xs font-medium text-gray-600">
+                                Thought Process
+                              </span>
+                              <Loader2 className="w-3 h-3 text-gray-400 ml-2 animate-spin" />
+                            </div>
+                            <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
+                              <div 
+                                ref={(el) => { streamingRef.current.thinkingElement = el; }}
+                                className="min-h-[1em]"
+                              />
+                              <span className="animate-pulse">|</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Main Response */}
+                      <Card className="bg-white border-gray-200">
+                        <CardContent className="p-3">
+                          <div className="text-sm whitespace-pre-wrap">
+                            <div 
+                              ref={(el) => { streamingRef.current.contentElement = el; }}
+                              className="min-h-[1em]"
+                            />
+                            <span className="animate-pulse">|</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  </div>
+                </div>
               )}
 
               <div ref={messagesEndRef} />
