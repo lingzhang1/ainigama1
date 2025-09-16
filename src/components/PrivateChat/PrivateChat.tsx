@@ -7,8 +7,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { StreamingMessage } from './StreamingMessage';
 import { Message, PrivateConversation } from '../../types';
 import { useAppContext } from '../../context/AppContext';
-import { useWebSocket } from '../../hooks/useWebSocket';
-import { deepSeekService } from '../../services/deepseek';
+import { usePrivateChat, useWebSocket } from '../../hooks/useWebSocket';
+import { deepSeekService, ChatMessage } from '../../services/deepseek';
 import { formatDistanceToNow } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -23,7 +23,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     null
   );
   const [newMessage, setNewMessage] = useState('');
-  const [isStreaming, setIsStreaming] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [streamingMessage, setStreamingMessage] = useState<{
     thinking: string;
@@ -35,6 +35,24 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
   // Initialize WebSocket connection
   const ws = useWebSocket(state.currentUser?.id || '');
+
+  const { sendMessage } = usePrivateChat(
+    currentConversation?.id || '',
+    (message: Message) => {
+      if (currentConversation) {
+        const updatedConversation = {
+          ...currentConversation,
+          messages: [...currentConversation.messages, message],
+          updatedAt: new Date()
+        };
+        setCurrentConversation(updatedConversation);
+        setConversations(prev => 
+          prev.map(c => c.id === updatedConversation.id ? updatedConversation : c)
+        );
+        setIsTyping(false);
+      }
+    }
+  );
 
   // Load conversations from backend on component mount
   useEffect(() => {
@@ -88,136 +106,19 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentConversation?.messages, streamingMessage?.content]);
+  }, [currentConversation?.messages, streamingMessage]);
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = () => {
     if (!newMessage.trim() || !currentConversation) return;
 
-    const userMessageContent = newMessage.trim();
+    console.log('Sending message:', newMessage);
+    // Send message through WebSocket
+    sendMessage(newMessage);
     setNewMessage('');
-    setIsStreaming(true);
-
-    // Add user message to conversation immediately
-    const userMessage: Message = {
-      id: uuidv4(),
-      content: userMessageContent,
-      timestamp: new Date(),
-      sender: 'user',
-      userId: state.currentUser?.id
-    };
-
-    const updatedConversation = {
-      ...currentConversation,
-      messages: [...currentConversation.messages, userMessage],
-      updatedAt: new Date()
-    };
-    setCurrentConversation(updatedConversation);
-    setConversations(prev => 
-      prev.map(c => c.id === updatedConversation.id ? updatedConversation : c)
-    );
-
-    // Initialize streaming message
+    setIsTyping(true);
+    
+    // Initialize streaming state
     setStreamingMessage({ thinking: '', content: '', isComplete: false });
-
-    try {
-      // Prepare chat history for AI
-      const chatMessages = updatedConversation.messages.map(msg => ({
-        role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
-        content: msg.content
-      }));
-
-      let fullThinking = '';
-      let fullContent = '';
-
-      // Stream AI response using frontend DeepSeek service
-      await deepSeekService.streamChat(chatMessages, {
-        onThinking: (thinking) => {
-          fullThinking += thinking;
-          setStreamingMessage(prev => ({
-            thinking: fullThinking,
-            content: prev?.content || '',
-            isComplete: false
-          }));
-        },
-        onContent: (content) => {
-          fullContent += content;
-          setStreamingMessage(prev => ({
-            thinking: prev?.thinking || '',
-            content: fullContent,
-            isComplete: false
-          }));
-        },
-        onComplete: (finalContent) => {
-          // Mark streaming as complete
-          setStreamingMessage(prev => ({
-            thinking: prev?.thinking || '',
-            content: finalContent,
-            isComplete: true
-          }));
-
-          // Create final AI message
-          const aiMessage: Message = {
-            id: uuidv4(),
-            content: finalContent,
-            timestamp: new Date(),
-            sender: 'ai'
-          };
-
-          // Add AI message to conversation
-          const finalConversation = {
-            ...updatedConversation,
-            messages: [...updatedConversation.messages, aiMessage],
-            updatedAt: new Date()
-          };
-          setCurrentConversation(finalConversation);
-          setConversations(prev => 
-            prev.map(c => c.id === finalConversation.id ? finalConversation : c)
-          );
-
-          // Send both messages to backend for persistence (only once, when complete)
-          if (ws.socket?.connected) {
-            ws.socket.emit('save_conversation', {
-              conversationId: currentConversation.id,
-              messages: [userMessage, aiMessage]
-            });
-          }
-
-          // Clear streaming state
-          setTimeout(() => {
-            setStreamingMessage(null);
-            setIsStreaming(false);
-          }, 500);
-        },
-        onError: (error) => {
-          console.error('AI streaming error:', error);
-          setStreamingMessage(null);
-          setIsStreaming(false);
-          
-          // Show error message
-          const errorMessage: Message = {
-            id: uuidv4(),
-            content: 'Sorry, I encountered an error. Please try again.',
-            timestamp: new Date(),
-            sender: 'ai'
-          };
-          
-          const errorConversation = {
-            ...updatedConversation,
-            messages: [...updatedConversation.messages, errorMessage],
-            updatedAt: new Date()
-          };
-          setCurrentConversation(errorConversation);
-          setConversations(prev => 
-            prev.map(c => c.id === errorConversation.id ? errorConversation : c)
-          );
-        }
-      });
-
-    } catch (error) {
-      console.error('Failed to get AI response:', error);
-      setStreamingMessage(null);
-      setIsStreaming(false);
-    }
   };
 
   const handleNewConversation = async () => {
@@ -245,6 +146,98 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       console.error('Failed to create conversation:', error);
     }
   };
+
+  // Handle WebSocket events
+  useEffect(() => {
+    if (!ws) return;
+
+    // Simple throttling to reduce filesystem pressure
+    let lastUpdate = 0;
+    const UPDATE_INTERVAL = 50; // 50ms between updates
+
+    // Handle AI content streaming
+    const handleAIContentDelta = (data: { conversationId: string; content: string }) => {
+      if (data.conversationId === currentConversation?.id) {
+        console.log('AI Content Delta:', data.content);
+        const now = Date.now();
+        if (now - lastUpdate > UPDATE_INTERVAL) {
+          setStreamingMessage(prev => ({
+            thinking: prev?.thinking || '',
+            content: (prev?.content || '') + data.content,
+            isComplete: false
+          }));
+          lastUpdate = now;
+        }
+      }
+    };
+
+    // Handle AI thinking streaming
+    const handleAIThinkingDelta = (data: { conversationId: string; thinking: string }) => {
+      if (data.conversationId === currentConversation?.id) {
+        console.log('AI Thinking Delta:', data.thinking);
+        const now = Date.now();
+        if (now - lastUpdate > UPDATE_INTERVAL) {
+          setStreamingMessage(prev => ({
+            thinking: (prev?.thinking || '') + data.thinking,
+            content: prev?.content || '',
+            isComplete: false
+          }));
+          lastUpdate = now;
+        }
+      }
+    };
+
+    // Handle AI response completion
+    const handleAIResponseComplete = (data: { conversationId: string; message: Message }) => {
+      if (data.conversationId === currentConversation?.id) {
+        console.log('AI Response Complete:', data.message);
+        // Clear streaming and add final message
+        setStreamingMessage(null);
+        
+        setCurrentConversation(prev => prev ? {
+          ...prev,
+          messages: [...prev.messages, data.message],
+          updatedAt: new Date()
+        } : null);
+        
+        setIsTyping(false);
+      }
+    };
+
+    // Handle user message confirmation
+    const handlePrivateMessageResponse = (data: { conversationId: string; message: Message }) => {
+      if (data.conversationId === currentConversation?.id) {
+        console.log('Private Message Response:', data.message);
+        setStreamingMessage(null);
+        setCurrentConversation(prev => prev ? {
+          ...prev,
+          messages: [...prev.messages, data.message],
+          updatedAt: new Date()
+        } : null);
+      }
+    };
+
+    // Set up event listeners
+    ws.socket?.on('ai_content_delta', handleAIContentDelta);
+    ws.socket?.on('ai_thinking_delta', handleAIThinkingDelta);
+    ws.socket?.on('ai_response_complete', handleAIResponseComplete);
+    ws.socket?.on('private_message_response', handlePrivateMessageResponse);
+
+    return () => {
+      ws.socket?.off('ai_content_delta', handleAIContentDelta);
+      ws.socket?.off('ai_thinking_delta', handleAIThinkingDelta);
+      ws.socket?.off('ai_response_complete', handleAIResponseComplete);
+      ws.socket?.off('private_message_response', handlePrivateMessageResponse);
+      
+    };
+  }, [ws, currentConversation?.id]);
+
+  // Initialize streaming message when typing starts
+  useEffect(() => {
+    if (isTyping && !streamingMessage) {
+      setStreamingMessage({ thinking: '', content: '', isComplete: false });
+    }
+  }, [isTyping]);
 
   const handleMakePublic = () => {
     setShowPublishModal(true);
@@ -444,9 +437,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                   placeholder="Ask DeepSeek anything..."
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   className="flex-1"
-                  disabled={isStreaming}
+                  disabled={isTyping}
                 />
-                <Button onClick={handleSendMessage} disabled={!newMessage.trim() || isStreaming}>
+                <Button onClick={handleSendMessage} disabled={!newMessage.trim() || isTyping}>
                   <Send className="w-4 h-4" />
                 </Button>
               </div>

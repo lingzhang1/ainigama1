@@ -48,10 +48,18 @@ class WebSocketService {
   }
 
   // Private chat events
-  saveConversation(conversationId: string, messages: Message[]) {
+  sendPrivateMessage(conversationId: string, message: string) {
     if (this.socket?.connected) {
-      this.socket.emit('save_conversation', { conversationId, messages });
+      this.socket.emit('private_message', { conversationId, message });
     }
+  }
+
+  onPrivateMessage(callback: (data: { conversationId: string; message: Message }) => void) {
+    this.socket?.on('private_message_response', callback);
+  }
+
+  onAIResponse(callback: (data: { conversationId: string; message: Message }) => void) {
+    this.socket?.on('ai_response', callback);
   }
 
   // Public thread events

@@ -159,35 +159,124 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Save conversation (called after frontend streaming is complete)
-  socket.on('save_conversation', async (data) => {
-    const { conversationId, messages } = data;
+  // Private message handling
+  socket.on('private_message', async (data) => {
+    const { conversationId, message } = data;
     
     try {
-      // Save all messages to database
-      for (const message of messages) {
-        db.run(
-          'INSERT INTO messages (id, conversation_id, content, sender, created_at) VALUES (?, ?, ?, ?, ?)',
-          [message.id, conversationId, message.content, message.sender, message.timestamp || new Date().toISOString()],
-          (err) => {
-            if (err) {
-              console.error('Failed to save message:', err);
-            }
-          }
-        );
-      }
-      
-      // Update conversation timestamp
+      // Save user message
+      const userMessageId = uuidv4();
+      const userMessage = {
+        id: userMessageId,
+        conversationId,
+        content: message,
+        sender: 'user',
+        timestamp: new Date().toISOString()
+      };
+
       db.run(
-        'UPDATE private_conversations SET updated_at = ? WHERE id = ?',
-        [new Date().toISOString(), conversationId]
+        'INSERT INTO messages (id, conversation_id, content, sender, created_at) VALUES (?, ?, ?, ?, ?)',
+        [userMessageId, conversationId, message, 'user', new Date().toISOString()]
       );
-      
-      console.log(`Saved ${messages.length} messages for conversation ${conversationId}`);
-      
+
+      // Emit user message back to confirm receipt
+      socket.emit('private_message_response', {
+        conversationId,
+        message: userMessage
+      });
+
+      // Get conversation history
+      db.all(
+        'SELECT * FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
+        [conversationId],
+        async (err, messages) => {
+          if (err) {
+            console.error('Database error:', err);
+            socket.emit('error', { message: 'Database error' });
+            return;
+          }
+
+          // Prepare messages for AI
+          const chatMessages = messages.map(msg => ({
+            role: msg.sender === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          }));
+
+          try {
+            // Stream AI response
+            const result = await streamText({
+              model: deepseek('deepseek-reasoner'),
+              system: "You are a helpful assistant that provides thoughtful and accurate responses.",
+              messages: chatMessages,
+            });
+
+            let fullContent = '';
+            let thinking = '';
+
+            // Stream response back to client
+            for await (const delta of result.fullStream) {
+              switch (delta.type) {
+                case 'text-delta':
+                  if (delta.textDelta) {
+                    fullContent += delta.textDelta;
+                    socket.emit('ai_content_delta', {
+                      conversationId,
+                      content: delta.textDelta
+                    });
+                  }
+                  break;
+                case 'reasoning-delta':
+                  if (delta.text) {
+                    thinking += delta.text;
+                    socket.emit('ai_thinking_delta', {
+                      conversationId,
+                      thinking: delta.text
+                    });
+                  }
+                  break;
+                case 'step-delta':
+                  if (delta.stepDelta && delta.stepDelta.type === 'reasoning-delta' && delta.stepDelta.reasoningDelta) {
+                    thinking += delta.stepDelta.reasoningDelta;
+                    socket.emit('ai_thinking_delta', {
+                      conversationId,
+                      thinking: delta.stepDelta.reasoningDelta
+                    });
+                  }
+                  break;
+              }
+            }
+
+            console.log('AI streaming complete. Full content length:', fullContent.length);
+            console.log('AI thinking length:', thinking.length);
+
+            // Save AI response
+            const aiMessageId = uuidv4();
+            db.run(
+              'INSERT INTO messages (id, conversation_id, content, sender, created_at) VALUES (?, ?, ?, ?, ?)',
+              [aiMessageId, conversationId, fullContent, 'ai', new Date().toISOString()]
+            );
+
+            // Send completion
+            socket.emit('ai_response_complete', {
+              conversationId,
+              message: {
+                id: aiMessageId,
+                content: fullContent,
+                sender: 'ai',
+                timestamp: new Date().toISOString()
+              }
+            });
+
+          } catch (aiError) {
+            console.error('AI error:', aiError);
+            socket.emit('error', { message: 'Failed to get AI response: ' + aiError.message });
+          }
+        }
+      );
+
     } catch (error) {
-      console.error('Save conversation error:', error);
-      socket.emit('error', { message: 'Failed to save conversation' });
+      console.error('Message handling error:', error);
+      socket.emit('error', { message: 'Failed to process message' });
     }
   });
 
