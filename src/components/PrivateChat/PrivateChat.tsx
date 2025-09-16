@@ -193,7 +193,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             id: uuidv4(),
             content: fullContent,
             timestamp: new Date(),
-            sender: 'ai'
+            sender: 'ai',
+            thinking: streamingBufferRef.current.thinking // Store thinking with the message
           };
 
           // Add AI message to conversation
@@ -208,17 +209,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             prev.map(c => c.id === finalConversation.id ? finalConversation : c)
           );
 
-          // Set final streaming state
-          setStreamingMessage({
-            thinking: streamingBufferRef.current.thinking,
-            content: fullContent,
-            isComplete: true
-          });
-          
-          // Clear streaming state after a brief delay
-          setTimeout(() => {
-            setStreamingMessage(null);
-          }, 500);
+          // Clear streaming state immediately
+          setStreamingMessage(null);
           
           setIsTyping(false);
 
@@ -428,25 +420,18 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                       )}
                     </Avatar>
                     <div className="space-y-2 flex-1">
-                      {/* Show thinking process for AI messages if we have streaming data and this is the last AI message */}
-                      {message.sender === 'ai' && 
-                       streamingMessage && 
-                       showThinking && 
-                       streamingMessage.thinking && 
-                       index === currentConversation.messages.length - 1 && (
+                      {/* Show thinking process for AI messages */}
+                      {message.sender === 'ai' && showThinking && message.thinking && (
                         <Card className="bg-gray-50 border-gray-200">
                           <CardContent className="p-3">
                             <div className="flex items-center mb-2">
                               <Brain className="w-4 h-4 text-gray-500 mr-2" />
                               <span className="text-xs font-medium text-gray-600">
-                                {streamingMessage.isComplete ? 'Thought Process' : 'Thinking...'}
+                                Thought Process
                               </span>
-                              {!streamingMessage.isComplete && (
-                                <Loader2 className="w-3 h-3 text-gray-400 ml-2 animate-spin" />
-                              )}
                             </div>
                             <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
-                              {streamingMessage.thinking}
+                              {message.thinking}
                             </div>
                           </CardContent>
                         </Card>
@@ -472,9 +457,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </div>
               ))}
 
-              {/* Streaming AI Response - only show if no messages yet or still streaming content */}
-              {streamingMessage && (!streamingMessage.isComplete || currentConversation.messages.length === 0 || 
-                currentConversation.messages[currentConversation.messages.length - 1]?.sender !== 'ai') && (
+              {/* Streaming AI Response - show when we have streaming data */}
+              {streamingMessage && !streamingMessage.isComplete && (
                 <StreamingMessage
                   thinking={streamingMessage.thinking}
                   content={streamingMessage.content}

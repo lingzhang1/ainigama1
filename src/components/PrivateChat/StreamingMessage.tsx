@@ -26,27 +26,28 @@ export const StreamingMessage: React.FC<StreamingMessageProps> = ({
         </Avatar>
         
         <div className="space-y-2 flex-1">
-          {/* Thinking Process - Always at the top */}
-          {showThinking && thinking && thinking.trim() && (
+          {/* Thinking Process - Always show if we have thinking content */}
+          {showThinking && thinking && (
             <Card className="bg-gray-50 border-gray-200">
               <CardContent className="p-3">
                 <div className="flex items-center mb-2">
                   <Brain className="w-4 h-4 text-gray-500 mr-2" />
                   <span className="text-xs font-medium text-gray-600">
-                    {isComplete ? 'Thought Process' : 'Thinking...'}
+                    Thought Process
                   </span>
-                  {!isComplete && (
+                  {!isComplete && !content && (
                     <Loader2 className="w-3 h-3 text-gray-400 ml-2 animate-spin" />
                   )}
                 </div>
                 <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
                   {thinking}
+                  {!isComplete && !content && <span className="animate-pulse">|</span>}
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {/* Main Response - Below thinking */}
+          {/* Main Response - Always below thinking */}
           {content && (
             <Card className="bg-white border-gray-200">
               <CardContent className="p-3">
@@ -58,8 +59,8 @@ export const StreamingMessage: React.FC<StreamingMessageProps> = ({
             </Card>
           )}
 
-          {/* Loading indicator when no content yet */}
-          {!content && !thinking && (
+          {/* Loading indicator when no content and no thinking yet */}
+          {!content && !thinking && !isComplete && (
             <Card className="bg-white border-gray-200">
               <CardContent className="p-3">
                 <div className="flex items-center space-x-2">

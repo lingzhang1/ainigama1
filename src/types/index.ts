@@ -11,6 +11,7 @@ export interface Message {
   timestamp: Date;
   sender: 'user' | 'ai';
   userId?: string;
+  thinking?: string; // Store AI thinking process with the message
 }
 
 export interface Question {
