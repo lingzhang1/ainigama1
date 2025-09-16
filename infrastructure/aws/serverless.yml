@@ -13,6 +13,7 @@ provider:
     DYNAMODB_TABLE_MESSAGES: ${self:service}-${self:provider.stage}-messages
     DYNAMODB_TABLE_ANSWERS: ${self:service}-${self:provider.stage}-answers
     DYNAMODB_TABLE_COMMENTS: ${self:service}-${self:provider.stage}-comments
+    DYNAMODB_TABLE_CONNECTIONS: ${self:service}-${self:provider.stage}-connections
     DEEPSEEK_API_KEY: ${env:DEEPSEEK_API_KEY}
     WEBSOCKET_ENDPOINT: 
       Fn::Join:
@@ -40,6 +41,8 @@ provider:
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_MESSAGES}"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_ANSWERS}"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_COMMENTS}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONNECTIONS}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONNECTIONS}/index/UserIdIndex"
 
     - Effect: Allow
       Action:
