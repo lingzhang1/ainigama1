@@ -23,6 +23,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   );
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showThinking, setShowThinking] = useState(true);
+  const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // Use refs for streaming to completely avoid state updates
@@ -40,7 +41,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     isActive: false,
     isTyping: false,
     thinkingElement: null,
-    contentElement: null
+    contentElement: null,
     streamingContainer: null,
   });
   
@@ -140,7 +141,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       isActive: true,
       isTyping: true,
       thinkingElement: null,
-      contentElement: null
+      contentElement: null,
       streamingContainer: null,
     };
 
@@ -617,54 +618,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
               {/* Content */}
               <div className="p-6 space-y-6">
-                <Input
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Ask DeepSeek anything..."
-                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  className="flex-1"
-                  disabled={streamingRef.current.isTyping}
-                />
-                <Button onClick={handleSendMessage} disabled={!newMessage.trim() || streamingRef.current.isTyping}>
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-800 mb-2">No conversation selected</h3>
-              <p className="text-gray-500 mb-4">Start a new conversation to begin chatting with AI</p>
-              <Button onClick={handleNewConversation}>
-                Start Chatting with DeepSeek
-              </Button>
-            </div>
-          </div>
-        )}
-      </main>
-
-      {/* Publish Modal */}
-      {showPublishModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-lg mx-4 bg-white">
-            <CardContent className="p-0">
-              {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b">
-                <h3 className="text-xl font-semibold text-gray-900">Publish to Community</h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setShowPublishModal(false)}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Content */}
-              <div className="p-6 space-y-6">
                 <div>
                   <p className="text-gray-600 text-sm leading-relaxed">
                     Share this conversation with the community to get diverse perspectives and additional insights from other users.
@@ -711,35 +664,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                         Your conversation will be visible to all community members. Others can add answers and engage in discussions.
                       </p>
                     </div>
-                      </p>
-                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Footer */}
               <div className="flex items-center justify-end space-x-3 p-6 border-t bg-gray-50">
-                <Button 
-                  onClick={() => setShowPublishModal(false)} 
-                  variant="outline"
-                  className="px-4 py-2"
-                >
-                  Cancel
-                </Button>
-                <Button 
-                  onClick={handlePublish} 
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Publish Thread
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
-  );
-};
                 <Button 
                   onClick={() => setShowPublishModal(false)} 
                   variant="outline"
