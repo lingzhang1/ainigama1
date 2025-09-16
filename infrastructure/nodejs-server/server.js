@@ -72,6 +72,7 @@ db.serialize(() => {
     content TEXT NOT NULL,
     sender TEXT NOT NULL CHECK (sender IN ('user', 'ai')),
     user_id TEXT,
+    thinking TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (conversation_id) REFERENCES private_conversations (id),
     FOREIGN KEY (user_id) REFERENCES users (id)
@@ -441,7 +442,8 @@ app.get('/api/conversations/:conversationId/messages', (req, res) => {
         content: msg.content,
         timestamp: new Date(msg.created_at),
         sender: msg.sender,
-        userId: msg.user_id
+        userId: msg.user_id,
+        thinking: msg.thinking || undefined
       }));
       
       res.json(transformedMessages);

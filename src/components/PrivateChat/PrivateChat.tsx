@@ -206,7 +206,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             content: fullContent,
             timestamp: new Date(),
             sender: 'ai',
-            thinking: streamingRef.current.thinking
+            thinking: streamingRef.current.thinking || undefined
           };
 
           // Add AI message to conversation
