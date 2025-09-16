@@ -34,9 +34,9 @@ chmod +x deploy-aws.sh
 ### 4. Update Frontend Environment
 After deployment, update your `.env` file:
 ```env
-VITE_WEBSOCKET_URL=wss://your-api-id.execute-api.region.amazonaws.com/dev
-VITE_API_URL=https://your-api-id.execute-api.region.amazonaws.com/dev
-VITE_DEEPSEEK_API_KEY=your_deepseek_api_key_here
+VITE_WEBSOCKET_URL=wss://sqi8k7pny5.execute-api.us-east-1.amazonaws.com/dev
+VITE_API_URL=https://t9ir58i9z9.execute-api.us-east-1.amazonaws.com/dev
+VITE_DEEPSEEK_API_KEY=sk-0dcbd0d5eca74684919812e175de65b7
 ```
 
 ## Manual Deployment
