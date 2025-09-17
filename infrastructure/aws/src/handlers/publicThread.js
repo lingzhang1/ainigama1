@@ -1,3 +1,6 @@
+const AWS = require('aws-sdk');
+const crypto = require('crypto');
+
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const apigateway = new AWS.ApiGatewayManagementApi({
   endpoint: process.env.WEBSOCKET_ENDPOINT
@@ -43,8 +46,6 @@ exports.addAnswer = async (event) => {
   const { threadId, questionId, content } = JSON.parse(event.body);
 
   try {
-    const { v4: uuidv4 } = await import('uuid');
-    
     // Get user info from connection
     const connection = await dynamodb.get({
       TableName: connectionsTable,
@@ -55,7 +56,7 @@ exports.addAnswer = async (event) => {
 
     // Create new answer
     const answer = {
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       questionId,
       content,
       userId,
@@ -96,8 +97,6 @@ exports.addComment = async (event) => {
   const { answerId, content, parentId } = JSON.parse(event.body);
 
   try {
-    const { v4: uuidv4 } = await import('uuid');
-    
     // Get user info from connection
     const connection = await dynamodb.get({
       TableName: connectionsTable,
@@ -108,7 +107,7 @@ exports.addComment = async (event) => {
 
     // Create new comment
     const comment = {
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       answerId,
       content,
       userId,
@@ -179,8 +178,6 @@ async function broadcastToThread(threadId, data) {
 
 async function broadcastToAll(data) {
   try {
-    const { v4: uuidv4 } = await import('uuid');
-    
     // Get all active connections
     const connections = await dynamodb.scan({
       TableName: connectionsTable
