@@ -237,13 +237,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             prev.map(c => c.id === finalConversation.id ? finalConversation : c)
           );
 
-          // Send both messages to backend for persistence
+          // Send both messages to backend for persistence in correct order
           if (ws.socket?.connected) {
-            console.log('Sending to backend - User message:', userMessage);
-            console.log('Sending to backend - AI message:', aiMessage);
+            console.log('Sending messages to backend in order:', [userMessage, aiMessage]);
             ws.socket.emit('save_conversation', {
               conversationId: currentConversation.id,
-              messages: [userMessage, aiMessage]
+              messages: [userMessage, aiMessage] // Ensure correct order: user first, then AI
             });
           } else {
             console.warn('WebSocket not connected, attempting to save via API');
@@ -257,7 +256,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 },
                 body: JSON.stringify({
                   conversationId: currentConversation.id,
-                  messages: [userMessage, aiMessage]
+                  messages: [userMessage, aiMessage] // Ensure correct order: user first, then AI
                 })
               });
               console.log('Messages saved via REST API fallback');

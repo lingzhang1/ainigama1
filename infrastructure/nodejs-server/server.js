@@ -195,9 +195,10 @@ io.on('connection', (socket) => {
         // Save messages one by one to ensure proper conversation association
         const saveMessage = (message, callback) => {
           console.log(`💾 Saving message ${message.id} to conversation ${conversationId}`);
+          console.log(`📝 Message details: sender=${message.sender}, timestamp=${message.timestamp}`);
           
           db.run(
-            'INSERT INTO messages (id, conversation_id, content, sender, thinking, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+            'INSERT OR REPLACE INTO messages (id, conversation_id, content, sender, thinking, created_at) VALUES (?, ?, ?, ?, ?, ?)',
             [
               message.id,
               conversationId, // Ensure we use the correct conversation ID
@@ -726,7 +727,7 @@ app.get('/api/messages/:conversationId', (req, res) => {
   console.log('🔍 Loading messages for conversation:', conversationId);
   
   db.all(
-    'SELECT id, conversation_id, content, sender, user_id, thinking, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
+    'SELECT id, conversation_id, content, sender, user_id, thinking, created_at FROM messages WHERE conversation_id = ? ORDER BY datetime(created_at) ASC, id ASC',
     [conversationId],
     (err, messages) => {
       if (err) {
@@ -737,7 +738,8 @@ app.get('/api/messages/:conversationId', (req, res) => {
       console.log('📨 Loaded messages for conversation:', conversationId, {
         messageCount: messages.length,
         messagesWithThinking: messages.filter(m => m.thinking).length,
-        messageIds: messages.map(m => m.id)
+        messageIds: messages.map(m => m.id),
+        messageOrder: messages.map(m => ({ id: m.id, sender: m.sender, timestamp: m.created_at }))
       });
       
       // Transform the data to match frontend expectations
@@ -754,7 +756,8 @@ app.get('/api/messages/:conversationId', (req, res) => {
         id: m.id,
         sender: m.sender,
         hasThinking: !!m.thinking,
-        conversationId: conversationId
+        conversationId: conversationId,
+        timestamp: m.timestamp
       })));
       
       res.json(transformedMessages);
