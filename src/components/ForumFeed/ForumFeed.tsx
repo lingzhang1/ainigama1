@@ -61,6 +61,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         }
       } catch (error) {
         console.error('Failed to load threads:', error);
+        dispatch({ type: 'SET_ERROR', payload: (error as Error).message || 'An unknown error occurred while loading threads.' });
       } finally {
         setIsLoading(false);
       }
