@@ -2,6 +2,7 @@ const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 const threadsTable = process.env.DYNAMODB_TABLE_THREADS;
 const conversationsTable = process.env.DYNAMODB_TABLE_CONVERSATIONS;
+const messagesTable = process.env.DYNAMODB_TABLE_MESSAGES;
 
 // CORS headers
 const corsHeaders = {
@@ -11,6 +12,15 @@ const corsHeaders = {
 };
 
 exports.getThreads = async (event) => {
+  // Handle OPTIONS request for CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: ''
+    };
+  }
+
   try {
     const { filter = 'recent' } = event.queryStringParameters || {};
     
@@ -54,6 +64,15 @@ exports.getThreads = async (event) => {
 };
 
 exports.getUserConversations = async (event) => {
+  // Handle OPTIONS request for CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: ''
+    };
+  }
+
   try {
     const { userId } = event.pathParameters || {};
     
@@ -102,6 +121,15 @@ exports.getUserConversations = async (event) => {
 
 // Get messages for a specific conversation
 exports.getMessages = async (event) => {
+  // Handle OPTIONS request for CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: ''
+    };
+  }
+
   try {
     const { conversationId } = event.pathParameters || {};
     
@@ -113,7 +141,6 @@ exports.getMessages = async (event) => {
       };
     }
 
-    const messagesTable = process.env.DYNAMODB_TABLE_MESSAGES;
     const params = {
       TableName: messagesTable,
       IndexName: 'ConversationIdIndex',
@@ -160,7 +187,17 @@ exports.getMessages = async (event) => {
 
 // Create new conversation
 exports.createNewConversation = async (event) => {
+  // Handle OPTIONS request for CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: ''
+    };
+  }
+
   try {
+    const { v4: uuidv4 } = require('uuid');
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
@@ -227,5 +264,4 @@ exports.options = async (event) => {
     headers: corsHeaders,
     body: ''
   };
-const { v4: uuidv4 } = require('uuid');
 };

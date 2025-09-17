@@ -145,6 +145,55 @@ functions:
            path: /new-conversation
            method: options
            cors:
+             origin: '*'
+             headers:
+               - Content-Type
+               - X-Amz-Date
+               - Authorization
+               - X-Api-Key
+               - X-Amz-Security-Token
+             allowCredentials: false
+
+  # OPTIONS handlers for other endpoints
+  optionsThreads:
+    handler: src/handlers/api.options
+    events:
+      - http:
+          path: /threads
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+
+  optionsUserConversations:
+    handler: src/handlers/api.options
+    events:
+      - http:
+          path: /user-conversations/{userId}
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+
+  optionsMessages:
+    handler: src/handlers/api.options
+    events:
+      - http:
+          path: /messages/{conversationId}
+          method: options
+          cors:
             origin: '*'
             headers:
               - Content-Type
