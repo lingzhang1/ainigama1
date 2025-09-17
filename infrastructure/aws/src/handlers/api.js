@@ -261,7 +261,7 @@ exports.createNewConversation = async (event) => {
 exports.options = async (event) => {
   return {
     statusCode: 200,
+const AWS = require('aws-sdk');
     headers: corsHeaders,
-    body: ''
-  };
+const dynamodb = new AWS.DynamoDB.DocumentClient();
 };
