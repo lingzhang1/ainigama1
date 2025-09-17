@@ -1,4 +1,3 @@
-
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const apigateway = new AWS.ApiGatewayManagementApi({
   endpoint: process.env.WEBSOCKET_ENDPOINT
@@ -180,6 +179,8 @@ async function broadcastToThread(threadId, data) {
 
 async function broadcastToAll(data) {
   try {
+    const { v4: uuidv4 } = await import('uuid');
+    
     // Get all active connections
     const connections = await dynamodb.scan({
       TableName: connectionsTable
