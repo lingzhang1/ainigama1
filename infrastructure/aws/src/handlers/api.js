@@ -4,16 +4,29 @@ const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 const threadsTable = process.env.DYNAMODB_TABLE_THREADS;
 const conversationsTable = process.env.DYNAMODB_TABLE_CONVERSATIONS;
+const messagesTable = process.env.DYNAMODB_TABLE_MESSAGES;
 
 // CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
   'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-  'Access-Control-Allow-Credentials': 'false'
+  'Access-Control-Allow-Credentials': false
 };
 
+// Handle OPTIONS requests for CORS preflight
+const handleCorsOptions = () => ({
+  statusCode: 200,
+  headers: corsHeaders,
+  body: ''
+});
+
 exports.getThreads = async (event) => {
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return handleCorsOptions();
+  }
+
   try {
     const { filter = 'recent' } = event.queryStringParameters || {};
     
@@ -57,6 +70,11 @@ exports.getThreads = async (event) => {
 };
 
 exports.getUserConversations = async (event) => {
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return handleCorsOptions();
+  }
+
   try {
     const { userId } = event.pathParameters || {};
     
@@ -105,6 +123,11 @@ exports.getUserConversations = async (event) => {
 
 // Get messages for a specific conversation
 exports.getMessages = async (event) => {
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return handleCorsOptions();
+  }
+
   try {
     const { conversationId } = event.pathParameters || {};
     
@@ -162,6 +185,11 @@ exports.getMessages = async (event) => {
 
 // Create new conversation
 exports.createNewConversation = async (event) => {
+  // Handle CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return handleCorsOptions();
+  }
+
   try {
     const { userId, title } = JSON.parse(event.body || '{}');
     
@@ -208,13 +236,4 @@ exports.createNewConversation = async (event) => {
       })
     };
   }
-};
-
-// Handle OPTIONS requests for CORS
-exports.options = async (event) => {
-  return {
-    statusCode: 200,
-    headers: corsHeaders,
-    body: ''
-  };
 };
