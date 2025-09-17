@@ -132,7 +132,27 @@ functions:
       - http:
           path: /new-conversation
           method: post
-          cors: true
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+       - http:
+           path: /new-conversation
+           method: options
+           cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
 
   # Private Chat WebSocket handlers
   saveConversation:

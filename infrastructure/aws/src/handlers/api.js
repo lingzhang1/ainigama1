@@ -113,6 +113,7 @@ exports.getMessages = async (event) => {
       };
     }
 
+    const messagesTable = process.env.DYNAMODB_TABLE_MESSAGES;
     const params = {
       TableName: messagesTable,
       IndexName: 'ConversationIdIndex',
@@ -160,7 +161,18 @@ exports.getMessages = async (event) => {
 // Create new conversation
 exports.createNewConversation = async (event) => {
   try {
-    const { userId, title } = JSON.parse(event.body || '{}');
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body || '{}');
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Invalid JSON in request body' })
+      };
+    }
+    
+    const { userId, title } = requestBody;
     
     if (!userId) {
       return {
@@ -170,7 +182,6 @@ exports.createNewConversation = async (event) => {
       };
     }
 
-    const { v4: uuidv4 } = await import('uuid');
     const conversationId = uuidv4();
     const now = new Date().toISOString();
 
@@ -179,7 +190,8 @@ exports.createNewConversation = async (event) => {
       userId,
       title: title || null,
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      messages: []
     };
 
     await dynamodb.put({
@@ -215,4 +227,5 @@ exports.options = async (event) => {
     headers: corsHeaders,
     body: ''
   };
+const { v4: uuidv4 } = require('uuid');
 };
