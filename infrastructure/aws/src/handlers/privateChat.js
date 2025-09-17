@@ -224,9 +224,39 @@ exports.sendMessage = async (event) => {
 // Handle conversation saving from frontend
 exports.saveConversation = async (event) => {
   const connectionId = event.requestContext.connectionId;
-  const { conversationId, messages } = JSON.parse(event.body);
+  
+  let requestData;
+  try {
+    requestData = JSON.parse(event.body);
+  } catch (parseError) {
+    console.error('Failed to parse WebSocket message body:', parseError);
+    await sendToConnection(connectionId, {
+      type: 'conversation_saved',
+      success: false,
+      error: 'Invalid message format'
+    });
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'Invalid message format' })
+    };
+  }
 
-  console.log('💾 Saving conversation:', conversationId, 'with', messages.length, 'messages');
+  const { conversationId, messages } = requestData;
+
+  console.log('💾 WebSocket: Saving conversation:', conversationId, 'with', messages?.length || 0, 'messages');
+
+  if (!conversationId || !messages || !Array.isArray(messages)) {
+    await sendToConnection(connectionId, {
+      type: 'conversation_saved',
+      conversationId,
+      success: false,
+      error: 'Missing conversationId or messages array'
+    });
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: 'Missing required data' })
+    };
+  }
 
   try {
     // Get user info from connection

@@ -245,6 +245,25 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               conversationId: currentConversation.id,
               messages: [userMessage, aiMessage]
             });
+          } else {
+            console.warn('WebSocket not connected, attempting to save via API');
+            // Fallback: save via REST API if WebSocket is not available
+            try {
+              const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+              await fetch(`${apiUrl}/save-messages`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  conversationId: currentConversation.id,
+                  messages: [userMessage, aiMessage]
+                })
+              });
+              console.log('Messages saved via REST API fallback');
+            } catch (apiError) {
+              console.error('Failed to save messages via API:', apiError);
+            }
           }
         },
         onError: (error) => {

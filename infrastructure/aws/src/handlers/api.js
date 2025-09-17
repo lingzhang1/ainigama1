@@ -259,6 +259,125 @@ exports.createNewConversation = async (event) => {
   }
 };
 
+// Save messages to conversation
+exports.saveMessages = async (event) => {
+  // Handle OPTIONS request for CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: ''
+    };
+  }
+
+  try {
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body || '{}');
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Invalid JSON in request body' })
+      };
+    }
+    
+    const { conversationId, messages } = requestBody;
+    
+    if (!conversationId || !messages || !Array.isArray(messages)) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Conversation ID and messages array are required' })
+      };
+    }
+
+    console.log('💾 Saving', messages.length, 'messages to conversation:', conversationId);
+
+    // Verify conversation exists
+    const conversation = await dynamodb.get({
+      TableName: conversationsTable,
+      Key: { id: conversationId }
+    }).promise();
+
+    if (!conversation.Item) {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Conversation not found' })
+      };
+    }
+
+    // Save messages sequentially
+    let savedCount = 0;
+    for (const message of messages) {
+      try {
+        const messageItem = {
+          id: message.id,
+          conversationId: conversationId,
+          content: message.content,
+          sender: message.sender,
+          userId: message.sender === 'user' ? conversation.Item.userId : null,
+          thinking: message.thinking || null,
+          timestamp: message.timestamp || new Date().toISOString()
+        };
+
+        await dynamodb.put({
+          TableName: messagesTable,
+          Item: messageItem
+        }).promise();
+
+        console.log(`✅ Saved message ${message.id} to conversation ${conversationId}`);
+        savedCount++;
+
+      } catch (messageError) {
+        console.error(`❌ Failed to save message ${message.id}:`, messageError);
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ 
+            error: `Failed to save message: ${messageError.message}`,
+            savedCount 
+          })
+        };
+      }
+    }
+
+    // Update conversation timestamp
+    await dynamodb.update({
+      TableName: conversationsTable,
+      Key: { id: conversationId },
+      UpdateExpression: 'SET updatedAt = :updatedAt',
+      ExpressionAttributeValues: {
+        ':updatedAt': new Date().toISOString()
+      }
+    }).promise();
+
+    console.log(`✅ Successfully saved ${savedCount} messages to conversation ${conversationId}`);
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        success: true, 
+        savedCount,
+        conversationId 
+      })
+    };
+
+  } catch (error) {
+    console.error('Save messages error:', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Failed to save messages',
+        message: error.message 
+      })
+    };
+  }
+};
+
 // Handle OPTIONS requests for CORS
 exports.options = async (event) => {
   return {

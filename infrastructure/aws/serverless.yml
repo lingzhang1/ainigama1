@@ -82,6 +82,12 @@ functions:
       - websocket:
           route: private_message
 
+  # Save conversation handler
+  saveConversation:
+    handler: src/handlers/privateChat.saveConversation
+    events:
+      - websocket:
+          route: save_conversation
   # Public Thread API
   joinThread:
     handler: src/handlers/publicThread.joinThread
@@ -123,6 +129,18 @@ functions:
           cors: true
       - http:
           path: /user-conversations/{userId}
+          method: options
+          cors: true
+
+  saveMessages:
+    handler: src/handlers/api.saveMessages
+    events:
+      - http:
+          path: /save-messages
+          method: post
+          cors: true
+      - http:
+          path: /save-messages
           method: options
           cors: true
 
