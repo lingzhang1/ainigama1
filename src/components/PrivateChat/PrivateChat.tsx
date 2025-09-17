@@ -61,11 +61,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         
         if (response.ok) {
           const loadedConversations = await response.json();
-          setConversations(loadedConversations);
+          setConversations(Array.isArray(loadedConversations) ? loadedConversations : loadedConversations.conversations || []);
           
           // Set first conversation as current if none selected
-          if (loadedConversations.length > 0 && !currentConversation) {
-            setCurrentConversation(loadedConversations[0]);
+          const conversationsArray = Array.isArray(loadedConversations) ? loadedConversations : loadedConversations.conversations || [];
+          if (conversationsArray.length > 0 && !currentConversation) {
+            setCurrentConversation(conversationsArray[0]);
           }
         }
       } catch (error) {
