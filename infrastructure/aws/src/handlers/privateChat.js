@@ -1,5 +1,6 @@
 const AWS = require('aws-sdk');
 const { deepseek } = require('@ai-sdk/deepseek');
+const crypto = require('crypto');
 
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const apigateway = new AWS.ApiGatewayManagementApi({
@@ -40,9 +41,8 @@ exports.sendMessage = async (event) => {
 
     // Save user message
     const { v4: uuidv4 } = await import('uuid');
-    const { v4: uuidv4 } = await import('uuid');
     const userMessage = {
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       conversationId,
       content: message,
       sender: 'user',
@@ -138,9 +138,8 @@ exports.sendMessage = async (event) => {
       console.log('💬 AI response captured:', fullContent.length, 'characters');
 
       // Save AI response with thinking process
-      const { v4: uuidv4 } = await import('uuid');
       const aiMessage = {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         conversationId,
         content: fullContent,
         sender: 'ai',
@@ -180,9 +179,8 @@ exports.sendMessage = async (event) => {
       
       // Save error message
       const { v4: uuidv4 } = await import('uuid');
-      const { v4: uuidv4 } = await import('uuid');
       const errorMessage = {
-        id: uuidv4(),
+        id: crypto.randomUUID(),
         conversationId,
         content: `Sorry, I encountered an error: ${aiError.message}`,
         sender: 'ai',

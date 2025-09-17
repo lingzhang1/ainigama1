@@ -1,5 +1,6 @@
 
 const AWS = require('aws-sdk');
+const crypto = require('crypto');
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 const threadsTable = process.env.DYNAMODB_TABLE_THREADS;
@@ -199,7 +200,6 @@ exports.createNewConversation = async (event) => {
   }
 
   try {
-    const { v4: uuidv4 } = require('uuid');
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
@@ -221,7 +221,7 @@ exports.createNewConversation = async (event) => {
       };
     }
 
-    const conversationId = uuidv4();
+    const conversationId = crypto.randomUUID();
     const now = new Date().toISOString();
 
     const conversation = {
