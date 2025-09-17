@@ -1,4 +1,3 @@
-const AWS = require('aws-sdk');
 
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const apigateway = new AWS.ApiGatewayManagementApi({
