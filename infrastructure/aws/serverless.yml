@@ -108,7 +108,6 @@ functions:
       - http:
           path: /threads
           method: get
-          cors: true
           cors:
             origin: '*'
             headers:
@@ -125,7 +124,6 @@ functions:
       - http:
           path: /user-conversations/{userId}
           method: get
-          cors: true
           cors:
             origin: '*'
             headers:
@@ -142,7 +140,6 @@ functions:
       - http:
           path: /messages/{conversationId}
           method: get
-          cors: true
           cors:
             origin: '*'
             headers:
@@ -159,7 +156,6 @@ functions:
       - http:
           path: /new-conversation
           method: post
-          cors: true
           cors:
             origin: '*'
             headers:
