@@ -1,7 +1,6 @@
 const AWS = require('aws-sdk');
 const { deepseek } = require('@ai-sdk/deepseek');
 const { streamText } = require('ai');
-const { v4: uuidv4 } = require('uuid');
 
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const apigateway = new AWS.ApiGatewayManagementApi({
@@ -41,6 +40,7 @@ exports.sendMessage = async (event) => {
     }
 
     // Save user message
+    const { v4: uuidv4 } = await import('uuid');
     const userMessage = {
       id: uuidv4(),
       conversationId,

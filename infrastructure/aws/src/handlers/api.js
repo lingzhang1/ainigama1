@@ -1,4 +1,3 @@
-const AWS = require('aws-sdk');
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 const threadsTable = process.env.DYNAMODB_TABLE_THREADS;
@@ -171,7 +170,8 @@ exports.createNewConversation = async (event) => {
       };
     }
 
-    const conversationId = require('uuid').v4();
+    const { v4: uuidv4 } = await import('uuid');
+    const conversationId = uuidv4();
     const now = new Date().toISOString();
 
     const conversation = {
