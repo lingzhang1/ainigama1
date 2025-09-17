@@ -168,13 +168,6 @@ functions:
           method: options
           cors: true
 
-  # Private Chat WebSocket handlers
-  saveConversation:
-    handler: src/handlers/privateChat.saveConversation
-    events:
-      - websocket:
-          route: save_conversation
-
 resources:
   Resources:
     # WebSocket Connections Table
