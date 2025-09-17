@@ -109,6 +109,10 @@ functions:
           path: /threads
           method: get
           cors: true
+      - http:
+          path: /threads
+          method: options
+          cors: true
   
   getUserConversations:
     handler: src/handlers/api.getUserConversations
@@ -116,6 +120,10 @@ functions:
       - http:
           path: /user-conversations/{userId}
           method: get
+          cors: true
+      - http:
+          path: /user-conversations/{userId}
+          method: options
           cors: true
 
   getMessages:
@@ -125,6 +133,10 @@ functions:
           path: /messages/{conversationId}
           method: get
           cors: true
+      - http:
+          path: /messages/{conversationId}
+          method: options
+          cors: true
 
   createNewConversation:
     handler: src/handlers/api.createNewConversation
@@ -132,76 +144,11 @@ functions:
       - http:
           path: /new-conversation
           method: post
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
-       - http:
-           path: /new-conversation
-           method: options
-           cors:
-             origin: '*'
-             headers:
-               - Content-Type
-               - X-Amz-Date
-               - Authorization
-               - X-Api-Key
-               - X-Amz-Security-Token
-             allowCredentials: false
-
-  # OPTIONS handlers for other endpoints
-  optionsThreads:
-    handler: src/handlers/api.options
-    events:
+          cors: true
       - http:
-          path: /threads
+          path: /new-conversation
           method: options
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
-
-  optionsUserConversations:
-    handler: src/handlers/api.options
-    events:
-      - http:
-          path: /user-conversations/{userId}
-          method: options
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
-
-  optionsMessages:
-    handler: src/handlers/api.options
-    events:
-      - http:
-          path: /messages/{conversationId}
-          method: options
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
+          cors: true
 
   # Private Chat WebSocket handlers
   saveConversation:
