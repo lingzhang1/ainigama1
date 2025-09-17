@@ -109,6 +109,15 @@ functions:
           path: /threads
           method: get
           cors: true
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
   
   getUserConversations:
     handler: src/handlers/api.getUserConversations
@@ -117,6 +126,15 @@ functions:
           path: /user-conversations/{userId}
           method: get
           cors: true
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
 
   getMessages:
     handler: src/handlers/api.getMessages
@@ -125,6 +143,15 @@ functions:
           path: /messages/{conversationId}
           method: get
           cors: true
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
 
   createNewConversation:
     handler: src/handlers/api.createNewConversation
@@ -133,6 +160,15 @@ functions:
           path: /new-conversation
           method: post
           cors: true
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
 
   # Private Chat WebSocket handlers
   saveConversation:
