@@ -1,9 +1,9 @@
 const AWS = require('aws-sdk');
-const { v4: uuidv4 } = require('uuid');
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 const threadsTable = process.env.DYNAMODB_TABLE_THREADS;
 const conversationsTable = process.env.DYNAMODB_TABLE_CONVERSATIONS;
+const messagesTable = process.env.DYNAMODB_TABLE_MESSAGES;
 
 // CORS headers
 const corsHeaders = {
@@ -162,6 +162,9 @@ exports.getMessages = async (event) => {
 // Create new conversation
 exports.createNewConversation = async (event) => {
   try {
+    // Dynamic import for UUID
+    const { v4: uuidv4 } = await import('uuid');
+    
     const { userId, title } = JSON.parse(event.body || '{}');
     
     if (!userId) {

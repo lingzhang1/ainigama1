@@ -1,5 +1,4 @@
 const AWS = require('aws-sdk');
-const { v4: uuidv4 } = require('uuid');
 
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const apigateway = new AWS.ApiGatewayManagementApi({
@@ -46,6 +45,9 @@ exports.addAnswer = async (event) => {
   const { threadId, questionId, content } = JSON.parse(event.body);
 
   try {
+    // Dynamic import for UUID
+    const { v4: uuidv4 } = await import('uuid');
+    
     // Get user info from connection
     const connection = await dynamodb.get({
       TableName: connectionsTable,
@@ -97,6 +99,9 @@ exports.addComment = async (event) => {
   const { answerId, content, parentId } = JSON.parse(event.body);
 
   try {
+    // Dynamic import for UUID
+    const { v4: uuidv4 } = await import('uuid');
+    
     // Get user info from connection
     const connection = await dynamodb.get({
       TableName: connectionsTable,
