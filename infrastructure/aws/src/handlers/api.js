@@ -1,4 +1,7 @@
 
+const AWS = require('aws-sdk');
+const dynamodb = new AWS.DynamoDB.DocumentClient();
+
 const threadsTable = process.env.DYNAMODB_TABLE_THREADS;
 const conversationsTable = process.env.DYNAMODB_TABLE_CONVERSATIONS;
 const messagesTable = process.env.DYNAMODB_TABLE_MESSAGES;
@@ -197,7 +200,6 @@ exports.createNewConversation = async (event) => {
 
   try {
     const { v4: uuidv4 } = require('uuid');
-    const { v4: uuidv4 } = await import('uuid');
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
@@ -261,7 +263,7 @@ exports.createNewConversation = async (event) => {
 exports.options = async (event) => {
   return {
     statusCode: 200,
-const AWS = require('aws-sdk');
     headers: corsHeaders,
-const dynamodb = new AWS.DynamoDB.DocumentClient();
+    body: ''
+  };
 };
