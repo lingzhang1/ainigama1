@@ -203,7 +203,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             updateStreamingDisplay();
           }
         },
-        onComplete: (fullContent) => {
+        onComplete: async (fullContent) => {
           // Mark streaming as inactive
           streamingRef.current.isActive = false;
           streamingRef.current.isTyping = false;
