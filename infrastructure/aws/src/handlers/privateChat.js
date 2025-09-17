@@ -1,6 +1,7 @@
 const AWS = require('aws-sdk');
 const { deepseek } = require('@ai-sdk/deepseek');
 const { streamText } = require('ai');
+const { v4: uuidv4 } = require('uuid');
 
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const apigateway = new AWS.ApiGatewayManagementApi({
@@ -18,9 +19,6 @@ exports.sendMessage = async (event) => {
   console.log('📨 Received message for conversation:', conversationId);
 
   try {
-    // Dynamic import for UUID
-    const { v4: uuidv4 } = await import('uuid');
-    
     // Get user info from connection
     const connection = await dynamodb.get({
       TableName: connectionsTable,
@@ -141,7 +139,7 @@ exports.sendMessage = async (event) => {
 
       // Save AI response with thinking process
       const aiMessage = {
-        id: (await import('uuid')).v4(),
+        id: uuidv4(),
         conversationId,
         content: fullContent,
         sender: 'ai',
@@ -181,7 +179,7 @@ exports.sendMessage = async (event) => {
       
       // Save error message
       const errorMessage = {
-        id: (await import('uuid')).v4(),
+        id: uuidv4(),
         conversationId,
         content: `Sorry, I encountered an error: ${aiError.message}`,
         sender: 'ai',

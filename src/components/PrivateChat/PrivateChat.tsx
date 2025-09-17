@@ -60,8 +60,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         const response = await fetch(`${apiUrl}/user-conversations/${state.currentUser.id}`);
         
         if (response.ok) {
-          const responseData = await response.json();
-          const loadedConversations = Array.isArray(responseData) ? responseData : (responseData.conversations || []);
+          const loadedConversations = await response.json();
           setConversations(loadedConversations);
           
           // Set first conversation as current if none selected

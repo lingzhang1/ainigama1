@@ -3,7 +3,6 @@ const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 const threadsTable = process.env.DYNAMODB_TABLE_THREADS;
 const conversationsTable = process.env.DYNAMODB_TABLE_CONVERSATIONS;
-const messagesTable = process.env.DYNAMODB_TABLE_MESSAGES;
 
 // CORS headers
 const corsHeaders = {
@@ -162,9 +161,6 @@ exports.getMessages = async (event) => {
 // Create new conversation
 exports.createNewConversation = async (event) => {
   try {
-    // Dynamic import for UUID
-    const { v4: uuidv4 } = await import('uuid');
-    
     const { userId, title } = JSON.parse(event.body || '{}');
     
     if (!userId) {
@@ -175,7 +171,7 @@ exports.createNewConversation = async (event) => {
       };
     }
 
-    const conversationId = uuidv4();
+    const conversationId = require('uuid').v4();
     const now = new Date().toISOString();
 
     const conversation = {
