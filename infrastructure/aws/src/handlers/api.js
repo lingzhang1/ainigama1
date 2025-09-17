@@ -151,16 +151,32 @@ exports.getMessages = async (event) => {
       ExpressionAttributeValues: {
         ':conversationId': conversationId
       },
-      ScanIndexForward: true
+      ScanIndexForward: true,
+      // Add explicit sorting to ensure proper message order
+      ProjectionExpression: 'id, conversationId, content, sender, userId, thinking, #ts',
+      ExpressionAttributeNames: {
+        '#ts': 'timestamp'
+      }
     };
 
     const result = await dynamodb.query(params).promise();
 
+    // Sort messages by timestamp and then by ID to ensure proper ordering
+    const sortedItems = result.Items.sort((a, b) => {
+      const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
+      const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+      // Use ID as tiebreaker for messages with same timestamp
+      return a.id.localeCompare(b.id);
+    });
+
     // Transform messages to include thinking process
-    const messages = result.Items.map(msg => ({
+    const messages = sortedItems.map(msg => ({
       id: msg.id,
       content: msg.content,
-      timestamp: msg.timestamp,
+      timestamp: msg.timestamp || msg.createdAt,
       sender: msg.sender,
       userId: msg.userId,
       thinking: msg.thinking || undefined // Include thinking process
@@ -168,6 +184,7 @@ exports.getMessages = async (event) => {
 
     console.log(`📥 Loaded ${messages.length} messages for conversation ${conversationId}`);
     console.log(`🧠 Messages with thinking: ${messages.filter(m => m.thinking).length}`);
+    console.log(`📋 Message order: ${messages.map(m => `${m.sender}(${m.id.slice(-4)})`).join(' -> ')}`);
 
     return {
       statusCode: 200,
@@ -319,27 +336,42 @@ exports.saveMessages = async (event) => {
           sender: message.sender,
           userId: message.sender === 'user' ? conversation.Item.userId : null,
           thinking: message.thinking || null,
-          timestamp: message.timestamp || new Date().toISOString()
+          timestamp: message.timestamp || new Date().toISOString(),
+          createdAt: message.timestamp || new Date().toISOString()
         };
 
+        // Use PUT with condition to prevent duplicates while maintaining order
         await dynamodb.put({
           TableName: messagesTable,
-          Item: messageItem
+          Item: messageItem,
+          ConditionExpression: 'attribute_not_exists(id) OR #ts < :newTimestamp',
+          ExpressionAttributeNames: {
+            '#ts': 'timestamp'
+          },
+          ExpressionAttributeValues: {
+            ':newTimestamp': messageItem.timestamp
+          }
         }).promise();
 
-        console.log(`✅ Saved message ${message.id} to conversation ${conversationId}`);
+        console.log(`✅ Saved message ${message.id} (${message.sender}) to conversation ${conversationId} at ${messageItem.timestamp}`);
         savedCount++;
 
       } catch (messageError) {
-        console.error(`❌ Failed to save message ${message.id}:`, messageError);
-        return {
-          statusCode: 500,
-          headers: corsHeaders,
-          body: JSON.stringify({ 
-            error: `Failed to save message: ${messageError.message}`,
-            savedCount 
-          })
-        };
+        // If it's a conditional check failure, the message already exists - skip it
+        if (messageError.code === 'ConditionalCheckFailedException') {
+          console.log(`⚠️ Message ${message.id} already exists, skipping`);
+          savedCount++;
+        } else {
+          console.error(`❌ Failed to save message ${message.id}:`, messageError);
+          return {
+            statusCode: 500,
+            headers: corsHeaders,
+            body: JSON.stringify({ 
+              error: `Failed to save message: ${messageError.message}`,
+              savedCount 
+            })
+          };
+        }
       }
     }
 

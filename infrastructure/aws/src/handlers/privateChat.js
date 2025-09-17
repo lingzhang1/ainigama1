@@ -65,18 +65,32 @@ exports.sendMessage = async (event) => {
       ExpressionAttributeValues: {
         ':conversationId': conversationId
       },
-      ScanIndexForward: true
+      ScanIndexForward: true,
+      ProjectionExpression: 'id, content, sender, #ts',
+      ExpressionAttributeNames: {
+        '#ts': 'timestamp'
+      }
     }).promise();
 
+    // Sort messages by timestamp and ID to ensure proper chronological order
+    const sortedMessages = messagesResult.Items.sort((a, b) => {
+      const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
+      const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+      return a.id.localeCompare(b.id);
+    });
+
     // Prepare messages for AI
-    const chatMessages = messagesResult.Items
-      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+    const chatMessages = sortedMessages
       .map(msg => ({
         role: msg.sender === 'user' ? 'user' : 'assistant',
         content: msg.content
       }));
 
     console.log('🤖 Sending to AI with context:', chatMessages.length, 'messages');
+    console.log('📋 Context order:', chatMessages.map(m => m.role).join(' -> '));
 
     // Stream AI response
     let fullContent = '';
@@ -145,8 +159,14 @@ exports.sendMessage = async (event) => {
         sender: 'ai',
         userId: null, // AI messages don't have a userId
         thinking: fullThinking || null, // Store thinking process
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString()
       };
+
+      // Ensure AI message is saved after user message by adding small delay to timestamp
+      const aiTimestamp = new Date(Date.now() + 1).toISOString();
+      aiMessage.timestamp = aiTimestamp;
+      aiMessage.createdAt = aiTimestamp;
 
       await dynamodb.put({
         TableName: messagesTable,
@@ -300,31 +320,40 @@ exports.saveConversation = async (event) => {
           sender: message.sender,
           userId: message.sender === 'user' ? userId : null,
           thinking: message.thinking || null, // Include thinking process
-          timestamp: message.timestamp || new Date().toISOString()
+          timestamp: message.timestamp || new Date().toISOString(),
+          createdAt: message.timestamp || new Date().toISOString()
         };
 
+        // Use conditional put to prevent duplicates while maintaining order
         await dynamodb.put({
           TableName: messagesTable,
-          Item: messageItem
+          Item: messageItem,
+          ConditionExpression: 'attribute_not_exists(id)',
         }).promise();
 
-        console.log(`✅ Saved message ${message.id} to conversation ${conversationId}`);
+        console.log(`✅ Saved message ${message.id} (${message.sender}) to conversation ${conversationId} at ${messageItem.timestamp}`);
         savedCount++;
 
       } catch (messageError) {
-        console.error(`❌ Failed to save message ${message.id}:`, messageError);
-        
-        await sendToConnection(connectionId, {
-          type: 'conversation_saved',
-          conversationId,
-          success: false,
-          error: `Failed to save message: ${messageError.message}`
-        });
-        
-        return {
-          statusCode: 500,
-          body: JSON.stringify({ error: 'Failed to save messages' })
-        };
+        // If it's a conditional check failure, the message already exists - skip it
+        if (messageError.code === 'ConditionalCheckFailedException') {
+          console.log(`⚠️ Message ${message.id} already exists, skipping`);
+          savedCount++;
+        } else {
+          console.error(`❌ Failed to save message ${message.id}:`, messageError);
+          
+          await sendToConnection(connectionId, {
+            type: 'conversation_saved',
+            conversationId,
+            success: false,
+            error: `Failed to save message: ${messageError.message}`
+          });
+          
+          return {
+            statusCode: 500,
+            body: JSON.stringify({ error: 'Failed to save messages' })
+          };
+        }
       }
     }
 
