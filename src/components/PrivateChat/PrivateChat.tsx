@@ -151,6 +151,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       prev.map(c => c.id === updatedConversation.id ? updatedConversation : c)
     );
 
+    // Generate title for new conversations (first message)
+    let shouldGenerateTitle = false;
+    if (!currentConversation.title && currentConversation.messages.length === 0) {
+      shouldGenerateTitle = true;
+    }
     setNewMessage('');
     
     // Reset streaming refs and show streaming UI
@@ -234,10 +239,40 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
           console.log('AI message with thinking:', aiMessage); // Debug log
 
+          // Generate title if this is the first message
+          let generatedTitle = currentConversation.title;
+          if (shouldGenerateTitle) {
+            try {
+              const titleMessages: ChatMessage[] = [
+                {
+                  role: 'user',
+                  content: `Summarize this question into a short, descriptive title (max 6 words): "${userMessage.content}"`
+                }
+              ];
+              
+              generatedTitle = await deepSeekService.generateResponse(titleMessages);
+              generatedTitle = generatedTitle.replace(/['"]/g, '').trim();
+              
+              // Limit title length
+              if (generatedTitle.length > 50) {
+                generatedTitle = generatedTitle.substring(0, 47) + '...';
+              }
+              
+              console.log('Generated title:', generatedTitle);
+            } catch (titleError) {
+              console.error('Failed to generate title:', titleError);
+              // Fallback: use first few words of user message
+              generatedTitle = userMessage.content.split(' ').slice(0, 6).join(' ');
+              if (generatedTitle.length > 50) {
+                generatedTitle = generatedTitle.substring(0, 47) + '...';
+              }
+            }
+          }
           // Add AI message to conversation
           const finalConversation = {
             ...updatedConversation,
             messages: [...updatedConversation.messages, aiMessage],
+            title: generatedTitle,
             updatedAt: new Date()
           };
           
@@ -246,6 +281,22 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             prev.map(c => c.id === finalConversation.id ? finalConversation : c)
           );
 
+          // Save title to backend if generated
+          if (shouldGenerateTitle && generatedTitle) {
+            try {
+              const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+              await fetch(`${apiUrl}/conversations/${currentConversation.id}/title`, {
+                method: 'PUT',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ title: generatedTitle })
+              });
+              console.log('Title saved to backend:', generatedTitle);
+            } catch (titleSaveError) {
+              console.error('Failed to save title to backend:', titleSaveError);
+            }
+          }
           // Send both messages to backend for persistence in correct order
           if (ws.socket?.connected) {
             console.log('Sending messages to backend in order:', [userMessage, aiMessage]);
@@ -405,12 +456,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             >
               <div className="font-medium text-gray-800 mb-1">
                 {conversation.title || 'New Conversation'}
-              </div>
-              <div className="text-sm text-gray-500 truncate">
-                {conversation.messages.length > 0 
-                  ? conversation.messages[conversation.messages.length - 1].content
-                  : 'No messages yet'
-                }
               </div>
               <div className="text-xs text-gray-400 mt-1">
                 {formatDistanceToNow(conversation.updatedAt)} ago

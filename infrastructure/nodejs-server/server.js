@@ -765,6 +765,34 @@ app.get('/api/messages/:conversationId', (req, res) => {
   );
 });
 
+// Update conversation title
+app.put('/api/conversations/:conversationId/title', (req, res) => {
+  const { conversationId } = req.params;
+  const { title } = req.body;
+  
+  if (!title) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+  
+  db.run(
+    'UPDATE private_conversations SET title = ?, updated_at = ? WHERE id = ?',
+    [title, new Date().toISOString(), conversationId],
+    function(err) {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to update title' });
+      }
+      
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      
+      console.log('✅ Updated conversation title:', conversationId, title);
+      res.json({ success: true, title });
+    }
+  );
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
