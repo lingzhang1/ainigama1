@@ -39,6 +39,24 @@ provider:
         - !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WebsocketsApi}/*"
 
 functions:
+  # OPTIONS handler for CORS preflight requests
+  corsHandler:
+    handler: src/handlers/api.corsHandler
+    events:
+      - http:
+          path: /{proxy+}
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+
   # WebSocket Functions
   websocketConnect:
     handler: src/handlers/websocket.connect
