@@ -793,6 +793,132 @@ app.put('/api/conversations/:conversationId/title', (req, res) => {
   );
 });
 
+// Publish thread endpoint
+app.post('/api/publish-thread', (req, res) => {
+  const { conversationId, title, category, userId, messages } = req.body;
+  
+  if (!conversationId || !title || !userId || !messages) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  
+  console.log('📢 Publishing thread from conversation:', conversationId);
+  
+  // Start transaction
+  db.serialize(() => {
+    const threadId = uuidv4();
+    const now = new Date().toISOString();
+    
+    // Create the thread
+    db.run(
+      'INSERT INTO threads (id, title, creator_id, category, is_public, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [threadId, title, userId, category || 'general', 1, now, now],
+      function(err) {
+        if (err) {
+          console.error('Failed to create thread:', err);
+          return res.status(500).json({ error: 'Failed to create thread' });
+        }
+        
+        console.log('✅ Created thread:', threadId);
+        
+        // Group messages into Q&A pairs
+        const qaPairs = [];
+        for (let i = 0; i < messages.length; i += 2) {
+          const userMessage = messages[i];
+          const aiMessage = messages[i + 1];
+          
+          if (userMessage && userMessage.sender === 'user') {
+            qaPairs.push({
+              question: userMessage,
+              answer: aiMessage && aiMessage.sender === 'ai' ? aiMessage : null
+            });
+          }
+        }
+        
+        console.log('📝 Creating', qaPairs.length, 'Q&A pairs');
+        
+        // Create questions and answers
+        let processedPairs = 0;
+        
+        qaPairs.forEach((pair, index) => {
+          const questionId = uuidv4();
+          
+          // Create question
+          db.run(
+            'INSERT INTO questions (id, thread_id, content, user_id, created_at) VALUES (?, ?, ?, ?, ?)',
+            [questionId, threadId, pair.question.content, userId, pair.question.timestamp || now],
+            function(questionErr) {
+              if (questionErr) {
+                console.error('Failed to create question:', questionErr);
+                return;
+              }
+              
+              console.log('✅ Created question:', questionId);
+              
+              // Create AI answer if exists
+              if (pair.answer) {
+                const answerId = uuidv4();
+                
+                db.run(
+                  'INSERT INTO answers (id, question_id, content, user_id, is_ai, is_pinned, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                  [answerId, questionId, pair.answer.content, null, 1, 1, pair.answer.timestamp || now],
+                  function(answerErr) {
+                    if (answerErr) {
+                      console.error('Failed to create answer:', answerErr);
+                    } else {
+                      console.log('✅ Created AI answer:', answerId);
+                    }
+                    
+                    processedPairs++;
+                    if (processedPairs === qaPairs.length) {
+                      // All done
+                      console.log('🎉 Successfully published thread:', threadId);
+                      res.json({
+                        success: true,
+                        threadId,
+                        title,
+                        category,
+                        questionCount: qaPairs.length,
+                        answerCount: qaPairs.filter(p => p.answer).length
+                      });
+                    }
+                  }
+                );
+              } else {
+                processedPairs++;
+                if (processedPairs === qaPairs.length) {
+                  // All done
+                  console.log('🎉 Successfully published thread:', threadId);
+                  res.json({
+                    success: true,
+                    threadId,
+                    title,
+                    category,
+                    questionCount: qaPairs.length,
+                    answerCount: qaPairs.filter(p => p.answer).length
+                  });
+                }
+              }
+            }
+          );
+        });
+        
+        // Handle case where no Q&A pairs exist
+        if (qaPairs.length === 0) {
+          console.log('⚠️ No Q&A pairs found, creating empty thread');
+          res.json({
+            success: true,
+            threadId,
+            title,
+            category,
+            questionCount: 0,
+            answerCount: 0
+          });
+        }
+      }
+    );
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
