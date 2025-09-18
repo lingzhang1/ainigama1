@@ -1,4 +1,3 @@
-
 const AWS = require('aws-sdk');
 const crypto = require('crypto');
 const dynamodb = new AWS.DynamoDB.DocumentClient();
@@ -404,6 +403,91 @@ exports.saveMessages = async (event) => {
       headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to save messages',
+        message: error.message 
+      })
+    };
+  }
+};
+
+// Update conversation title
+exports.updateConversationTitle = async (event) => {
+  // Handle OPTIONS request for CORS preflight
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: ''
+    };
+  }
+
+  try {
+    const { conversationId } = event.pathParameters || {};
+    
+    if (!conversationId) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Conversation ID is required' })
+      };
+    }
+
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body || '{}');
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Invalid JSON in request body' })
+      };
+    }
+    
+    const { title } = requestBody;
+    
+    if (!title) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Title is required' })
+      };
+    }
+
+    // Update conversation title
+    await dynamodb.update({
+      TableName: conversationsTable,
+      Key: { id: conversationId },
+      UpdateExpression: 'SET title = :title, updatedAt = :updatedAt',
+      ExpressionAttributeValues: {
+        ':title': title,
+        ':updatedAt': new Date().toISOString()
+      },
+      ConditionExpression: 'attribute_exists(id)'
+    }).promise();
+
+    console.log('✅ Updated conversation title:', conversationId, title);
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ success: true, title })
+    };
+
+  } catch (error) {
+    console.error('Update conversation title error:', error);
+    
+    if (error.code === 'ConditionalCheckFailedException') {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Conversation not found' })
+      };
+    }
+    
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Failed to update conversation title',
         message: error.message 
       })
     };

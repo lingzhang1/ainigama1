@@ -168,6 +168,18 @@ functions:
           method: options
           cors: true
 
+  updateConversationTitle:
+    handler: src/handlers/api.updateConversationTitle
+    events:
+      - http:
+          path: /conversations/{conversationId}/title
+          method: put
+          cors: true
+      - http:
+          path: /conversations/{conversationId}/title
+          method: options
+          cors: true
+
 resources:
   Resources:
     # WebSocket Connections Table
