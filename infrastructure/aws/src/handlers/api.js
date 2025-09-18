@@ -1,356 +1,432 @@
 const AWS = require('aws-sdk');
-const { deepseek } = require('@ai-sdk/deepseek');
-const { streamText } = require('ai');
 const { v4: uuidv4 } = require('uuid');
 
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 
-// CORS headers that need to be included in ALL responses
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent',
-  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-  'Access-Control-Allow-Credentials': 'false'
-};
+const conversationsTable = process.env.DYNAMODB_TABLE_CONVERSATIONS;
+const messagesTable = process.env.DYNAMODB_TABLE_MESSAGES;
+const threadsTable = process.env.DYNAMODB_TABLE_THREADS;
+const questionsTable = process.env.DYNAMODB_TABLE_QUESTIONS;
+const answersTable = process.env.DYNAMODB_TABLE_ANSWERS;
 
-// Helper function to create response with CORS headers
-const createResponse = (statusCode, body, additionalHeaders = {}) => ({
-  statusCode,
-  headers: {
-    ...corsHeaders,
-    ...additionalHeaders
-  },
-  body: typeof body === 'string' ? body : JSON.stringify(body)
-});
-
-// Health check endpoint
-exports.healthCheck = async (event) => {
-  try {
-    return createResponse(200, {
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      service: 'ainigama-backend'
-    });
-  } catch (error) {
-    console.error('Health check error:', error);
-    return createResponse(500, { error: 'Health check failed' });
-  }
-};
-
-// Get all threads
+// Get threads
 exports.getThreads = async (event) => {
+  const { filter = 'recent' } = event.queryStringParameters || {};
+  
   try {
-    const { filter = 'recent' } = event.queryStringParameters || {};
+    const indexName = filter === 'trending' ? 'UpdatedAtIndex' : 'CreatedAtIndex';
     
-    // Mock data for now - replace with DynamoDB queries
-    const mockThreads = [
-      {
-        id: '1',
-        title: 'How to maintain healthy long-term relationships?',
-        creator: {
-          id: '1',
-          name: 'Sarah Johnson',
-          avatar: '/img-4.svg',
-          handle: '@sarahjohnson'
-        },
-        isPublic: true,
-        createdAt: new Date('2025-02-15'),
-        updatedAt: new Date('2025-02-15'),
-        questionCount: 3,
-        answerCount: 8,
-        interactionCount: 23,
-        category: 'Relationships',
-        questions: []
-      }
-    ];
-
-    return createResponse(200, { threads: mockThreads });
-  } catch (error) {
-    console.error('Get threads error:', error);
-    return createResponse(500, { error: 'Failed to fetch threads' });
-  }
-};
-
-// Get specific thread
-exports.getThread = async (event) => {
-  try {
-    const { id } = event.pathParameters;
-    
-    // Mock data - replace with DynamoDB query
-    const mockThread = {
-      id,
-      title: 'How to maintain healthy long-term relationships?',
-      creator: {
-        id: '1',
-        name: 'Sarah Johnson',
-        avatar: '/img-4.svg',
-        handle: '@sarahjohnson'
+    const result = await dynamodb.scan({
+      TableName: threadsTable,
+      IndexName: indexName,
+      FilterExpression: 'isPublic = :isPublic',
+      ExpressionAttributeValues: {
+        ':isPublic': true
       },
-      isPublic: true,
-      createdAt: new Date('2025-02-15'),
-      updatedAt: new Date('2025-02-15'),
-      questionCount: 3,
-      answerCount: 8,
-      interactionCount: 23,
-      category: 'Relationships',
-      questions: [
-        {
-          id: 'q1',
-          content: 'How to maintain healthy long-term relationships?',
-          timestamp: new Date('2025-02-15T10:00:00'),
-          userId: '1',
-          threadId: id
-        }
-      ]
+      Limit: 20,
+      ScanIndexForward: false // Descending order
+    }).promise();
+
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify({ threads: result.Items })
     };
 
-    return createResponse(200, mockThread);
+  } catch (error) {
+    console.error('Get threads error:', error);
+    return {
+      statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify({ error: 'Failed to fetch threads' })
+    };
+  }
+};
+
+// Get single thread
+exports.getThread = async (event) => {
+  const { threadId } = event.pathParameters;
+  
+  try {
+    const thread = await dynamodb.get({
+      TableName: threadsTable,
+      Key: { id: threadId }
+    }).promise();
+
+    if (!thread.Item) {
+      return {
+        statusCode: 404,
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+          'Access-Control-Allow-Headers': 'Content-Type',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+        },
+        body: JSON.stringify({ error: 'Thread not found' })
+      };
+    }
+
+    // Get questions for this thread
+    const questions = await dynamodb.query({
+      TableName: questionsTable,
+      IndexName: 'ThreadIdIndex',
+      KeyConditionExpression: 'threadId = :threadId',
+      ExpressionAttributeValues: {
+        ':threadId': threadId
+      },
+      ScanIndexForward: true
+    }).promise();
+
+    thread.Item.questions = questions.Items;
+
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify(thread.Item)
+    };
+
   } catch (error) {
     console.error('Get thread error:', error);
-    return createResponse(500, { error: 'Failed to fetch thread' });
+    return {
+      statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify({ error: 'Failed to fetch thread' })
+    };
   }
 };
 
 // Get user conversations
-exports.getConversations = async (event) => {
-  try {
-    const { userId } = event.pathParameters;
-    
-    // Mock data - replace with DynamoDB query
-    const mockConversations = [
-      {
-        id: uuidv4(),
-        userId,
-        title: 'Sample Conversation',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        messages: []
-      }
-    ];
-
-    return createResponse(200, mockConversations);
-  } catch (error) {
-    console.error('Get conversations error:', error);
-    return createResponse(500, { error: 'Failed to fetch conversations' });
-  }
-};
-
-// Get user conversations (alternative endpoint)
 exports.getUserConversations = async (event) => {
+  const { userId } = event.pathParameters;
+  
   try {
-    const { userId } = event.pathParameters;
-    
-    // Mock data - replace with DynamoDB query
-    const mockConversations = [
-      {
-        id: uuidv4(),
-        userId,
-        title: 'Sample Conversation',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        messages: []
-      }
-    ];
+    const result = await dynamodb.query({
+      TableName: conversationsTable,
+      IndexName: 'UserIdIndex',
+      KeyConditionExpression: 'userId = :userId',
+      ExpressionAttributeValues: {
+        ':userId': userId
+      },
+      ScanIndexForward: false // Descending order by updatedAt
+    }).promise();
 
-    return createResponse(200, mockConversations);
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify(result.Items)
+    };
+
   } catch (error) {
     console.error('Get user conversations error:', error);
-    return createResponse(500, { error: 'Failed to fetch conversations' });
+    return {
+      statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify({ error: 'Failed to fetch conversations' })
+    };
   }
 };
 
 // Get conversation messages
 exports.getConversationMessages = async (event) => {
+  const { conversationId } = event.pathParameters;
+  
   try {
-    const { conversationId } = event.pathParameters;
-    
-    // Mock data - replace with DynamoDB query
-    const mockMessages = [
-      {
-        id: uuidv4(),
-        content: 'Hello, how can I help you today?',
-        timestamp: new Date(),
-        sender: 'ai',
-        userId: null
-      }
-    ];
+    const result = await dynamodb.query({
+      TableName: messagesTable,
+      IndexName: 'ConversationIdIndex',
+      KeyConditionExpression: 'conversationId = :conversationId',
+      ExpressionAttributeValues: {
+        ':conversationId': conversationId
+      },
+      ScanIndexForward: true // Ascending order by timestamp
+    }).promise();
 
-    return createResponse(200, mockMessages);
+    // Sort by timestamp and ID to ensure proper order
+    const sortedMessages = result.Items.sort((a, b) => {
+      const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
+      const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
+      if (timeA !== timeB) {
+        return timeA - timeB;
+      }
+      return a.id.localeCompare(b.id);
+    });
+
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify(sortedMessages)
+    };
+
   } catch (error) {
     console.error('Get conversation messages error:', error);
-    return createResponse(500, { error: 'Failed to fetch messages' });
-  }
-};
-
-// Get messages (alternative endpoint)
-exports.getMessages = async (event) => {
-  try {
-    const { conversationId } = event.pathParameters;
-    
-    // Mock data - replace with DynamoDB query
-    const mockMessages = [
-      {
-        id: uuidv4(),
-        content: 'Hello, how can I help you today?',
-        timestamp: new Date(),
-        sender: 'ai',
-        userId: null
-      }
-    ];
-
-    return createResponse(200, mockMessages);
-  } catch (error) {
-    console.error('Get messages error:', error);
-    return createResponse(500, { error: 'Failed to fetch messages' });
+    return {
+      statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify({ error: 'Failed to fetch messages' })
+    };
   }
 };
 
 // Create conversation
 exports.createConversation = async (event) => {
+  const { userId, title } = JSON.parse(event.body);
+  const conversationId = uuidv4();
+  const now = new Date().toISOString();
+  
   try {
-    const { userId, title } = JSON.parse(event.body);
-    const conversationId = uuidv4();
-    
-    const newConversation = {
-      id: conversationId,
-      userId,
-      title: title || null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      messages: []
+    await dynamodb.put({
+      TableName: conversationsTable,
+      Item: {
+        id: conversationId,
+        userId,
+        title: title || null,
+        createdAt: now,
+        updatedAt: now
+      }
+    }).promise();
+
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify({
+        id: conversationId,
+        userId,
+        title,
+        createdAt: now,
+        updatedAt: now,
+        messages: []
+      })
     };
 
-    // TODO: Save to DynamoDB
-    
-    return createResponse(201, newConversation);
   } catch (error) {
     console.error('Create conversation error:', error);
-    return createResponse(500, { error: 'Failed to create conversation' });
-  }
-};
-
-// Create new conversation (alternative endpoint)
-exports.createNewConversation = async (event) => {
-  try {
-    const { userId, title } = JSON.parse(event.body);
-    const conversationId = uuidv4();
-    
-    const newConversation = {
-      id: conversationId,
-      userId,
-      title: title || null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      messages: []
+    return {
+      statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify({ error: 'Failed to create conversation' })
     };
-
-    // TODO: Save to DynamoDB
-    
-    return createResponse(201, newConversation);
-  } catch (error) {
-    console.error('Create new conversation error:', error);
-    return createResponse(500, { error: 'Failed to create conversation' });
   }
 };
 
 // Update conversation title
 exports.updateConversationTitle = async (event) => {
-  try {
-    const { conversationId } = event.pathParameters;
-    const { title } = JSON.parse(event.body);
-    
-    if (!title) {
-      return createResponse(400, { error: 'Title is required' });
-    }
-
-    // TODO: Update in DynamoDB
-    
-    return createResponse(200, { success: true, title });
-  } catch (error) {
-    console.error('Update conversation title error:', error);
-    return createResponse(500, { error: 'Failed to update title' });
+  const { conversationId } = event.pathParameters;
+  const { title } = JSON.parse(event.body);
+  
+  if (!title) {
+    return {
+      statusCode: 400,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify({ error: 'Title is required' })
+    };
   }
-};
-
-// Publish thread
-exports.publishThread = async (event) => {
+  
   try {
-    const { conversationId, title, category, userId, messages } = JSON.parse(event.body);
-    
-    if (!conversationId || !title || !userId || !messages) {
-      return createResponse(400, { error: 'Missing required fields' });
-    }
+    await dynamodb.update({
+      TableName: conversationsTable,
+      Key: { id: conversationId },
+      UpdateExpression: 'SET title = :title, updatedAt = :updatedAt',
+      ExpressionAttributeValues: {
+        ':title': title,
+        ':updatedAt': new Date().toISOString()
+      }
+    }).promise();
 
-    const threadId = uuidv4();
-    
-    // TODO: Save to DynamoDB
-    
-    return createResponse(201, {
-      success: true,
-      threadId,
-      title,
-      category,
-      questionCount: Math.floor(messages.length / 2),
-      answerCount: Math.floor(messages.length / 2)
-    });
-  } catch (error) {
-    console.error('Publish thread error:', error);
-    return createResponse(500, { error: 'Failed to publish thread' });
-  }
-};
-
-// Generate title
-exports.generateTitle = async (event) => {
-  try {
-    const { message } = JSON.parse(event.body);
-    
-    if (!message) {
-      return createResponse(400, { error: 'Message is required' });
-    }
-
-    // Simple title generation - first 6 words
-    const title = message.split(' ').slice(0, 6).join(' ');
-    
-    return createResponse(200, { title });
-  } catch (error) {
-    console.error('Generate title error:', error);
-    return createResponse(500, { error: 'Failed to generate title' });
-  }
-};
-
-// Chat stream endpoint
-exports.chatStream = async (event) => {
-  try {
-    const { message, conversationId, userId } = JSON.parse(event.body);
-    
-    if (!message) {
-      return createResponse(400, { error: 'Message is required' });
-    }
-
-    // For now, return a simple response
-    // TODO: Implement actual streaming with DeepSeek
-    const response = {
-      id: uuidv4(),
-      content: `This is a response to: ${message}`,
-      sender: 'ai',
-      timestamp: new Date()
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify({ success: true, title })
     };
 
-    return createResponse(200, response, {
-      'Content-Type': 'application/json'
-    });
   } catch (error) {
-    console.error('Chat stream error:', error);
-    return createResponse(500, { error: 'Failed to process chat' });
+    console.error('Update conversation title error:', error);
+    return {
+      statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify({ error: 'Failed to update title' })
+    };
   }
 };
 
-// CORS preflight handler
-exports.corsHandler = async (event) => {
-  return createResponse(200, '', {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent',
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-    'Access-Control-Max-Age': '86400'
-  });
+// Publish thread from private conversation
+exports.publishThread = async (event) => {
+  const { conversationId, title, category, userId, messages } = JSON.parse(event.body);
+  
+  if (!conversationId || !title || !userId || !messages) {
+    return {
+      statusCode: 400,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify({ error: 'Missing required fields' })
+    };
+  }
+
+  console.log('📢 Publishing thread from conversation:', conversationId);
+
+  const threadId = uuidv4();
+  const now = new Date().toISOString();
+
+  try {
+    // Create the thread
+    await dynamodb.put({
+      TableName: threadsTable,
+      Item: {
+        id: threadId,
+        title,
+        creatorId: userId,
+        category: category || 'general',
+        isPublic: true,
+        createdAt: now,
+        updatedAt: now
+      }
+    }).promise();
+
+    console.log('✅ Created thread:', threadId);
+
+    // Group messages into Q&A pairs
+    const qaPairs = [];
+    for (let i = 0; i < messages.length; i += 2) {
+      const userMessage = messages[i];
+      const aiMessage = messages[i + 1];
+      
+      if (userMessage && userMessage.sender === 'user') {
+        qaPairs.push({
+          question: userMessage,
+          answer: aiMessage && aiMessage.sender === 'ai' ? aiMessage : null
+        });
+      }
+    }
+
+    console.log('📝 Creating', qaPairs.length, 'Q&A pairs');
+
+    // Create questions and answers
+    const promises = [];
+    
+    qaPairs.forEach((pair, index) => {
+      const questionId = uuidv4();
+      
+      // Create question
+      promises.push(
+        dynamodb.put({
+          TableName: questionsTable,
+          Item: {
+            id: questionId,
+            threadId,
+            content: pair.question.content,
+            userId,
+            createdAt: pair.question.timestamp || now
+          }
+        }).promise()
+      );
+
+      // Create AI answer if exists
+      if (pair.answer) {
+        const answerId = uuidv4();
+        
+        promises.push(
+          dynamodb.put({
+            TableName: answersTable,
+            Item: {
+              id: answerId,
+              questionId,
+              content: pair.answer.content,
+              userId: null,
+              isAI: true,
+              isPinned: true,
+              interactionCount: 0,
+              createdAt: pair.answer.timestamp || now
+            }
+          }).promise()
+        );
+      }
+    });
+
+    // Execute all promises
+    await Promise.all(promises);
+
+    console.log('🎉 Successfully published thread:', threadId);
+
+    return {
+      statusCode: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify({
+        success: true,
+        threadId,
+        title,
+        category: category || 'general',
+        questionCount: qaPairs.length,
+        answerCount: qaPairs.filter(p => p.answer).length
+      })
+    };
+
+  } catch (error) {
+    console.error('Publish thread error:', error);
+    return {
+      statusCode: 500,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
+      },
+      body: JSON.stringify({ error: 'Failed to publish thread' })
+    };
+  }
 };
