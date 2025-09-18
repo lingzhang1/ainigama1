@@ -745,6 +745,164 @@ app.put('/api/conversations/:conversationId/title', (req, res) => {
   );
 });
 
+// Publish thread endpoint
+app.post('/api/publish-thread', (req, res) => {
+  const { conversationId, title, category, userId, messages } = req.body;
+  
+  if (!conversationId || !title || !userId || !messages) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  
+  const threadId = uuidv4();
+  
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+    
+    // Create the thread
+    db.run(
+      'INSERT INTO threads (id, title, creator_id, category, is_public, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [threadId, title, userId, category || 'general', 1, new Date().toISOString(), new Date().toISOString()],
+      function(err) {
+        if (err) {
+          console.error('Failed to create thread:', err);
+          db.run('ROLLBACK');
+          return res.status(500).json({ error: 'Failed to create thread' });
+        }
+        
+        // Convert messages to questions and answers
+        let questionCount = 0;
+        let answerCount = 0;
+        let currentQuestionId = null;
+        
+        const processMessage = (message, index) => {
+          if (message.sender === 'user') {
+            // User messages become questions
+            const questionId = uuidv4();
+            currentQuestionId = questionId;
+            questionCount++;
+            
+            db.run(
+              'INSERT INTO questions (id, thread_id, content, user_id, created_at) VALUES (?, ?, ?, ?, ?)',
+              [questionId, threadId, message.content, userId, message.timestamp || new Date().toISOString()],
+              (err) => {
+                if (err) {
+                  console.error('Failed to create question:', err);
+                  db.run('ROLLBACK');
+                  return res.status(500).json({ error: 'Failed to create question' });
+                }
+                
+                // Process next message
+                if (index < messages.length - 1) {
+                  processMessage(messages[index + 1], index + 1);
+                } else {
+                  // All messages processed, commit transaction
+                  db.run('COMMIT', (err) => {
+                    if (err) {
+                      console.error('Failed to commit transaction:', err);
+                      return res.status(500).json({ error: 'Failed to publish thread' });
+                    }
+                    
+                    res.json({
+                      id: threadId,
+                      title,
+                      category,
+                      questionCount,
+                      answerCount,
+                      success: true
+                    });
+                  });
+                }
+              }
+            );
+          } else if (message.sender === 'ai' && currentQuestionId) {
+            // AI messages become answers to the current question
+            const answerId = uuidv4();
+            answerCount++;
+            
+            db.run(
+              'INSERT INTO answers (id, question_id, content, user_id, is_ai, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+              [answerId, currentQuestionId, message.content, null, 1, message.timestamp || new Date().toISOString()],
+              (err) => {
+                if (err) {
+                  console.error('Failed to create answer:', err);
+                  db.run('ROLLBACK');
+                  return res.status(500).json({ error: 'Failed to create answer' });
+                }
+                
+                // Process next message
+                if (index < messages.length - 1) {
+                  processMessage(messages[index + 1], index + 1);
+                } else {
+                  // All messages processed, commit transaction
+                  db.run('COMMIT', (err) => {
+                    if (err) {
+                      console.error('Failed to commit transaction:', err);
+                      return res.status(500).json({ error: 'Failed to publish thread' });
+                    }
+                    
+                    res.json({
+                      id: threadId,
+                      title,
+                      category,
+                      questionCount,
+                      answerCount,
+                      success: true
+                    });
+                  });
+                }
+              }
+            );
+          } else {
+            // Skip this message and process next
+            if (index < messages.length - 1) {
+              processMessage(messages[index + 1], index + 1);
+            } else {
+              // All messages processed, commit transaction
+              db.run('COMMIT', (err) => {
+                if (err) {
+                  console.error('Failed to commit transaction:', err);
+                  return res.status(500).json({ error: 'Failed to publish thread' });
+                }
+                
+                res.json({
+                  id: threadId,
+                  title,
+                  category,
+                  questionCount,
+                  answerCount,
+                  success: true
+                });
+              });
+            }
+          }
+        };
+        
+        // Start processing messages
+        if (messages.length > 0) {
+          processMessage(messages[0], 0);
+        } else {
+          // No messages to process, just commit the thread
+          db.run('COMMIT', (err) => {
+            if (err) {
+              console.error('Failed to commit transaction:', err);
+              return res.status(500).json({ error: 'Failed to publish thread' });
+            }
+            
+            res.json({
+              id: threadId,
+              title,
+              category,
+              questionCount: 0,
+              answerCount: 0,
+              success: true
+            });
+          });
+        }
+      }
+    );
+  });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server error:', err);
