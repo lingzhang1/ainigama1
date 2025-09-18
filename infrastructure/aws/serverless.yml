@@ -94,7 +94,6 @@ functions:
               - X-Amz-Security-Token
               - X-Amz-User-Agent
             allowCredentials: false
-          cors: true
   
   getThread:
     handler: src/handlers/api.getThread
@@ -166,7 +165,6 @@ functions:
               - X-Amz-Security-Token
               - X-Amz-User-Agent
             allowCredentials: false
-
   # Additional API endpoints that were missing
   getUserConversations:
     handler: src/handlers/api.getUserConversations
