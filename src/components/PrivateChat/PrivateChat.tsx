@@ -87,7 +87,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   // Load messages for current conversation
   useEffect(() => {
     const loadMessages = async () => {
-      if (!currentConversation?.id) return;
+      if (!currentConversation?.id) {
+        console.log('❌ No current conversation ID, skipping message load');
+        return;
+      }
       
       console.log('🔄 Loading messages for conversation:', currentConversation.id);
       
@@ -102,10 +105,16 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             messageIds: messages.map(m => m.id)
           });
           
-          setCurrentConversation(prev => prev ? {
-            ...prev,
-            messages
-          } : null);
+          setCurrentConversation(prev => {
+            if (!prev || prev.id !== currentConversation.id) {
+              console.log('⚠️ Conversation changed during message load, ignoring');
+              return prev;
+            }
+            return {
+              ...prev,
+              messages
+            };
+          });
         } else {
           console.error('Failed to load messages:', response.status, response.statusText);
         }
@@ -115,7 +124,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     };
 
     loadMessages();
-  }, [currentConversation?.id]);
+  }, [currentConversation?.id]); // Keep dependency on ID only
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -382,7 +391,17 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               className={`p-4 border-b cursor-pointer hover:bg-gray-50 ${
                 currentConversation?.id === conversation.id ? 'bg-blue-50 border-blue-200' : ''
               }`}
-              onClick={() => setCurrentConversation(conversation)}
+              onClick={() => {
+                // Always set the conversation, even if it's the same one
+                // This ensures the UI refreshes properly
+                if (currentConversation?.id !== conversation.id) {
+                  setCurrentConversation(conversation);
+                } else {
+                  // If clicking the same conversation, force a refresh
+                  setCurrentConversation(null);
+                  setTimeout(() => setCurrentConversation(conversation), 0);
+                }
+              }}
             >
               <div className="font-medium text-gray-800 mb-1">
                 {conversation.title || 'New Conversation'}
