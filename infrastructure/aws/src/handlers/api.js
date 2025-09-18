@@ -1,504 +1,902 @@
-const AWS = require('aws-sdk');
-const crypto = require('crypto');
-const dynamodb = new AWS.DynamoDB.DocumentClient();
+const express = require('express');
+const http = require('http');
+const socketIo = require('socket.io');
+const cors = require('cors');
+const helmet = require('helmet');
+const sqlite3 = require('sqlite3').verbose();
+const { deepseek } = require('@ai-sdk/deepseek');
+const { streamText } = require('ai');
+const { v4: uuidv4 } = require('uuid');
+require('dotenv').config();
 
-const threadsTable = process.env.DYNAMODB_TABLE_THREADS;
-const conversationsTable = process.env.DYNAMODB_TABLE_CONVERSATIONS;
-const messagesTable = process.env.DYNAMODB_TABLE_MESSAGES;
-
-// CORS headers
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
-};
-
-exports.getThreads = async (event) => {
-  // Handle OPTIONS request for CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: ''
-    };
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    methods: ["GET", "POST"]
   }
+});
 
-  try {
-    const { filter = 'recent' } = event.queryStringParameters || {};
-    
-    let params = {
-      TableName: threadsTable,
-      FilterExpression: 'is_public = :isPublic',
-      ExpressionAttributeValues: {
-        ':isPublic': true
-      },
-      Limit: 20
-    };
+// Middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true
+}));
+app.use(express.json());
 
-    // Add sorting based on filter
-    if (filter === 'trending') {
-      params.IndexName = 'UpdatedAtIndex';
-      params.ScanIndexForward = false;
+// Serve static files and handle root route
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Ainigama Backend Server',
+    status: 'running',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      threads: '/api/threads',
+      conversations: '/api/conversations/:userId'
     }
+  });
+});
 
-    const result = await dynamodb.scan(params).promise();
+// Database setup
+const db = new sqlite3.Database('./ainigama.db');
 
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        threads: result.Items || [],
-        count: result.Count || 0
-      })
-    };
+// Initialize database tables
+db.serialize(() => {
+  // Users table
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    avatar TEXT,
+    handle TEXT UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
 
-  } catch (error) {
-    console.error('Get threads error:', error);
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({ 
-        error: 'Failed to fetch threads',
-        message: error.message 
-      })
-    };
-  }
-};
+  // Private conversations
+  db.run(`CREATE TABLE IF NOT EXISTS private_conversations (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    title TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id)
+  )`);
 
-exports.getUserConversations = async (event) => {
-  // Handle OPTIONS request for CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: ''
-    };
-  }
+  // Messages
+  db.run(`CREATE TABLE IF NOT EXISTS messages (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    sender TEXT NOT NULL CHECK (sender IN ('user', 'ai')),
+    user_id TEXT,
+    thinking TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (conversation_id) REFERENCES private_conversations (id),
+    FOREIGN KEY (user_id) REFERENCES users (id)
+  )`);
 
-  try {
-    const { userId } = event.pathParameters || {};
-    
-    if (!userId) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'User ID is required' })
-      };
+  // Public threads
+  db.run(`CREATE TABLE IF NOT EXISTS threads (
+    id TEXT PRIMARY KEY,
+    title TEXT NOT NULL,
+    creator_id TEXT NOT NULL,
+    category TEXT,
+    is_public BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (creator_id) REFERENCES users (id)
+  )`);
+
+  // Questions
+  db.run(`CREATE TABLE IF NOT EXISTS questions (
+    id TEXT PRIMARY KEY,
+    thread_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (thread_id) REFERENCES threads (id),
+    FOREIGN KEY (user_id) REFERENCES users (id)
+  )`);
+
+  // Answers
+  db.run(`CREATE TABLE IF NOT EXISTS answers (
+    id TEXT PRIMARY KEY,
+    question_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    user_id TEXT,
+    is_ai BOOLEAN DEFAULT 0,
+    is_pinned BOOLEAN DEFAULT 0,
+    interaction_count INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (question_id) REFERENCES questions (id),
+    FOREIGN KEY (user_id) REFERENCES users (id)
+  )`);
+
+  // Comments
+  db.run(`CREATE TABLE IF NOT EXISTS comments (
+    id TEXT PRIMARY KEY,
+    answer_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    parent_id TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (answer_id) REFERENCES answers (id),
+    FOREIGN KEY (user_id) REFERENCES users (id),
+    FOREIGN KEY (parent_id) REFERENCES comments (id)
+  )`);
+
+  // WebSocket connections tracking
+  db.run(`CREATE TABLE IF NOT EXISTS connections (
+    connection_id TEXT PRIMARY KEY,
+    user_id TEXT,
+    thread_id TEXT,
+    connected_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+});
+
+// Store active connections
+const activeConnections = new Map();
+
+// Socket.io connection handling
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+  
+  // Store connection
+  activeConnections.set(socket.id, {
+    socket,
+    userId: null,
+    threadId: null
+  });
+
+  // Handle user authentication
+  socket.on('authenticate', (data) => {
+    const connection = activeConnections.get(socket.id);
+    if (connection) {
+      connection.userId = data.userId;
+      activeConnections.set(socket.id, connection);
     }
+  });
 
-    const params = {
-      TableName: conversationsTable,
-      IndexName: 'UserIdIndex',
-      KeyConditionExpression: 'userId = :userId',
-      ExpressionAttributeValues: {
-        ':userId': userId
-      },
-      ScanIndexForward: false,
-      Limit: 50
-    };
-
-    const result = await dynamodb.query(params).promise();
-
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify({
-        conversations: result.Items || [],
-        count: result.Count || 0
-      })
-    };
-
-  } catch (error) {
-    console.error('Get conversations error:', error);
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({ 
-        error: 'Failed to fetch conversations',
-        message: error.message 
-      })
-    };
-  }
-};
-
-// Get messages for a specific conversation
-exports.getMessages = async (event) => {
-  // Handle OPTIONS request for CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: ''
-    };
-  }
-
-  try {
-    const { conversationId } = event.pathParameters || {};
+  // Save conversation (both user and AI messages)
+  socket.on('save_conversation', async (data) => {
+    const { conversationId, messages } = data;
     
-    if (!conversationId) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Conversation ID is required' })
-      };
-    }
-
-    const params = {
-      TableName: messagesTable,
-      IndexName: 'ConversationIdIndex',
-      KeyConditionExpression: 'conversationId = :conversationId',
-      ExpressionAttributeValues: {
-        ':conversationId': conversationId
-      },
-      ScanIndexForward: true,
-      // Add explicit sorting to ensure proper message order
-      ProjectionExpression: 'id, conversationId, content, sender, userId, thinking, #ts',
-      ExpressionAttributeNames: {
-        '#ts': 'timestamp'
-      }
-    };
-
-    const result = await dynamodb.query(params).promise();
-
-    // Sort messages by timestamp and then by ID to ensure proper ordering
-    const sortedItems = result.Items.sort((a, b) => {
-      const timeA = new Date(a.timestamp || a.createdAt || 0).getTime();
-      const timeB = new Date(b.timestamp || b.createdAt || 0).getTime();
-      if (timeA !== timeB) {
-        return timeA - timeB;
-      }
-      // Use ID as tiebreaker for messages with same timestamp
-      return a.id.localeCompare(b.id);
-    });
-
-    // Transform messages to include thinking process
-    const messages = sortedItems.map(msg => ({
-      id: msg.id,
-      content: msg.content,
-      timestamp: msg.timestamp || msg.createdAt,
-      sender: msg.sender,
-      userId: msg.userId,
-      thinking: msg.thinking || undefined // Include thinking process
-    }));
-
-    console.log(`📥 Loaded ${messages.length} messages for conversation ${conversationId}`);
-    console.log(`🧠 Messages with thinking: ${messages.filter(m => m.thinking).length}`);
-    console.log(`📋 Message order: ${messages.map(m => `${m.sender}(${m.id.slice(-4)})`).join(' -> ')}`);
-
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify(messages)
-    };
-
-  } catch (error) {
-    console.error('Get conversation messages error:', error);
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({ 
-        error: 'Failed to fetch messages',
-        message: error.message 
-      })
-    };
-  }
-};
-
-// Create new conversation
-exports.createNewConversation = async (event) => {
-  // Handle OPTIONS request for CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: ''
-    };
-  }
-
-  try {
-    let requestBody;
+    console.log('💾 Saving conversation:', conversationId);
+    console.log('📝 Messages to save:', messages.map(m => ({
+      id: m.id,
+      sender: m.sender,
+      hasThinking: !!m.thinking,
+      thinkingLength: m.thinking ? m.thinking.length : 0
+    })));
+    
     try {
-      requestBody = JSON.parse(event.body || '{}');
-    } catch (parseError) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
+      // First, ensure the conversation exists
+      db.get('SELECT id FROM private_conversations WHERE id = ?', [conversationId], (err, row) => {
+        if (err) {
+          console.error('Error checking conversation:', err);
+          return;
+        }
+        
+        if (!row) {
+          console.error('❌ Conversation not found:', conversationId);
+          socket.emit('conversation_saved', {
+            conversationId,
+            success: false,
+            error: 'Conversation not found'
+          });
+          return;
+        }
+        
+        console.log('✅ Conversation exists:', conversationId);
+        
+        // Save messages one by one to ensure proper conversation association
+        const saveMessage = (message, callback) => {
+          console.log(`💾 Saving message ${message.id} to conversation ${conversationId}`);
+          console.log(`📝 Message details: sender=${message.sender}, timestamp=${message.timestamp}`);
+          
+          db.run(
+            'INSERT OR REPLACE INTO messages (id, conversation_id, content, sender, thinking, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [
+              message.id,
+              conversationId, // Ensure we use the correct conversation ID
+              message.content,
+              message.sender,
+              message.thinking || null,
+              message.timestamp || new Date().toISOString()
+            ],
+            function(err) {
+              if (err) {
+                console.error(`❌ Failed to save message ${message.id}:`, err);
+                callback(err);
+              } else {
+                console.log(`✅ Saved message ${message.id} to conversation ${conversationId}`);
+                callback(null);
+              }
+            }
+          );
+        };
+        
+        // Save all messages sequentially
+        let savedCount = 0;
+        let hasError = false;
+        
+        messages.forEach((message, index) => {
+          saveMessage(message, (err) => {
+            if (err && !hasError) {
+              hasError = true;
+              socket.emit('conversation_saved', {
+                conversationId,
+                success: false,
+                error: err.message
+              });
+              return;
+            }
+            
+            savedCount++;
+            if (savedCount === messages.length && !hasError) {
+              // Update conversation timestamp
+              db.run(
+                'UPDATE private_conversations SET updated_at = ? WHERE id = ?',
+                [new Date().toISOString(), conversationId],
+                (updateErr) => {
+                  if (updateErr) {
+                    console.error('Failed to update conversation timestamp:', updateErr);
+                  }
+                  
+                  // Confirm save to client
+                  socket.emit('conversation_saved', {
+                    conversationId,
+                    success: true
+                  });
+                  
+                  console.log(`✅ Successfully saved ${messages.length} messages to conversation ${conversationId}`);
+                }
+              );
+            }
+          });
+        });
+      });
+      
+
+    } catch (error) {
+      console.error('Save conversation error:', error);
+      socket.emit('conversation_saved', {
+        conversationId,
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  // Thread management
+  socket.on('join_thread', (data) => {
+    const { threadId } = data;
+    socket.join(threadId);
+    
+    const connection = activeConnections.get(socket.id);
+    if (connection) {
+      connection.threadId = threadId;
+      activeConnections.set(socket.id, connection);
     }
     
-    const { userId, title } = requestBody;
+    console.log(`Socket ${socket.id} joined thread ${threadId}`);
+  });
+
+  socket.on('leave_thread', (data) => {
+    const { threadId } = data;
+    socket.leave(threadId);
     
-    if (!userId) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'User ID is required' })
-      };
-    }
-
-    const conversationId = crypto.randomUUID();
-    const now = new Date().toISOString();
-
-    const conversation = {
-      id: conversationId,
-      userId,
-      title: title || null,
-      createdAt: now,
-      updatedAt: now,
-      messages: []
-    };
-
-    await dynamodb.put({
-      TableName: conversationsTable,
-      Item: conversation
-    }).promise();
-
-    console.log('✅ Created new conversation:', conversationId);
-
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify(conversation)
-    };
-
-  } catch (error) {
-    console.error('Create conversation error:', error);
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({ 
-        error: 'Failed to create conversation',
-        message: error.message 
-      })
-    };
-  }
-};
-
-// Save messages to conversation
-exports.saveMessages = async (event) => {
-  // Handle OPTIONS request for CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: ''
-    };
-  }
-
-  try {
-    let requestBody;
-    try {
-      requestBody = JSON.parse(event.body || '{}');
-    } catch (parseError) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
+    const connection = activeConnections.get(socket.id);
+    if (connection) {
+      connection.threadId = null;
+      activeConnections.set(socket.id, connection);
     }
     
-    const { conversationId, messages } = requestBody;
-    
-    if (!conversationId || !messages || !Array.isArray(messages)) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Conversation ID and messages array are required' })
-      };
-    }
+    console.log(`Socket ${socket.id} left thread ${threadId}`);
+  });
 
-    console.log('💾 Saving', messages.length, 'messages to conversation:', conversationId);
+  socket.on('add_answer', async (data) => {
+    const { threadId, questionId, content } = data;
+    const answerId = uuidv4();
+    const connection = activeConnections.get(socket.id);
+    const userId = connection?.userId || 'anonymous';
 
-    // Verify conversation exists
-    const conversation = await dynamodb.get({
-      TableName: conversationsTable,
-      Key: { id: conversationId }
-    }).promise();
+    db.run(
+      'INSERT INTO answers (id, question_id, content, user_id, created_at) VALUES (?, ?, ?, ?, ?)',
+      [answerId, questionId, content, userId, new Date().toISOString()],
+      function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          socket.emit('error', { message: 'Failed to add answer' });
+          return;
+        }
 
-    if (!conversation.Item) {
-      return {
-        statusCode: 404,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Conversation not found' })
-      };
-    }
-
-    // Save messages sequentially
-    let savedCount = 0;
-    for (const message of messages) {
-      try {
-        const messageItem = {
-          id: message.id,
-          conversationId: conversationId,
-          content: message.content,
-          sender: message.sender,
-          userId: message.sender === 'user' ? conversation.Item.userId : null,
-          thinking: message.thinking || null,
-          timestamp: message.timestamp || new Date().toISOString(),
-          createdAt: message.timestamp || new Date().toISOString()
+        const answer = {
+          id: answerId,
+          questionId,
+          content,
+          userId,
+          isAI: false,
+          isPinned: false,
+          interactionCount: 0,
+          timestamp: new Date()
         };
 
-        // Use PUT with condition to prevent duplicates while maintaining order
-        await dynamodb.put({
-          TableName: messagesTable,
-          Item: messageItem,
-          ConditionExpression: 'attribute_not_exists(id) OR #ts < :newTimestamp',
-          ExpressionAttributeNames: {
-            '#ts': 'timestamp'
-          },
-          ExpressionAttributeValues: {
-            ':newTimestamp': messageItem.timestamp
-          }
-        }).promise();
+        // Broadcast to all sockets in the thread
+        io.to(threadId).emit('new_answer', { threadId, answer });
+      }
+    );
+  });
 
-        console.log(`✅ Saved message ${message.id} (${message.sender}) to conversation ${conversationId} at ${messageItem.timestamp}`);
-        savedCount++;
+  socket.on('add_comment', async (data) => {
+    const { answerId, content, parentId } = data;
+    const commentId = uuidv4();
+    const connection = activeConnections.get(socket.id);
+    const userId = connection?.userId || 'anonymous';
 
-      } catch (messageError) {
-        // If it's a conditional check failure, the message already exists - skip it
-        if (messageError.code === 'ConditionalCheckFailedException') {
-          console.log(`⚠️ Message ${message.id} already exists, skipping`);
-          savedCount++;
-        } else {
-          console.error(`❌ Failed to save message ${message.id}:`, messageError);
-          return {
-            statusCode: 500,
-            headers: corsHeaders,
-            body: JSON.stringify({ 
-              error: `Failed to save message: ${messageError.message}`,
-              savedCount 
-            })
-          };
+    db.run(
+      'INSERT INTO comments (id, answer_id, content, user_id, parent_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [commentId, answerId, content, userId, parentId || null, new Date().toISOString()],
+      function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          socket.emit('error', { message: 'Failed to add comment' });
+          return;
         }
+
+        const comment = {
+          id: commentId,
+          answerId,
+          content,
+          userId,
+          parentId: parentId || null,
+          timestamp: new Date()
+        };
+
+        // Broadcast to all connected sockets
+        io.emit('new_comment', { answerId, comment });
       }
+    );
+  });
+
+  // Typing indicators
+  socket.on('typing_start', (data) => {
+    const { threadId, type, targetId } = data;
+    const connection = activeConnections.get(socket.id);
+    if (connection && connection.userId) {
+      socket.to(threadId).emit('user_typing', {
+        userId: connection.userId,
+        type,
+        targetId
+      });
     }
+  });
 
-    // Update conversation timestamp
-    await dynamodb.update({
-      TableName: conversationsTable,
-      Key: { id: conversationId },
-      UpdateExpression: 'SET updatedAt = :updatedAt',
-      ExpressionAttributeValues: {
-        ':updatedAt': new Date().toISOString()
-      }
-    }).promise();
+  socket.on('typing_stop', (data) => {
+    const { threadId, type, targetId } = data;
+    const connection = activeConnections.get(socket.id);
+    if (connection && connection.userId) {
+      socket.to(threadId).emit('user_stop_typing', {
+        userId: connection.userId,
+        type,
+        targetId
+      });
+    }
+  });
 
-    console.log(`✅ Successfully saved ${savedCount} messages to conversation ${conversationId}`);
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+    activeConnections.delete(socket.id);
+  });
+});
 
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify({ 
-        success: true, 
-        savedCount,
-        conversationId 
-      })
-    };
+// REST API endpoints
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
-  } catch (error) {
-    console.error('Save messages error:', error);
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({ 
-        error: 'Failed to save messages',
-        message: error.message 
-      })
-    };
+// Add OPTIONS handler for CORS preflight requests
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5173');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.sendStatus(200);
+});
+
+app.get('/api/threads', (req, res) => {
+  const { filter = 'recent' } = req.query;
+  
+  let orderBy = 'created_at DESC';
+  if (filter === 'trending') {
+    orderBy = 'updated_at DESC';
   }
-};
+
+  db.all(
+    `SELECT t.*, u.name as creator_name, u.avatar as creator_avatar, u.handle as creator_handle,
+     (SELECT COUNT(*) FROM questions WHERE thread_id = t.id) as question_count,
+     (SELECT COUNT(*) FROM answers a JOIN questions q ON a.question_id = q.id WHERE q.thread_id = t.id) as answer_count
+     FROM threads t 
+     LEFT JOIN users u ON t.creator_id = u.id 
+     WHERE t.is_public = 1 
+     ORDER BY ${orderBy} 
+     LIMIT 20`,
+    (err, threads) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch threads' });
+      }
+      
+      // Transform the data to match frontend expectations
+      const transformedThreads = threads.map(thread => ({
+        id: thread.id,
+        title: thread.title,
+        creator: {
+          id: thread.creator_id,
+          name: thread.creator_name || 'Unknown User',
+          avatar: thread.creator_avatar || '/img-5.svg',
+          handle: thread.creator_handle || '@user'
+        },
+        isPublic: Boolean(thread.is_public),
+        createdAt: new Date(thread.created_at),
+        updatedAt: new Date(thread.updated_at),
+        questionCount: thread.question_count || 0,
+        answerCount: thread.answer_count || 0,
+        interactionCount: (thread.question_count || 0) + (thread.answer_count || 0),
+        questions: [],
+        category: thread.category
+      }));
+      
+      // Return consistent format with threads wrapped in an object
+      res.json({ threads: transformedThreads });
+    }
+  );
+});
+
+app.get('/api/users/:userId/conversations', (req, res) => {
+  const { userId } = req.params;
+  
+  db.all(
+    `SELECT c.*, 
+     (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count,
+     (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message
+     FROM private_conversations c 
+     WHERE c.user_id = ? 
+     ORDER BY c.updated_at DESC`,
+    [userId],
+    (err, conversations) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch conversations' });
+      }
+      
+      // Transform the data to match frontend expectations
+      const transformedConversations = conversations.map(conv => ({
+        id: conv.id,
+        userId: conv.user_id,
+        title: conv.title,
+        createdAt: new Date(conv.created_at),
+        updatedAt: new Date(conv.updated_at),
+        messages: [] // Messages will be loaded separately when needed
+      }));
+      
+      res.json(transformedConversations);
+    }
+  );
+});
+
+app.get('/api/conversations/:conversationId/messages', (req, res) => {
+  const { conversationId } = req.params;
+  
+  console.log('🔍 Loading messages for conversation:', conversationId);
+  
+  db.all(
+    'SELECT id, conversation_id, content, sender, user_id, thinking, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
+    [conversationId],
+    (err, messages) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch messages' });
+      }
+      
+      console.log('📨 Loaded messages for conversation:', conversationId, {
+        messageCount: messages.length,
+        messagesWithThinking: messages.filter(m => m.thinking).length,
+        messageIds: messages.map(m => m.id)
+      });
+      
+      // Transform the data to match frontend expectations
+      const transformedMessages = messages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        timestamp: new Date(msg.created_at),
+        sender: msg.sender,
+        userId: msg.user_id,
+        thinking: msg.thinking ? msg.thinking : undefined
+      }));
+      
+      console.log('📤 Sending transformed messages:', transformedMessages.map(m => ({
+        id: m.id,
+        sender: m.sender,
+        hasThinking: !!m.thinking,
+        conversationId: conversationId
+      })));
+      
+      res.json(transformedMessages);
+    }
+  );
+});
+
+app.post('/api/conversations', (req, res) => {
+  const { userId, title } = req.body;
+  const conversationId = uuidv4();
+  
+  db.run(
+    'INSERT INTO private_conversations (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+    [conversationId, userId, title || null, new Date().toISOString(), new Date().toISOString()],
+    function(err) {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to create conversation' });
+      }
+      
+      res.json({
+        id: conversationId,
+        userId,
+        title,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        messages: []
+      });
+    }
+  );
+});
+
+app.get('/api/threads/:threadId', (req, res) => {
+  const { threadId } = req.params;
+  
+  // Get thread with questions and answers
+  db.get(
+    `SELECT t.*, u.name as creator_name, u.avatar as creator_avatar, u.handle as creator_handle
+     FROM threads t 
+     LEFT JOIN users u ON t.creator_id = u.id 
+     WHERE t.id = ?`,
+    [threadId],
+    (err, thread) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch thread' });
+      }
+      
+      if (!thread) {
+        return res.status(404).json({ error: 'Thread not found' });
+      }
+      
+      // Get questions for this thread
+      db.all(
+        'SELECT * FROM questions WHERE thread_id = ? ORDER BY created_at ASC',
+        [threadId],
+        (err, questions) => {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Failed to fetch questions' });
+          }
+          
+          const transformedThread = {
+            id: thread.id,
+            title: thread.title,
+            creator: {
+              id: thread.creator_id,
+              name: thread.creator_name || 'Unknown User',
+              avatar: thread.creator_avatar || '/img-5.svg',
+              handle: thread.creator_handle || '@user'
+            },
+            isPublic: Boolean(thread.is_public),
+            createdAt: new Date(thread.created_at),
+            updatedAt: new Date(thread.updated_at),
+            questionCount: questions.length,
+            answerCount: 0, // Will be calculated
+            interactionCount: 0, // Will be calculated
+            questions: questions.map(q => ({
+              id: q.id,
+              content: q.content,
+              timestamp: new Date(q.created_at),
+              userId: q.user_id,
+              threadId: q.thread_id
+            })),
+            category: thread.category
+          };
+          
+          res.json(transformedThread);
+        }
+      );
+    }
+  );
+});
+
+app.get('/api/user-conversations/:userId', (req, res) => {
+  const { userId } = req.params;
+  
+  db.all(
+    `SELECT c.*, 
+     (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count,
+     (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message
+     FROM private_conversations c 
+     WHERE c.user_id = ? 
+     ORDER BY datetime(c.updated_at) DESC`,
+    [userId],
+    (err, conversations) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch conversations' });
+      }
+      
+      // Transform the data to match frontend expectations
+      const transformedConversations = conversations.map(conv => ({
+        id: conv.id,
+        userId: conv.user_id,
+        title: conv.title,
+        createdAt: new Date(conv.created_at),
+        updatedAt: new Date(conv.updated_at),
+        messages: [] // Messages will be loaded separately when needed
+      }));
+      
+      res.json(transformedConversations);
+    }
+  );
+});
+
+app.post('/api/new-conversation', (req, res) => {
+  const { userId, title } = req.body;
+  const conversationId = uuidv4();
+  
+  db.run(
+    'INSERT INTO private_conversations (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
+    [conversationId, userId, title || null, new Date().toISOString(), new Date().toISOString()],
+    function(err) {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to create conversation' });
+      }
+      
+      res.json({
+        id: conversationId,
+        userId,
+        title,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        messages: []
+      });
+    }
+  );
+});
+
+app.get('/api/messages/:conversationId', (req, res) => {
+  const { conversationId } = req.params;
+  
+  console.log('🔍 Loading messages for conversation:', conversationId);
+  
+  db.all(
+    'SELECT id, conversation_id, content, sender, user_id, thinking, created_at FROM messages WHERE conversation_id = ? ORDER BY datetime(created_at) ASC, id ASC',
+    [conversationId],
+    (err, messages) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch messages' });
+      }
+      
+      console.log('📨 Loaded messages for conversation:', conversationId, {
+        messageCount: messages.length,
+        messagesWithThinking: messages.filter(m => m.thinking).length,
+        messageIds: messages.map(m => m.id),
+        messageOrder: messages.map(m => ({ id: m.id, sender: m.sender, timestamp: m.created_at }))
+      });
+      
+      // Transform the data to match frontend expectations
+      const transformedMessages = messages.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        timestamp: new Date(msg.created_at),
+        sender: msg.sender,
+        userId: msg.user_id,
+        thinking: msg.thinking ? msg.thinking : undefined
+      }));
+      
+      console.log('📤 Sending transformed messages:', transformedMessages.map(m => ({
+        id: m.id,
+        sender: m.sender,
+        hasThinking: !!m.thinking,
+        conversationId: conversationId,
+        timestamp: m.timestamp
+      })));
+      
+      res.json(transformedMessages);
+    }
+  );
+});
 
 // Update conversation title
-exports.updateConversationTitle = async (event) => {
-  // Handle OPTIONS request for CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: ''
-    };
+app.put('/api/conversations/:conversationId/title', (req, res) => {
+  const { conversationId } = req.params;
+  const { title } = req.body;
+  
+  if (!title) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+  
+  db.run(
+    'UPDATE private_conversations SET title = ?, updated_at = ? WHERE id = ?',
+    [title, new Date().toISOString(), conversationId],
+    function(err) {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to update title' });
+      }
+      
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Conversation not found' });
+      }
+      
+      console.log('✅ Updated conversation title:', conversationId, title);
+      res.json({ success: true, title });
+    }
+  );
+});
+
+// Publish thread from private conversation
+app.post('/api/publish-thread', (req, res) => {
+  const { conversationId, title, category, userId, messages } = req.body;
+  
+  if (!conversationId || !title || !userId || !messages) {
+    return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  try {
-    const { conversationId } = event.pathParameters || {};
-    
-    if (!conversationId) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Conversation ID is required' })
-      };
+  console.log('📢 Publishing thread from conversation:', conversationId);
+
+  const threadId = uuidv4();
+  const now = new Date().toISOString();
+
+  // Create the thread
+  db.run(
+    'INSERT INTO threads (id, title, creator_id, category, is_public, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [threadId, title, userId, category || 'general', true, now, now],
+    function(err) {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to create thread' });
+      }
+
+      console.log('✅ Created thread:', threadId);
+
+      // Group messages into Q&A pairs
+      const qaPairs = [];
+      for (let i = 0; i < messages.length; i += 2) {
+        const userMessage = messages[i];
+        const aiMessage = messages[i + 1];
+        
+        if (userMessage && userMessage.sender === 'user') {
+          qaPairs.push({
+            question: userMessage,
+            answer: aiMessage && aiMessage.sender === 'ai' ? aiMessage : null
+          });
+        }
+      }
+
+      console.log('📝 Creating', qaPairs.length, 'Q&A pairs');
+
+      // Create questions and answers
+      let processedPairs = 0;
+      let hasError = false;
+
+      if (qaPairs.length === 0) {
+        return res.json({
+          success: true,
+          threadId,
+          title,
+          category: category || 'general',
+          questionCount: 0,
+          answerCount: 0
+        });
+      }
+
+      qaPairs.forEach((pair, index) => {
+        const questionId = uuidv4();
+        
+        // Create question
+        db.run(
+          'INSERT INTO questions (id, thread_id, content, user_id, created_at) VALUES (?, ?, ?, ?, ?)',
+          [questionId, threadId, pair.question.content, userId, pair.question.timestamp || now],
+          function(err) {
+            if (err && !hasError) {
+              hasError = true;
+              console.error('Failed to create question:', err);
+              return res.status(500).json({ error: 'Failed to create question' });
+            }
+
+            console.log('✅ Created question:', questionId);
+
+            // Create AI answer if exists
+            if (pair.answer) {
+              const answerId = uuidv4();
+              
+              db.run(
+                'INSERT INTO answers (id, question_id, content, user_id, is_ai, is_pinned, interaction_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [answerId, questionId, pair.answer.content, null, true, true, 0, pair.answer.timestamp || now],
+                function(answerErr) {
+                  if (answerErr && !hasError) {
+                    hasError = true;
+                    console.error('Failed to create answer:', answerErr);
+                    return res.status(500).json({ error: 'Failed to create answer' });
+                  }
+
+                  console.log('✅ Created AI answer:', answerId);
+                  
+                  processedPairs++;
+                  if (processedPairs === qaPairs.length && !hasError) {
+                    console.log('🎉 Successfully published thread:', threadId);
+                    res.json({
+                      success: true,
+                      threadId,
+                      title,
+                      category: category || 'general',
+                      questionCount: qaPairs.length,
+                      answerCount: qaPairs.filter(p => p.answer).length
+                    });
+                  }
+                }
+              );
+            } else {
+              processedPairs++;
+              if (processedPairs === qaPairs.length && !hasError) {
+                console.log('🎉 Successfully published thread:', threadId);
+                res.json({
+                  success: true,
+                  threadId,
+                  title,
+                  category: category || 'general',
+                  questionCount: qaPairs.length,
+                  answerCount: qaPairs.filter(p => p.answer).length
+                });
+              }
+            }
+          }
+        );
+      });
     }
+  );
+});
 
-    let requestBody;
-    try {
-      requestBody = JSON.parse(event.body || '{}');
-    } catch (parseError) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
-    }
-    
-    const { title } = requestBody;
-    
-    if (!title) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Title is required' })
-      };
-    }
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Server error:', err);
+  res.status(500).json({ error: 'Internal server error' });
+});
 
-    // Update conversation title
-    await dynamodb.update({
-      TableName: conversationsTable,
-      Key: { id: conversationId },
-      UpdateExpression: 'SET title = :title, updatedAt = :updatedAt',
-      ExpressionAttributeValues: {
-        ':title': title,
-        ':updatedAt': new Date().toISOString()
-      },
-      ConditionExpression: 'attribute_exists(id)'
-    }).promise();
+// 404 handler
+app.use((req, res) => {
+  console.log('404 - Route not found:', req.method, req.url);
+  res.status(404).json({ 
+    error: 'Route not found',
+    method: req.method,
+    url: req.url,
+    availableRoutes: [
+      'GET /',
+      'GET /api/health',
+      'GET /api/threads',
+      'GET /api/conversations/:userId',
+      'GET /api/conversations/:conversationId/messages',
+      'POST /api/conversations',
+      'GET /api/threads/:threadId'
+    ]
+  });
+});
 
-    console.log('✅ Updated conversation title:', conversationId, title);
-
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify({ success: true, title })
-    };
-
-  } catch (error) {
-    console.error('Update conversation title error:', error);
-    
-    if (error.code === 'ConditionalCheckFailedException') {
-      return {
-        statusCode: 404,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Conversation not found' })
-      };
-    }
-    
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({ 
-        error: 'Failed to update conversation title',
-        message: error.message 
-      })
-    };
-  }
-};
-
-// Handle OPTIONS requests for CORS
-exports.options = async (event) => {
-  return {
-    statusCode: 200,
-    headers: corsHeaders,
-    body: ''
-  };
-};
+const PORT = process.env.PORT || 3002;
+server.listen(PORT, () => {
+  console.log(`🚀 Ainigama server running on port ${PORT}`);
+  console.log(`📡 WebSocket server ready`);
+  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+  console.log(`🔑 DeepSeek API configured: ${process.env.DEEPSEEK_API_KEY ? 'Yes' : 'No'}`);
+});
