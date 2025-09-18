@@ -61,12 +61,16 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         
         if (response.ok) {
           const loadedConversations = await response.json();
-          setConversations(Array.isArray(loadedConversations) ? loadedConversations : loadedConversations.conversations || []);
+          const conversationsArray = Array.isArray(loadedConversations) ? loadedConversations : loadedConversations.conversations || [];
+          // Sort by updatedAt descending (latest first)
+          const sortedConversations = conversationsArray.sort((a, b) => 
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          );
+          setConversations(sortedConversations);
           
           // Set first conversation as current if none selected
-          const conversationsArray = Array.isArray(loadedConversations) ? loadedConversations : loadedConversations.conversations || [];
-          if (conversationsArray.length > 0 && !currentConversation) {
-            setCurrentConversation(conversationsArray[0]);
+          if (sortedConversations.length > 0 && !currentConversation) {
+            setCurrentConversation(sortedConversations[0]);
           }
         }
       } catch (error) {
@@ -279,6 +283,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           setCurrentConversation(finalConversation);
           setConversations(prev => 
             prev.map(c => c.id === finalConversation.id ? finalConversation : c)
+              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
           );
 
           // Save title to backend if generated
@@ -379,7 +384,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       
       if (response.ok) {
         const newConversation = await response.json();
-        setConversations(prev => [newConversation, ...prev]);
+        setConversations(prev => [newConversation, ...prev].sort((a, b) => 
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        ));
         setCurrentConversation(newConversation);
       }
     } catch (error) {

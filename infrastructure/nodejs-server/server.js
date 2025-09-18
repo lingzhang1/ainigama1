@@ -673,7 +673,7 @@ app.get('/api/user-conversations/:userId', (req, res) => {
      (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message
      FROM private_conversations c 
      WHERE c.user_id = ? 
-     ORDER BY c.updated_at DESC`,
+     ORDER BY datetime(c.updated_at) DESC`,
     [userId],
     (err, conversations) => {
       if (err) {
