@@ -1,779 +1,561 @@
-const express = require('express');
-const http = require('http');
-const socketIo = require('socket.io');
-const cors = require('cors');
-const helmet = require('helmet');
-const sqlite3 = require('sqlite3').verbose();
-const { deepseek } = require('@ai-sdk/deepseek');
-const { streamText } = require('ai');
-const { v4: uuidv4 } = require('uuid');
-require('dotenv').config();
+import React, { useState, useEffect, useRef } from 'react';
+import { Send, Plus, Share2, X, Loader2 } from 'lucide-react';
+import { useWebSocket } from '../../hooks/useWebSocket';
+import { useAppContext } from '../../context/AppContext';
+import { StreamingMessage } from './StreamingMessage';
 
-const app = express();
-const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    methods: ["GET", "POST"]
-  }
-});
+interface Message {
+  id: string;
+  content: string;
+  sender: 'user' | 'ai';
+  timestamp: Date;
+  thinking?: string;
+}
 
-// Middleware
-app.use(helmet());
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:5173",
-  credentials: true
-}));
-app.use(express.json());
+interface Conversation {
+  id: string;
+  title?: string;
+  userId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  messages: Message[];
+}
 
-// Serve static files and handle root route
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Ainigama Backend Server',
-    status: 'running',
-    version: '1.0.0',
-    endpoints: {
-      health: '/api/health',
-      threads: '/api/threads',
-      conversations: '/api/conversations/:userId'
+export const PrivateChat: React.FC = () => {
+  const { user, setCurrentView } = useAppContext();
+  const { socket } = useWebSocket();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [currentConversation, setCurrentConversation] = useState<Conversation | null>(null);
+  const [inputMessage, setInputMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [publishTitle, setPublishTitle] = useState('');
+  const [publishCategory, setPublishCategory] = useState('general');
+  const [isPublishing, setIsPublishing] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [currentConversation?.messages]);
+
+  useEffect(() => {
+    if (user) {
+      loadConversations();
     }
-  });
-});
+  }, [user]);
 
-// Database setup
-const db = new sqlite3.Database('./ainigama.db');
-
-// Initialize database tables
-db.serialize(() => {
-  // Users table
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    name TEXT NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    avatar TEXT,
-    handle TEXT UNIQUE,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-
-  // Private conversations
-  db.run(`CREATE TABLE IF NOT EXISTS private_conversations (
-    id TEXT PRIMARY KEY,
-    user_id TEXT NOT NULL,
-    title TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  )`);
-
-  // Messages
-  db.run(`CREATE TABLE IF NOT EXISTS messages (
-    id TEXT PRIMARY KEY,
-    conversation_id TEXT NOT NULL,
-    content TEXT NOT NULL,
-    sender TEXT NOT NULL CHECK (sender IN ('user', 'ai')),
-    user_id TEXT,
-    thinking TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (conversation_id) REFERENCES private_conversations (id),
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  )`);
-
-  // Public threads
-  db.run(`CREATE TABLE IF NOT EXISTS threads (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    creator_id TEXT NOT NULL,
-    category TEXT,
-    is_public BOOLEAN DEFAULT 1,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (creator_id) REFERENCES users (id)
-  )`);
-
-  // Questions
-  db.run(`CREATE TABLE IF NOT EXISTS questions (
-    id TEXT PRIMARY KEY,
-    thread_id TEXT NOT NULL,
-    content TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (thread_id) REFERENCES threads (id),
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  )`);
-
-  // Answers
-  db.run(`CREATE TABLE IF NOT EXISTS answers (
-    id TEXT PRIMARY KEY,
-    question_id TEXT NOT NULL,
-    content TEXT NOT NULL,
-    user_id TEXT,
-    is_ai BOOLEAN DEFAULT 0,
-    is_pinned BOOLEAN DEFAULT 0,
-    interaction_count INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (question_id) REFERENCES questions (id),
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  )`);
-
-  // Comments
-  db.run(`CREATE TABLE IF NOT EXISTS comments (
-    id TEXT PRIMARY KEY,
-    answer_id TEXT NOT NULL,
-    content TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    parent_id TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (answer_id) REFERENCES answers (id),
-    FOREIGN KEY (user_id) REFERENCES users (id),
-    FOREIGN KEY (parent_id) REFERENCES comments (id)
-  )`);
-
-  // WebSocket connections tracking
-  db.run(`CREATE TABLE IF NOT EXISTS connections (
-    connection_id TEXT PRIMARY KEY,
-    user_id TEXT,
-    thread_id TEXT,
-    connected_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
-});
-
-// Store active connections
-const activeConnections = new Map();
-
-// Socket.io connection handling
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-  
-  // Store connection
-  activeConnections.set(socket.id, {
-    socket,
-    userId: null,
-    threadId: null
-  });
-
-  // Handle user authentication
-  socket.on('authenticate', (data) => {
-    const connection = activeConnections.get(socket.id);
-    if (connection) {
-      connection.userId = data.userId;
-      activeConnections.set(socket.id, connection);
-    }
-  });
-
-  // Save conversation (both user and AI messages)
-  socket.on('save_conversation', async (data) => {
-    const { conversationId, messages } = data;
-    
-    console.log('💾 Saving conversation:', conversationId);
-    console.log('📝 Messages to save:', messages.map(m => ({
-      id: m.id,
-      sender: m.sender,
-      hasThinking: !!m.thinking,
-      thinkingLength: m.thinking ? m.thinking.length : 0
-    })));
+  const loadConversations = async () => {
+    if (!user) return;
     
     try {
-      // First, ensure the conversation exists
-      db.get('SELECT id FROM private_conversations WHERE id = ?', [conversationId], (err, row) => {
-        if (err) {
-          console.error('Error checking conversation:', err);
-          return;
-        }
-        
-        if (!row) {
-          console.error('❌ Conversation not found:', conversationId);
-          socket.emit('conversation_saved', {
-            conversationId,
-            success: false,
-            error: 'Conversation not found'
-          });
-          return;
-        }
-        
-        console.log('✅ Conversation exists:', conversationId);
-        
-        // Save messages one by one to ensure proper conversation association
-        const saveMessage = (message, callback) => {
-          console.log(`💾 Saving message ${message.id} to conversation ${conversationId}`);
-          console.log(`📝 Message details: sender=${message.sender}, timestamp=${message.timestamp}`);
-          
-          db.run(
-            'INSERT OR REPLACE INTO messages (id, conversation_id, content, sender, thinking, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-            [
-              message.id,
-              conversationId, // Ensure we use the correct conversation ID
-              message.content,
-              message.sender,
-              message.thinking || null,
-              message.timestamp || new Date().toISOString()
-            ],
-            function(err) {
-              if (err) {
-                console.error(`❌ Failed to save message ${message.id}:`, err);
-                callback(err);
-              } else {
-                console.log(`✅ Saved message ${message.id} to conversation ${conversationId}`);
-                callback(null);
-              }
-            }
-          );
-        };
-        
-        // Save all messages sequentially
-        let savedCount = 0;
-        let hasError = false;
-        
-        messages.forEach((message, index) => {
-          saveMessage(message, (err) => {
-            if (err && !hasError) {
-              hasError = true;
-              socket.emit('conversation_saved', {
-                conversationId,
-                success: false,
-                error: err.message
-              });
-              return;
-            }
-            
-            savedCount++;
-            if (savedCount === messages.length && !hasError) {
-              // Update conversation timestamp
-              db.run(
-                'UPDATE private_conversations SET updated_at = ? WHERE id = ?',
-                [new Date().toISOString(), conversationId],
-                (updateErr) => {
-                  if (updateErr) {
-                    console.error('Failed to update conversation timestamp:', updateErr);
-                  }
-                  
-                  // Confirm save to client
-                  socket.emit('conversation_saved', {
-                    conversationId,
-                    success: true
-                  });
-                  
-                  console.log(`✅ Successfully saved ${messages.length} messages to conversation ${conversationId}`);
-                }
-              );
-            }
-          });
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/user-conversations/${user.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        const sortedConversations = data.sort((a: Conversation, b: Conversation) => 
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+        setConversations(sortedConversations);
+      }
+    } catch (error) {
+      console.error('Failed to load conversations:', error);
+    }
+  };
+
+  const loadMessages = async (conversationId: string) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/messages/${conversationId}`);
+      if (response.ok) {
+        const messages = await response.json();
+        return messages;
+      }
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+    }
+    return [];
+  };
+
+  const selectConversation = async (conversation: Conversation) => {
+    if (currentConversation?.id === conversation.id) {
+      // Force refresh if clicking the same conversation
+      setCurrentConversation(null);
+      setTimeout(async () => {
+        const messages = await loadMessages(conversation.id);
+        setCurrentConversation({
+          ...conversation,
+          messages: messages || []
         });
+      }, 50);
+    } else {
+      const messages = await loadMessages(conversation.id);
+      setCurrentConversation({
+        ...conversation,
+        messages: messages || []
       });
-      
+    }
+  };
+
+  const createNewConversation = async () => {
+    if (!user) return;
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/new-conversation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          title: null
+        }),
+      });
+
+      if (response.ok) {
+        const newConversation = await response.json();
+        const updatedConversations = [newConversation, ...conversations].sort((a, b) => 
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        );
+        setConversations(updatedConversations);
+        setCurrentConversation(newConversation);
+      }
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+    }
+  };
+
+  const generateTitle = async (userMessage: string): Promise<string> => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/generate-title`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ message: userMessage }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.title;
+      }
+    } catch (error) {
+      console.error('Failed to generate title:', error);
+    }
+    
+    // Fallback: use first few words
+    return userMessage.split(' ').slice(0, 6).join(' ');
+  };
+
+  const updateConversationTitle = async (conversationId: string, title: string) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/conversations/${conversationId}/title`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ title }),
+      });
+
+      if (response.ok) {
+        // Update local state
+        setConversations(prev => prev.map(conv => 
+          conv.id === conversationId ? { ...conv, title } : conv
+        ));
+        
+        if (currentConversation?.id === conversationId) {
+          setCurrentConversation(prev => prev ? { ...prev, title } : null);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update title:', error);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!inputMessage.trim() || !currentConversation || !user || isLoading) return;
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      content: inputMessage.trim(),
+      sender: 'user',
+      timestamp: new Date()
+    };
+
+    // Add user message immediately
+    setCurrentConversation(prev => prev ? {
+      ...prev,
+      messages: [...prev.messages, userMessage]
+    } : null);
+
+    const currentInput = inputMessage.trim();
+    setInputMessage('');
+    setIsLoading(true);
+
+    try {
+      // Generate title if this is the first message
+      if (currentConversation.messages.length === 0) {
+        const title = await generateTitle(currentInput);
+        await updateConversationTitle(currentConversation.id, title);
+      }
+
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: currentInput,
+          conversationId: currentConversation.id,
+          userId: user.id
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to send message');
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response stream');
+      }
+
+      let aiMessage: Message = {
+        id: `ai-${Date.now()}`,
+        content: '',
+        sender: 'ai',
+        timestamp: new Date(),
+        thinking: ''
+      };
+
+      // Add AI message placeholder
+      setCurrentConversation(prev => prev ? {
+        ...prev,
+        messages: [...prev.messages, aiMessage]
+      } : null);
+
+      let isThinking = true;
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = new TextDecoder().decode(value);
+        buffer += chunk;
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') continue;
+
+            try {
+              const parsed = JSON.parse(data);
+              
+              if (parsed.type === 'thinking') {
+                aiMessage.thinking = (aiMessage.thinking || '') + parsed.content;
+              } else if (parsed.type === 'content') {
+                if (isThinking) {
+                  isThinking = false;
+                }
+                aiMessage.content += parsed.content;
+              }
+
+              // Update the message in state
+              setCurrentConversation(prev => prev ? {
+                ...prev,
+                messages: prev.messages.map(msg => 
+                  msg.id === aiMessage.id ? { ...aiMessage } : msg
+                )
+              } : null);
+            } catch (e) {
+              console.error('Failed to parse SSE data:', e);
+            }
+          }
+        }
+      }
+
+      // Save the complete conversation
+      if (socket) {
+        const allMessages = [...currentConversation.messages, userMessage, aiMessage];
+        socket.emit('save_conversation', {
+          conversationId: currentConversation.id,
+          messages: allMessages
+        });
+      }
 
     } catch (error) {
-      console.error('Save conversation error:', error);
-      socket.emit('conversation_saved', {
-        conversationId,
-        success: false,
-        error: error.message
-      });
+      console.error('Error sending message:', error);
+      // Remove the user message on error
+      setCurrentConversation(prev => prev ? {
+        ...prev,
+        messages: prev.messages.slice(0, -1)
+      } : null);
+    } finally {
+      setIsLoading(false);
     }
-  });
+  };
 
-  // Thread management
-  socket.on('join_thread', (data) => {
-    const { threadId } = data;
-    socket.join(threadId);
-    
-    const connection = activeConnections.get(socket.id);
-    if (connection) {
-      connection.threadId = threadId;
-      activeConnections.set(socket.id, connection);
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
-    
-    console.log(`Socket ${socket.id} joined thread ${threadId}`);
-  });
+  };
 
-  socket.on('leave_thread', (data) => {
-    const { threadId } = data;
-    socket.leave(threadId);
-    
-    const connection = activeConnections.get(socket.id);
-    if (connection) {
-      connection.threadId = null;
-      activeConnections.set(socket.id, connection);
-    }
-    
-    console.log(`Socket ${socket.id} left thread ${threadId}`);
-  });
+  const handlePublishThread = async () => {
+    if (!currentConversation || !user || !publishTitle.trim()) return;
 
-  socket.on('add_answer', async (data) => {
-    const { threadId, questionId, content } = data;
-    const answerId = uuidv4();
-    const connection = activeConnections.get(socket.id);
-    const userId = connection?.userId || 'anonymous';
-
-    db.run(
-      'INSERT INTO answers (id, question_id, content, user_id, created_at) VALUES (?, ?, ?, ?, ?)',
-      [answerId, questionId, content, userId, new Date().toISOString()],
-      function(err) {
-        if (err) {
-          console.error('Database error:', err);
-          socket.emit('error', { message: 'Failed to add answer' });
-          return;
-        }
-
-        const answer = {
-          id: answerId,
-          questionId,
-          content,
-          userId,
-          isAI: false,
-          isPinned: false,
-          interactionCount: 0,
-          timestamp: new Date()
-        };
-
-        // Broadcast to all sockets in the thread
-        io.to(threadId).emit('new_answer', { threadId, answer });
-      }
-    );
-  });
-
-  socket.on('add_comment', async (data) => {
-    const { answerId, content, parentId } = data;
-    const commentId = uuidv4();
-    const connection = activeConnections.get(socket.id);
-    const userId = connection?.userId || 'anonymous';
-
-    db.run(
-      'INSERT INTO comments (id, answer_id, content, user_id, parent_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [commentId, answerId, content, userId, parentId || null, new Date().toISOString()],
-      function(err) {
-        if (err) {
-          console.error('Database error:', err);
-          socket.emit('error', { message: 'Failed to add comment' });
-          return;
-        }
-
-        const comment = {
-          id: commentId,
-          answerId,
-          content,
-          userId,
-          parentId: parentId || null,
-          timestamp: new Date()
-        };
-
-        // Broadcast to all connected sockets
-        io.emit('new_comment', { answerId, comment });
-      }
-    );
-  });
-
-  // Typing indicators
-  socket.on('typing_start', (data) => {
-    const { threadId, type, targetId } = data;
-    const connection = activeConnections.get(socket.id);
-    if (connection && connection.userId) {
-      socket.to(threadId).emit('user_typing', {
-        userId: connection.userId,
-        type,
-        targetId
-      });
-    }
-  });
-
-  socket.on('typing_stop', (data) => {
-    const { threadId, type, targetId } = data;
-    const connection = activeConnections.get(socket.id);
-    if (connection && connection.userId) {
-      socket.to(threadId).emit('user_stop_typing', {
-        userId: connection.userId,
-        type,
-        targetId
-      });
-    }
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-    activeConnections.delete(socket.id);
-  });
-});
-
-// REST API endpoints
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
-
-// Add OPTIONS handler for CORS preflight requests
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5173');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.sendStatus(200);
-});
-
-app.get('/api/threads', (req, res) => {
-  const { filter = 'recent' } = req.query;
-  
-  let orderBy = 'created_at DESC';
-  if (filter === 'trending') {
-    orderBy = 'updated_at DESC';
-  }
-
-  db.all(
-    `SELECT t.*, u.name as creator_name, u.avatar as creator_avatar, u.handle as creator_handle,
-     (SELECT COUNT(*) FROM questions WHERE thread_id = t.id) as question_count,
-     (SELECT COUNT(*) FROM answers a JOIN questions q ON a.question_id = q.id WHERE q.thread_id = t.id) as answer_count
-     FROM threads t 
-     LEFT JOIN users u ON t.creator_id = u.id 
-     WHERE t.is_public = 1 
-     ORDER BY ${orderBy} 
-     LIMIT 20`,
-    (err, threads) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to fetch threads' });
-      }
-      
-      // Transform the data to match frontend expectations
-      const transformedThreads = threads.map(thread => ({
-        id: thread.id,
-        title: thread.title,
-        creator: {
-          id: thread.creator_id,
-          name: thread.creator_name || 'Unknown User',
-          avatar: thread.creator_avatar || '/img-5.svg',
-          handle: thread.creator_handle || '@user'
+    setIsPublishing(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/api/publish-thread`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        isPublic: Boolean(thread.is_public),
-        createdAt: new Date(thread.created_at),
-        updatedAt: new Date(thread.updated_at),
-        questionCount: thread.question_count || 0,
-        answerCount: thread.answer_count || 0,
-        interactionCount: (thread.question_count || 0) + (thread.answer_count || 0),
-        questions: [],
-        category: thread.category
-      }));
-      
-      // Return consistent format with threads wrapped in an object
-      res.json({ threads: transformedThreads });
-    }
-  );
-});
-
-app.get('/api/users/:userId/conversations', (req, res) => {
-  const { userId } = req.params;
-  
-  db.all(
-    `SELECT c.*, 
-     (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count,
-     (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message
-     FROM private_conversations c 
-     WHERE c.user_id = ? 
-     ORDER BY c.updated_at DESC`,
-    [userId],
-    (err, conversations) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to fetch conversations' });
-      }
-      
-      // Transform the data to match frontend expectations
-      const transformedConversations = conversations.map(conv => ({
-        id: conv.id,
-        userId: conv.user_id,
-        title: conv.title,
-        createdAt: new Date(conv.created_at),
-        updatedAt: new Date(conv.updated_at),
-        messages: [] // Messages will be loaded separately when needed
-      }));
-      
-      res.json(transformedConversations);
-    }
-  );
-});
-
-app.get('/api/conversations/:conversationId/messages', (req, res) => {
-  const { conversationId } = req.params;
-  
-  console.log('🔍 Loading messages for conversation:', conversationId);
-  
-  db.all(
-    'SELECT id, conversation_id, content, sender, user_id, thinking, created_at FROM messages WHERE conversation_id = ? ORDER BY created_at ASC',
-    [conversationId],
-    (err, messages) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to fetch messages' });
-      }
-      
-      console.log('📨 Loaded messages for conversation:', conversationId, {
-        messageCount: messages.length,
-        messagesWithThinking: messages.filter(m => m.thinking).length,
-        messageIds: messages.map(m => m.id)
+        body: JSON.stringify({
+          conversationId: currentConversation.id,
+          title: publishTitle.trim(),
+          category: publishCategory,
+          userId: user.id,
+          messages: currentConversation.messages
+        }),
       });
-      
-      // Transform the data to match frontend expectations
-      const transformedMessages = messages.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        timestamp: new Date(msg.created_at),
-        sender: msg.sender,
-        userId: msg.user_id,
-        thinking: msg.thinking ? msg.thinking : undefined
-      }));
-      
-      console.log('📤 Sending transformed messages:', transformedMessages.map(m => ({
-        id: m.id,
-        sender: m.sender,
-        hasThinking: !!m.thinking,
-        conversationId: conversationId
-      })));
-      
-      res.json(transformedMessages);
-    }
-  );
-});
 
-app.post('/api/conversations', (req, res) => {
-  const { userId, title } = req.body;
-  const conversationId = uuidv4();
-  
-  db.run(
-    'INSERT INTO private_conversations (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-    [conversationId, userId, title || null, new Date().toISOString(), new Date().toISOString()],
-    function(err) {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to create conversation' });
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Thread published successfully:', result);
+        setShowPublishModal(false);
+        setPublishTitle('');
+        setPublishCategory('general');
+        // Navigate to forum
+        setCurrentView('forum');
+      } else {
+        throw new Error('Failed to publish thread');
       }
-      
-      res.json({
-        id: conversationId,
-        userId,
-        title,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        messages: []
-      });
+    } catch (error) {
+      console.error('Error publishing thread:', error);
+      alert('Failed to publish thread. Please try again.');
+    } finally {
+      setIsPublishing(false);
     }
-  );
-});
+  };
 
-app.get('/api/threads/:threadId', (req, res) => {
-  const { threadId } = req.params;
-  
-  // Get thread with questions and answers
-  db.get(
-    `SELECT t.*, u.name as creator_name, u.avatar as creator_avatar, u.handle as creator_handle
-     FROM threads t 
-     LEFT JOIN users u ON t.creator_id = u.id 
-     WHERE t.id = ?`,
-    [threadId],
-    (err, thread) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to fetch thread' });
-      }
-      
-      if (!thread) {
-        return res.status(404).json({ error: 'Thread not found' });
-      }
-      
-      // Get questions for this thread
-      db.all(
-        'SELECT * FROM questions WHERE thread_id = ? ORDER BY created_at ASC',
-        [threadId],
-        (err, questions) => {
-          if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({ error: 'Failed to fetch questions' });
-          }
-          
-          const transformedThread = {
-            id: thread.id,
-            title: thread.title,
-            creator: {
-              id: thread.creator_id,
-              name: thread.creator_name || 'Unknown User',
-              avatar: thread.creator_avatar || '/img-5.svg',
-              handle: thread.creator_handle || '@user'
-            },
-            isPublic: Boolean(thread.is_public),
-            createdAt: new Date(thread.created_at),
-            updatedAt: new Date(thread.updated_at),
-            questionCount: questions.length,
-            answerCount: 0, // Will be calculated
-            interactionCount: 0, // Will be calculated
-            questions: questions.map(q => ({
-              id: q.id,
-              content: q.content,
-              timestamp: new Date(q.created_at),
-              userId: q.user_id,
-              threadId: q.thread_id
-            })),
-            category: thread.category
-          };
-          
-          res.json(transformedThread);
-        }
-      );
-    }
-  );
-});
+  const openPublishModal = () => {
+    setPublishTitle(currentConversation?.title || '');
+    setShowPublishModal(true);
+  };
 
-app.get('/api/user-conversations/:userId', (req, res) => {
-  const { userId } = req.params;
-  
-  db.all(
-    `SELECT c.*, 
-     (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count,
-     (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message
-     FROM private_conversations c 
-     WHERE c.user_id = ? 
-     ORDER BY datetime(c.updated_at) DESC`,
-    [userId],
-    (err, conversations) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to fetch conversations' });
-      }
-      
-      // Transform the data to match frontend expectations
-      const transformedConversations = conversations.map(conv => ({
-        id: conv.id,
-        userId: conv.user_id,
-        title: conv.title,
-        createdAt: new Date(conv.created_at),
-        updatedAt: new Date(conv.updated_at),
-        messages: [] // Messages will be loaded separately when needed
-      }));
-      
-      res.json(transformedConversations);
-    }
-  );
-});
-
-app.post('/api/new-conversation', (req, res) => {
-  const { userId, title } = req.body;
-  const conversationId = uuidv4();
-  
-  db.run(
-    'INSERT INTO private_conversations (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)',
-    [conversationId, userId, title || null, new Date().toISOString(), new Date().toISOString()],
-    function(err) {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to create conversation' });
-      }
-      
-      res.json({
-        id: conversationId,
-        userId,
-        title,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        messages: []
-      });
-    }
-  );
-});
-
-app.get('/api/messages/:conversationId', (req, res) => {
-  const { conversationId } = req.params;
-  
-  console.log('🔍 Loading messages for conversation:', conversationId);
-  
-  db.all(
-    'SELECT id, conversation_id, content, sender, user_id, thinking, created_at FROM messages WHERE conversation_id = ? ORDER BY datetime(created_at) ASC, id ASC',
-    [conversationId],
-    (err, messages) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to fetch messages' });
-      }
-      
-      console.log('📨 Loaded messages for conversation:', conversationId, {
-        messageCount: messages.length,
-        messagesWithThinking: messages.filter(m => m.thinking).length,
-        messageIds: messages.map(m => m.id),
-        messageOrder: messages.map(m => ({ id: m.id, sender: m.sender, timestamp: m.created_at }))
-      });
-      
-      // Transform the data to match frontend expectations
-      const transformedMessages = messages.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        timestamp: new Date(msg.created_at),
-        sender: msg.sender,
-        userId: msg.user_id,
-        thinking: msg.thinking ? msg.thinking : undefined
-      }));
-      
-      console.log('📤 Sending transformed messages:', transformedMessages.map(m => ({
-        id: m.id,
-        sender: m.sender,
-        hasThinking: !!m.thinking,
-        conversationId: conversationId,
-        timestamp: m.timestamp
-      })));
-      
-      res.json(transformedMessages);
-    }
-  );
-});
-
-// Update conversation title
-app.put('/api/conversations/:conversationId/title', (req, res) => {
-  const { conversationId } = req.params;
-  const { title } = req.body;
-  
-  if (!title) {
-    return res.status(400).json({ error: 'Title is required' });
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p className="text-gray-500">Please log in to access private chat.</p>
+      </div>
+    );
   }
-  
-  db.run(
-    'UPDATE private_conversations SET title = ?, updated_at = ? WHERE id = ?',
-    [title, new Date().toISOString(), conversationId],
-    function(err) {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to update title' });
-      }
-      
-      if (this.changes === 0) {
-        return res.status(404).json({ error: 'Conversation not found' });
-      }
-      
-      console.log('✅ Updated conversation title:', conversationId, title);
-      res.json({ success: true, title });
-    }
+
+  return (
+    <div className="flex h-full bg-gray-50">
+      {/* Sidebar */}
+      <div className="w-80 bg-white border-r border-gray-200 flex flex-col">
+        <div className="p-4 border-b border-gray-200">
+          <button
+            onClick={createNewConversation}
+            className="w-full flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            New Conversation
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {conversations.map((conversation) => (
+            <div
+              key={conversation.id}
+              onClick={() => selectConversation(conversation)}
+              className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition-colors ${
+                currentConversation?.id === conversation.id ? 'bg-blue-50 border-blue-200' : ''
+              }`}
+            >
+              <div className="font-medium text-gray-900 truncate">
+                {conversation.title || 'New Conversation'}
+              </div>
+              <div className="text-sm text-gray-500 mt-1">
+                {new Date(conversation.updatedAt).toLocaleDateString()}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col">
+        {currentConversation ? (
+          <>
+            {/* Header */}
+            <div className="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-gray-900">
+                {currentConversation.title || 'New Conversation'}
+              </h2>
+              {currentConversation.messages.length > 0 && (
+                <button
+                  onClick={openPublishModal}
+                  className="flex items-center gap-2 px-3 py-1.5 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Publish Thread
+                </button>
+              )}
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {currentConversation.messages.map((message) => (
+                <div key={message.id}>
+                  {message.sender === 'ai' ? (
+                    <StreamingMessage
+                      content={message.content}
+                      thinking={message.thinking}
+                      isComplete={true}
+                    />
+                  ) : (
+                    <div className="flex justify-end">
+                      <div className="max-w-3xl bg-blue-600 text-white rounded-lg px-4 py-2">
+                        <div className="whitespace-pre-wrap">{message.content}</div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input */}
+            <div className="bg-white border-t border-gray-200 p-4">
+              <div className="flex gap-2">
+                <textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Type your message..."
+                  className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={1}
+                  disabled={isLoading}
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!inputMessage.trim() || isLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Send className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Welcome to Private Chat
+              </h3>
+              <p className="text-gray-500 mb-4">
+                Select a conversation or create a new one to get started.
+              </p>
+              <button
+                onClick={createNewConversation}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors mx-auto"
+              >
+                <Plus className="w-4 h-4" />
+                Start New Conversation
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Publish Modal */}
+      {showPublishModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Publish as Thread</h3>
+              <button
+                onClick={() => setShowPublishModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+                disabled={isPublishing}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Thread Title
+                </label>
+                <input
+                  type="text"
+                  value={publishTitle}
+                  onChange={(e) => setPublishTitle(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter thread title..."
+                  disabled={isPublishing}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category
+                </label>
+                <select
+                  value={publishCategory}
+                  onChange={(e) => setPublishCategory(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  disabled={isPublishing}
+                >
+                  <option value="general">General</option>
+                  <option value="technology">Technology</option>
+                  <option value="science">Science</option>
+                  <option value="business">Business</option>
+                  <option value="education">Education</option>
+                </select>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <button
+                  onClick={() => setShowPublishModal(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={isPublishing}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handlePublishThread}
+                  disabled={!publishTitle.trim() || isPublishing}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  {isPublishing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Publishing...
+                    </>
+                  ) : (
+                    'Publish Thread'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({ error: 'Internal server error' });
-});
-
-// 404 handler
-app.use((req, res) => {
-  console.log('404 - Route not found:', req.method, req.url);
-  res.status(404).json({ 
-    error: 'Route not found',
-    method: req.method,
-    url: req.url,
-    availableRoutes: [
-      'GET /',
-      'GET /api/health',
-      'GET /api/threads',
-      'GET /api/conversations/:userId',
-      'GET /api/conversations/:conversationId/messages',
-      'POST /api/conversations',
-      'GET /api/threads/:threadId'
-    ]
-  });
-});
-
-const PORT = process.env.PORT || 3002;
-server.listen(PORT, () => {
-  console.log(`🚀 Ainigama server running on port ${PORT}`);
-  console.log(`📡 WebSocket server ready`);
-  console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
-  console.log(`🔑 DeepSeek API configured: ${process.env.DEEPSEEK_API_KEY ? 'Yes' : 'No'}`);
-});
+};
