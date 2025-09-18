@@ -111,7 +111,6 @@ functions:
               - X-Amz-Security-Token
               - X-Amz-User-Agent
             allowCredentials: false
-          cors: true
   
   getConversations:
     handler: src/handlers/api.getConversations
@@ -129,7 +128,6 @@ functions:
               - X-Amz-Security-Token
               - X-Amz-User-Agent
             allowCredentials: false
-          cors: true
   
   getConversationMessages:
     handler: src/handlers/api.getConversationMessages
@@ -147,7 +145,6 @@ functions:
               - X-Amz-Security-Token
               - X-Amz-User-Agent
             allowCredentials: false
-          cors: true
   
   createConversation:
     handler: src/handlers/api.createConversation
