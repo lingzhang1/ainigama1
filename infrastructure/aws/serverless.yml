@@ -98,7 +98,15 @@ functions:
     handler: src/handlers/api.getConversations
     events:
       - http:
-          path: /conversations/{userId}
+          path: /users/{userId}/conversations
+          method: get
+          cors: true
+  
+  getConversationMessages:
+    handler: src/handlers/api.getConversationMessages
+    events:
+      - http:
+          path: /conversations/{conversationId}/messages
           method: get
           cors: true
   
