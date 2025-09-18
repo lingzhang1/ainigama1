@@ -166,6 +166,144 @@ functions:
               - X-Amz-Security-Token
               - X-Amz-User-Agent
             allowCredentials: false
+
+  # Additional API endpoints that were missing
+  getUserConversations:
+    handler: src/handlers/api.getUserConversations
+    events:
+      - http:
+          path: /user-conversations/{userId}
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+
+  createNewConversation:
+    handler: src/handlers/api.createNewConversation
+    events:
+      - http:
+          path: /new-conversation
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+
+  getMessages:
+    handler: src/handlers/api.getMessages
+    events:
+      - http:
+          path: /messages/{conversationId}
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+
+  updateConversationTitle:
+    handler: src/handlers/api.updateConversationTitle
+    events:
+      - http:
+          path: /conversations/{conversationId}/title
+          method: put
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+
+  publishThread:
+    handler: src/handlers/api.publishThread
+    events:
+      - http:
+          path: /publish-thread
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+
+  chatStream:
+    handler: src/handlers/api.chatStream
+    timeout: 30
+    events:
+      - http:
+          path: /chat
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+
+  generateTitle:
+    handler: src/handlers/api.generateTitle
+    events:
+      - http:
+          path: /generate-title
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
+
+  healthCheck:
+    handler: src/handlers/api.healthCheck
+    events:
+      - http:
+          path: /health
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+              - X-Amz-User-Agent
+            allowCredentials: false
           cors: true
 
 resources:
