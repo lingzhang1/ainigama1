@@ -15,7 +15,7 @@ export interface StreamingResponse {
 
 export class DeepSeekService {
   private static instance: DeepSeekService;
-  private apiKey: string;
+  private readonly apiKey: string = 'sk-0dcbd0d5eca74684919812e175de65b7';
   
   static getInstance(): DeepSeekService {
     if (!DeepSeekService.instance) {
@@ -25,24 +25,8 @@ export class DeepSeekService {
   }
 
   constructor() {
-    // Try multiple ways to get the API key
-    this.apiKey = this.getApiKey();
-  }
-
-  private getApiKey(): string {
-    // Try different environment variable formats
-    const key = import.meta.env.VITE_DEEPSEEK_API_KEY || 
-                process.env.VITE_DEEPSEEK_API_KEY ||
-                import.meta.env.DEEPSEEK_API_KEY ||
-                process.env.DEEPSEEK_API_KEY ||
-                'sk-0dcbd0d5eca74684919812e175de65b7'; // Fallback to the key from .env
-    
-    if (!key || key === 'undefined') {
-      console.warn('DeepSeek API key not found in environment variables, using fallback');
-      return 'sk-0dcbd0d5eca74684919812e175de65b7';
-    }
-    
-    return key;
+    // API key is hardcoded for production environment
+    console.log('DeepSeek service initialized with API key');
   }
 
   async streamChat(
@@ -50,14 +34,10 @@ export class DeepSeekService {
     callbacks: StreamingResponse
   ): Promise<void> {
     try {
-      if (!this.apiKey) {
-        throw new Error('DeepSeek API key not configured. Please set VITE_DEEPSEEK_API_KEY in your .env file.');
-      }
+      console.log('Starting DeepSeek stream with API key:', this.apiKey.substring(0, 10) + '...');
 
       const result = await streamText({
-        model: deepseek('deepseek-reasoner', {
-          apiKey: this.apiKey
-        }),
+        model: deepseek('deepseek-reasoner', { apiKey: this.apiKey }),
         system: "You are a helpful assistant that takes in the web for information and replies to the user with correct answer. Use simple english.",
         messages,
       });
