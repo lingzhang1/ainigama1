@@ -49,15 +49,21 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     const loadThreads = async () => {
       try {
         setIsLoading(true);
+        // Use local Node.js server for development, AWS for production
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+        console.log('Loading threads from:', apiUrl);
+        
         const response = await fetch(`${apiUrl}/threads?filter=${state.feedFilter}`);
         
         if (response.ok) {
           const loadedThreads = await response.json();
           // Extract threads array from response object
           const threadsArray = loadedThreads.threads || loadedThreads;
+          console.log('Loaded threads:', threadsArray.length);
           setThreads(threadsArray);
           dispatch({ type: 'SET_THREADS', payload: threadsArray });
+        } else {
+          console.error('Failed to load threads:', response.status, response.statusText);
         }
       } catch (error) {
         console.error('Failed to load threads:', error);

@@ -57,6 +57,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+        console.log('Loading conversations from:', apiUrl);
+        
         const response = await fetch(`${apiUrl}/user-conversations/${state.currentUser.id}`);
         
         if (response.ok) {
@@ -72,6 +74,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           if (sortedConversations.length > 0 && !currentConversation) {
             setCurrentConversation(sortedConversations[0]);
           }
+        } else {
+          console.error('Failed to load conversations:', response.status, response.statusText);
         }
       } catch (error) {
         console.error('Failed to load conversations:', error);
@@ -100,6 +104,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       
       try {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+        console.log('Loading messages from:', apiUrl);
+        
         const response = await fetch(`${apiUrl}/messages/${currentConversation.id}`);
         
         if (response.ok) {
@@ -445,6 +451,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
       // Call API to create public thread
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      console.log('Creating public thread at:', apiUrl);
+      
       const response = await fetch(`${apiUrl}/threads`, {
         method: 'POST',
         headers: {
@@ -465,6 +473,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         setShowPublishModal(false);
       } else {
         console.error('Failed to publish thread:', response.statusText);
+        const errorText = await response.text();
+        console.error('Error details:', errorText);
       }
     } catch (error) {
       console.error('Error publishing conversation:', error);

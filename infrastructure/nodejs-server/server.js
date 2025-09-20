@@ -959,6 +959,14 @@ app.get('/api/messages/:conversationId', (req, res) => {
 
 // Update conversation title
 app.put('/api/conversations/:conversationId/title', (req, res) => {
+  // Add CORS headers
+  const origin = req.headers.origin;
+  if (origin && (origin.includes('.webcontainer-api.io') || origin.includes('.bolt.host') || origin === (process.env.FRONTEND_URL || 'http://localhost:5173') || origin === 'https://ainigama-bixt.bolt.host')) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
   const { conversationId } = req.params;
   const { title } = req.body;
   
