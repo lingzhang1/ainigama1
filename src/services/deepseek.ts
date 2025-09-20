@@ -1,4 +1,4 @@
-import { deepseek } from '@ai-sdk/deepseek';
+import { createDeepSeek } from '@ai-sdk/deepseek';
 import { streamText } from 'ai';
 
 export interface ChatMessage {
@@ -16,6 +16,7 @@ export interface StreamingResponse {
 export class DeepSeekService {
   private static instance: DeepSeekService;
   private readonly apiKey: string = 'sk-0dcbd0d5eca74684919812e175de65b7';
+  private deepseekClient: any;
   
   static getInstance(): DeepSeekService {
     if (!DeepSeekService.instance) {
@@ -25,8 +26,11 @@ export class DeepSeekService {
   }
 
   constructor() {
-    // API key is hardcoded for production environment
-    console.log('DeepSeek service initialized with API key');
+    // Initialize DeepSeek client with API key
+    this.deepseekClient = createDeepSeek({
+      apiKey: this.apiKey
+    });
+    console.log('DeepSeek service initialized with createDeepSeek and API key');
   }
 
   async streamChat(
@@ -34,10 +38,10 @@ export class DeepSeekService {
     callbacks: StreamingResponse
   ): Promise<void> {
     try {
-      console.log('Starting DeepSeek stream with API key:', this.apiKey.substring(0, 10) + '...');
+      console.log('Starting DeepSeek stream with createDeepSeek client');
 
       const result = await streamText({
-        model: deepseek('deepseek-reasoner', { apiKey: this.apiKey }),
+        model: this.deepseekClient('deepseek-reasoner'),
         system: "You are a helpful assistant that takes in the web for information and replies to the user with correct answer. Use simple english.",
         messages,
       });
