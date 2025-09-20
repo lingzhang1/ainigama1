@@ -5,15 +5,43 @@ const dynamodb = new AWS.DynamoDB.DocumentClient();
 const threadsTable = process.env.DYNAMODB_TABLE_THREADS;
 const conversationsTable = process.env.DYNAMODB_TABLE_CONVERSATIONS;
 const messagesTable = process.env.DYNAMODB_TABLE_MESSAGES;
+const questionsTable = process.env.DYNAMODB_TABLE_QUESTIONS || 'ainigama-dev-questions';
+const answersTable = process.env.DYNAMODB_TABLE_ANSWERS;
 
-// CORS headers
+// Enhanced CORS headers with support for WebContainer and Bolt domains
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+  'Access-Control-Allow-Credentials': 'false'
+};
+
+// Dynamic CORS headers based on origin
+const getDynamicCorsHeaders = (event) => {
+  const origin = event.headers?.origin || event.headers?.Origin;
+  let allowedOrigin = '*';
+  
+  if (origin) {
+    // Allow WebContainer domains
+    if (origin.includes('.webcontainer-api.io') || 
+        origin.includes('.bolt.host') || 
+        origin.includes('localhost') ||
+        origin.includes('127.0.0.1')) {
+      allowedOrigin = origin;
+    }
+  }
+  
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+    'Access-Control-Allow-Credentials': 'false'
+  };
 };
 
 exports.getThreads = async (event) => {
+  const corsHeaders = getDynamicCorsHeaders(event);
+  
   // Handle OPTIONS request for CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
@@ -42,13 +70,33 @@ exports.getThreads = async (event) => {
     }
 
     const result = await dynamodb.scan(params).promise();
+    
+    // Transform threads to include proper structure
+    const transformedThreads = (result.Items || []).map(thread => ({
+      id: thread.id,
+      title: thread.title,
+      creator: {
+        id: thread.creator_id || thread.creatorId,
+        name: thread.creator_name || 'Unknown User',
+        avatar: thread.creator_avatar || '/img-5.svg',
+        handle: thread.creator_handle || '@user'
+      },
+      isPublic: Boolean(thread.is_public),
+      createdAt: thread.created_at || thread.createdAt,
+      updatedAt: thread.updated_at || thread.updatedAt,
+      questionCount: thread.question_count || 0,
+      answerCount: thread.answer_count || 0,
+      interactionCount: (thread.question_count || 0) + (thread.answer_count || 0),
+      questions: [],
+      category: thread.category
+    }));
 
     return {
       statusCode: 200,
       headers: corsHeaders,
       body: JSON.stringify({
-        threads: result.Items || [],
-        count: result.Count || 0
+        threads: transformedThreads,
+        count: transformedThreads.length
       })
     };
 
