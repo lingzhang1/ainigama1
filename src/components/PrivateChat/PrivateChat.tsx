@@ -401,10 +401,73 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
   const handlePublish = () => {
     if (currentConversation) {
-      // Create public thread from private conversation
-      console.log('Publishing conversation:', currentConversation);
-      setShowPublishModal(false);
-      dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' });
+      handlePublishConversation();
+    }
+  };
+
+  const handlePublishConversation = async () => {
+    if (!currentConversation || !state.currentUser) return;
+    
+    try {
+      // Extract the first user message as the main question
+      const userMessages = currentConversation.messages.filter(m => m.sender === 'user');
+      const aiMessages = currentConversation.messages.filter(m => m.sender === 'ai');
+      
+      if (userMessages.length === 0) {
+        console.error('No user messages to publish');
+        return;
+      }
+
+      // Create thread data
+      const threadData = {
+        title: currentConversation.title || userMessages[0].content.substring(0, 100) + '...',
+        creatorId: state.currentUser.id,
+        category: 'General',
+        questions: userMessages.map((userMsg, index) => ({
+          id: userMsg.id,
+          content: userMsg.content,
+          userId: state.currentUser!.id,
+          timestamp: userMsg.timestamp
+        })),
+        initialAnswers: aiMessages.map((aiMsg, index) => {
+          // Find the corresponding user message for this AI response
+          const correspondingUserMsg = userMessages[index];
+          return {
+            id: aiMsg.id,
+            questionId: correspondingUserMsg?.id || userMessages[0].id,
+            content: aiMsg.content,
+            isAI: true,
+            isPinned: true,
+            thinking: aiMsg.thinking
+          };
+        })
+      };
+
+      // Call API to create public thread
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/threads`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(threadData)
+      });
+
+      if (response.ok) {
+        const newThread = await response.json();
+        console.log('✅ Successfully published thread:', newThread.id);
+        
+        // Update app state
+        dispatch({ type: 'ADD_THREAD', payload: newThread });
+        dispatch({ type: 'SET_CURRENT_THREAD', payload: newThread.id });
+        dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
+        
+        setShowPublishModal(false);
+      } else {
+        console.error('Failed to publish thread:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error publishing conversation:', error);
     }
   };
 

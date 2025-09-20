@@ -171,6 +171,13 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
         if (response.ok) {
           const threadData = await response.json();
           setThread(threadData);
+          
+          // Load answers for each question
+          const answersResponse = await fetch(`${apiUrl}/threads/${state.currentThreadId}/answers`);
+          if (answersResponse.ok) {
+            const answersData = await answersResponse.json();
+            setAnswers(answersData);
+          }
         }
       } catch (error) {
         console.error('Failed to load thread:', error);

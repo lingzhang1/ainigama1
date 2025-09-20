@@ -503,6 +503,157 @@ app.get('/api/threads', (req, res) => {
   );
 });
 
+// Create new public thread
+app.post('/api/threads', (req, res) => {
+  const { title, creatorId, category, questions, initialAnswers } = req.body;
+  
+  if (!title || !creatorId || !questions || questions.length === 0) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  
+  const threadId = uuidv4();
+  const now = new Date().toISOString();
+  
+  // Start transaction
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+    
+    // Insert thread
+    db.run(
+      'INSERT INTO threads (id, title, creator_id, category, is_public, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [threadId, title, creatorId, category || 'General', 1, now, now],
+      function(err) {
+        if (err) {
+          console.error('Failed to create thread:', err);
+          db.run('ROLLBACK');
+          return res.status(500).json({ error: 'Failed to create thread' });
+        }
+        
+        console.log('✅ Created thread:', threadId);
+        
+        // Insert questions
+        let questionsInserted = 0;
+        const totalQuestions = questions.length;
+        
+        questions.forEach((question, index) => {
+          const questionId = question.id || uuidv4();
+          
+          db.run(
+            'INSERT INTO questions (id, thread_id, content, user_id, created_at) VALUES (?, ?, ?, ?, ?)',
+            [questionId, threadId, question.content, question.userId, question.timestamp || now],
+            function(questionErr) {
+              if (questionErr) {
+                console.error('Failed to create question:', questionErr);
+                db.run('ROLLBACK');
+                return res.status(500).json({ error: 'Failed to create questions' });
+              }
+              
+              console.log('✅ Created question:', questionId);
+              questionsInserted++;
+              
+              // Insert corresponding AI answer if exists
+              const correspondingAnswer = initialAnswers?.find(a => a.questionId === question.id);
+              if (correspondingAnswer) {
+                const answerId = correspondingAnswer.id || uuidv4();
+                
+                db.run(
+                  'INSERT INTO answers (id, question_id, content, user_id, is_ai, is_pinned, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                  [answerId, questionId, correspondingAnswer.content, null, 1, 1, correspondingAnswer.timestamp || now],
+                  function(answerErr) {
+                    if (answerErr) {
+                      console.error('Failed to create answer:', answerErr);
+                    } else {
+                      console.log('✅ Created AI answer:', answerId);
+                    }
+                    
+                    // Check if all questions are processed
+                    if (questionsInserted === totalQuestions) {
+                      db.run('COMMIT', (commitErr) => {
+                        if (commitErr) {
+                          console.error('Failed to commit transaction:', commitErr);
+                          return res.status(500).json({ error: 'Failed to save thread' });
+                        }
+                        
+                        // Return the created thread
+                        const newThread = {
+                          id: threadId,
+                          title,
+                          creator: {
+                            id: creatorId,
+                            name: 'User', // Will be populated from user lookup
+                            avatar: '/img-5.svg',
+                            handle: '@user'
+                          },
+                          isPublic: true,
+                          createdAt: new Date(now),
+                          updatedAt: new Date(now),
+                          questionCount: questions.length,
+                          answerCount: initialAnswers?.length || 0,
+                          interactionCount: questions.length + (initialAnswers?.length || 0),
+                          questions: questions.map(q => ({
+                            id: q.id || uuidv4(),
+                            content: q.content,
+                            timestamp: new Date(q.timestamp || now),
+                            userId: q.userId,
+                            threadId
+                          })),
+                          category: category || 'General'
+                        };
+                        
+                        console.log('🎉 Successfully created public thread:', threadId);
+                        res.json(newThread);
+                      });
+                    }
+                  }
+                );
+              } else {
+                // No corresponding answer, check if all questions are processed
+                if (questionsInserted === totalQuestions) {
+                  db.run('COMMIT', (commitErr) => {
+                    if (commitErr) {
+                      console.error('Failed to commit transaction:', commitErr);
+                      return res.status(500).json({ error: 'Failed to save thread' });
+                    }
+                    
+                    // Return the created thread
+                    const newThread = {
+                      id: threadId,
+                      title,
+                      creator: {
+                        id: creatorId,
+                        name: 'User',
+                        avatar: '/img-5.svg',
+                        handle: '@user'
+                      },
+                      isPublic: true,
+                      createdAt: new Date(now),
+                      updatedAt: new Date(now),
+                      questionCount: questions.length,
+                      answerCount: 0,
+                      interactionCount: questions.length,
+                      questions: questions.map(q => ({
+                        id: q.id || uuidv4(),
+                        content: q.content,
+                        timestamp: new Date(q.timestamp || now),
+                        userId: q.userId,
+                        threadId
+                      })),
+                      category: category || 'General'
+                    };
+                    
+                    console.log('🎉 Successfully created public thread:', threadId);
+                    res.json(newThread);
+                  });
+                }
+              }
+            }
+          );
+        });
+      }
+    );
+  });
+});
+
 app.get('/api/users/:userId/conversations', (req, res) => {
   const { userId } = req.params;
   
@@ -660,6 +811,47 @@ app.get('/api/threads/:threadId', (req, res) => {
           res.json(transformedThread);
         }
       );
+    }
+  );
+});
+
+// Get answers for a specific thread
+app.get('/api/threads/:threadId/answers', (req, res) => {
+  const { threadId } = req.params;
+  
+  db.all(
+    `SELECT a.*, q.thread_id 
+     FROM answers a 
+     JOIN questions q ON a.question_id = q.id 
+     WHERE q.thread_id = ? 
+     ORDER BY a.is_pinned DESC, a.created_at ASC`,
+    [threadId],
+    (err, answers) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch answers' });
+      }
+      
+      // Group answers by question ID
+      const answersByQuestion = {};
+      answers.forEach(answer => {
+        if (!answersByQuestion[answer.question_id]) {
+          answersByQuestion[answer.question_id] = [];
+        }
+        
+        answersByQuestion[answer.question_id].push({
+          id: answer.id,
+          content: answer.content,
+          timestamp: new Date(answer.created_at),
+          userId: answer.user_id,
+          questionId: answer.question_id,
+          isPinned: Boolean(answer.is_pinned),
+          isAI: Boolean(answer.is_ai),
+          interactionCount: answer.interaction_count || 0
+        });
+      });
+      
+      res.json(answersByQuestion);
     }
   );
 });
