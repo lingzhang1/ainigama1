@@ -262,6 +262,27 @@ resources:
               ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
 
+    QuestionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_QUESTIONS}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: thread_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: ThreadIdIndex
+            KeySchema:
+              - AttributeName: thread_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
     MessagesTable:
       Type: AWS::DynamoDB::Table
       Properties:

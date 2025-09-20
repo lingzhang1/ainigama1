@@ -459,6 +459,8 @@ exports.saveMessages = async (event) => {
 
 // Update conversation title
 exports.updateConversationTitle = async (event) => {
+  const corsHeaders = getDynamicCorsHeaders(event);
+  
   // Handle OPTIONS request for CORS preflight
   if (event.httpMethod === 'OPTIONS') {
     return {
