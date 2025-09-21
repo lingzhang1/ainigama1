@@ -1112,7 +1112,7 @@ exports.getAnswerComments = async (event) => {
       ExpressionAttributeValues: {
         ':answerId': answerId
       },
-      ScanIndexForward: true // Oldest first for comments
+      ScanIndexForward: true // Oldest first for comments (chronological order)
     };
 
     const result = await dynamodb.query(params).promise();
@@ -1122,8 +1122,17 @@ exports.getAnswerComments = async (event) => {
     const topLevelComments = allComments.filter(c => !c.parentId);
     const replies = allComments.filter(c => c.parentId);
 
+    // Sort comments by timestamp (oldest first)
+    const sortByTimestamp = (a, b) => {
+      const timeA = new Date(a.created_at || a.timestamp || 0).getTime();
+      const timeB = new Date(b.created_at || b.timestamp || 0).getTime();
+      return timeA - timeB;
+    };
+
     // Attach replies to their parent comments
-    const commentsWithReplies = topLevelComments.map(comment => ({
+    const commentsWithReplies = topLevelComments
+      .sort(sortByTimestamp)
+      .map(comment => ({
       id: comment.id,
       content: comment.content,
       timestamp: comment.created_at || comment.timestamp,
@@ -1132,6 +1141,7 @@ exports.getAnswerComments = async (event) => {
       parentId: comment.parentId,
       replies: replies
         .filter(reply => reply.parentId === comment.id)
+        .sort(sortByTimestamp)
         .map(reply => ({
           id: reply.id,
           content: reply.content,
@@ -1140,7 +1150,7 @@ exports.getAnswerComments = async (event) => {
           answerId: reply.answerId,
           parentId: reply.parentId
         }))
-    }));
+      }));
 
     return {
       statusCode: 200,

@@ -120,8 +120,47 @@ exports.addComment = async (event) => {
       Item: comment
     }).promise();
 
-    // Broadcast to all connections
-    await broadcastToAll({
+    console.log('📤 AWS: Broadcasting new comment:', comment.id, 'for answer:', answerId);
+    
+    // Add delay to prevent race conditions and duplicates
+    setTimeout(async () => {
+      await broadcastToAll({
+        type: 'new_comment',
+        answerId,
+        comment
+      });
+    }, 100);
+
+    // Also broadcast to thread-specific connections if available
+    try {
+      // Get thread ID from answer
+      const answerResult = await dynamodb.get({
+        TableName: answersTable,
+        Key: { id: answerId }
+      }).promise();
+      
+      if (answerResult.Item && answerResult.Item.question_id) {
+        const questionResult = await dynamodb.get({
+          TableName: questionsTable,
+          Key: { id: answerResult.Item.question_id }
+        }).promise();
+        
+        if (questionResult.Item && questionResult.Item.thread_id) {
+          await broadcastToThread(questionResult.Item.thread_id, {
+            type: 'new_comment',
+            answerId,
+            comment
+          });
+        }
+      }
+    } catch (threadBroadcastError) {
+      console.error('Failed to broadcast to thread:', threadBroadcastError);
+    }
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ success: true })
+    };
       type: 'new_comment',
       answerId,
       comment
@@ -178,10 +217,17 @@ async function broadcastToThread(threadId, data) {
 
 async function broadcastToAll(data) {
   try {
+    console.log('📡 AWS: Broadcasting to all connections:', data.type);
+    
     // Get all active connections
     const connections = await dynamodb.scan({
       TableName: connectionsTable
     }).promise();
+
+    if (!connections.Items || connections.Items.length === 0) {
+      console.log('⚠️ AWS: No active connections to broadcast to');
+      return;
+    }
 
     // Send to all connections
     const promises = connections.Items.map(async (connection) => {
@@ -190,18 +236,23 @@ async function broadcastToAll(data) {
           ConnectionId: connection.connectionId,
           Data: JSON.stringify(data)
         }).promise();
+        console.log('✅ AWS: Sent to connection:', connection.connectionId);
       } catch (error) {
         if (error.statusCode === 410) {
+          console.log('🧹 AWS: Removing stale connection:', connection.connectionId);
           // Connection is stale, remove it
           await dynamodb.delete({
             TableName: connectionsTable,
             Key: { connectionId: connection.connectionId }
           }).promise();
+        } else {
+          console.error('❌ AWS: Failed to send to connection:', connection.connectionId, error);
         }
       }
     });
 
     await Promise.all(promises);
+    console.log('🎉 AWS: Broadcast complete to', connections.Items.length, 'connections');
   } catch (error) {
     console.error('Broadcast error:', error);
   }
