@@ -105,6 +105,13 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     }
   );
 
+  const handleAddAnswer = (questionId: string) => {
+    const content = newAnswerContent[questionId];
+    if (!content?.trim()) return;
+
+    addAnswer(questionId, content);
+    setNewAnswerContent(prev => ({ ...prev, [questionId]: '' }));
+  };
 
   const handleAddComment = () => {
     if (!newCommentContent.trim() || !selectedAnswer) return;
@@ -160,7 +167,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     addQuestionToBackend();
   };
 
-  const handleAddAnswer = async (questionId: string) => {
+  const handleAddAnswerToBackend = async (questionId: string) => {
     const content = newAnswerContent[questionId];
     if (!content?.trim()) return;
 
@@ -202,9 +209,6 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     } catch (error) {
       console.error('Error adding answer:', error);
     }
-  };
-
-    setNewQuestionContent('');
   };
 
   const toggleAnswersExpanded = (questionId: string) => {
@@ -471,7 +475,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                         rows={3}
                       />
                       <Button
-                        onClick={() => handleAddAnswer(question.id)}
+                        onClick={() => handleAddAnswerToBackend(question.id)}
                         disabled={!newAnswerContent[question.id]?.trim()}
                         size="sm"
                         className="bg-indigo-600 hover:bg-indigo-700 text-white"
