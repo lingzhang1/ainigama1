@@ -289,35 +289,32 @@ exports.getThread = async (event) => {
       ScanIndexForward: true
     }).promise();
 
-    // Get answers for all questions to calculate counts
-    let totalAnswerCount = 0;
-    const questions = [];
-    
-    for (const q of questionsResult.Items || []) {
-      // Get answer count for this question
-      const answersResult = await dynamodb.query({
-        TableName: answersTable,
-        IndexName: 'QuestionIdIndexV2',
-        KeyConditionExpression: 'question_id = :questionId',
-        ExpressionAttributeValues: {
-          ':questionId': q.id
-        },
-        Select: 'COUNT'
-      }).promise();
-      
-      const answerCount = answersResult.Count || 0;
-      totalAnswerCount += answerCount;
-      
-      questions.push({
-        id: q.id,
-        content: q.content,
-        timestamp: q.created_at || q.timestamp,
-        userId: q.user_id,
-        threadId: q.thread_id,
-        answerCount
-      });
-    }
+    const questions = (questionsResult.Items || []).map(q => ({
+      id: q.id,
+      content: q.content,
+      timestamp: q.created_at || q.timestamp,
+      userId: q.user_id,
+      threadId: q.thread_id
+    }));
 
+    // Calculate answer count for the thread
+    let totalAnswerCount = 0;
+    for (const question of questions) {
+      try {
+        const answersResult = await dynamodb.query({
+          TableName: answersTable,
+          IndexName: 'QuestionIdIndexV2',
+          KeyConditionExpression: 'question_id = :questionId',
+          ExpressionAttributeValues: {
+            ':questionId': question.id
+          },
+          Select: 'COUNT'
+        }).promise();
+        totalAnswerCount += answersResult.Count || 0;
+      } catch (error) {
+        console.error('Error counting answers for question:', question.id, error);
+      }
+    }
     // Transform thread data
     const transformedThread = {
       id: thread.id,
@@ -394,7 +391,7 @@ exports.getThreadAnswers = async (event) => {
     const answersByQuestion = {};
     
     for (const questionId of questionIds) {
-      // Get answers for this question
+      // Use GSI query with new index name
       const answersResult = await dynamodb.query({
         TableName: answersTable,
         IndexName: 'QuestionIdIndexV2',
@@ -402,31 +399,34 @@ exports.getThreadAnswers = async (event) => {
         ExpressionAttributeValues: {
           ':questionId': questionId
         },
-        ScanIndexForward: false // Most recent first, but we'll sort by pinned status
+        ScanIndexForward: false // Get newest first, then we'll sort by pinned
       }).promise();
 
-      // Sort answers: pinned first, then by creation time
-      const sortedAnswers = (answersResult.Items || [])
-        .map(answer => ({
-          id: answer.id,
-          content: answer.content,
-          timestamp: answer.created_at || answer.timestamp,
-          userId: answer.user_id,
-          questionId: answer.question_id,
-          isPinned: Boolean(answer.is_pinned),
-          isAI: Boolean(answer.is_ai),
-          interactionCount: answer.interaction_count || 0
-        }))
-        .sort((a, b) => {
-          // Pinned answers first
-          if (a.isPinned && !b.isPinned) return -1;
-          if (!a.isPinned && b.isPinned) return 1;
-          // Then by creation time (newest first)
-          return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-        });
+      // Sort answers: pinned first, then by creation time (newest first)
+      const sortedAnswers = (answersResult.Items || []).sort((a, b) => {
+        // Pinned answers first
+        if (a.is_pinned && !b.is_pinned) return -1;
+        if (!a.is_pinned && b.is_pinned) return 1;
+        
+        // Then by creation time (newest first)
+        const timeA = new Date(a.created_at || 0).getTime();
+        const timeB = new Date(b.created_at || 0).getTime();
+        return timeB - timeA;
+      });
 
-      if (sortedAnswers.length > 0) {
-        answersByQuestion[questionId] = sortedAnswers;
+      const answers = sortedAnswers.map(answer => ({
+        id: answer.id,
+        content: answer.content,
+        timestamp: answer.created_at || answer.timestamp,
+        userId: answer.user_id,
+        questionId: answer.question_id,
+        isPinned: Boolean(answer.is_pinned),
+        isAI: Boolean(answer.is_ai),
+        interactionCount: answer.interaction_count || 0
+      }));
+
+      if (answers.length > 0) {
+        answersByQuestion[questionId] = answers;
       }
     }
 
@@ -443,117 +443,6 @@ exports.getThreadAnswers = async (event) => {
       headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to fetch thread answers',
-        message: error.message 
-      })
-    };
-  }
-};
-
-// Add answer to question (REST API endpoint)
-exports.addAnswerToQuestion = async (event) => {
-  try {
-    const { questionId } = event.pathParameters || {};
-    
-    if (!questionId) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Question ID is required' })
-      };
-    }
-
-    let requestBody;
-    try {
-      requestBody = JSON.parse(event.body || '{}');
-    } catch (parseError) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
-    }
-    
-    const { content, userId } = requestBody;
-    
-    if (!content || !userId) {
-      return {
-        statusCode: 400,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Content and userId are required' })
-      };
-    }
-
-    // Verify the question exists
-    const question = await dynamodb.get({
-      TableName: questionsTable,
-      Key: { id: questionId }
-    }).promise();
-
-    if (!question.Item) {
-      return {
-        statusCode: 404,
-        headers: corsHeaders,
-        body: JSON.stringify({ error: 'Question not found' })
-      };
-    }
-
-    const answerId = crypto.randomUUID();
-    const now = new Date().toISOString();
-
-    // Create new answer
-    const answer = {
-      id: answerId,
-      question_id: questionId,
-      content,
-      user_id: userId,
-      is_ai: false,
-      is_pinned: false,
-      interaction_count: 0,
-      created_at: now
-    };
-
-    await dynamodb.put({
-      TableName: answersTable,
-      Item: answer
-    }).promise();
-
-    // Update thread's updated_at timestamp
-    await dynamodb.update({
-      TableName: threadsTable,
-      Key: { id: question.Item.thread_id },
-      UpdateExpression: 'SET updated_at = :updatedAt',
-      ExpressionAttributeValues: {
-        ':updatedAt': now
-      }
-    }).promise();
-
-    console.log('✅ Created answer:', answerId, 'for question:', questionId);
-
-    // Return the created answer in frontend format
-    const newAnswer = {
-      id: answerId,
-      content,
-      timestamp: now,
-      userId,
-      questionId,
-      isPinned: false,
-      isAI: false,
-      interactionCount: 0
-    };
-
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: JSON.stringify(newAnswer)
-    };
-
-  } catch (error) {
-    console.error('Add answer to question error:', error);
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({ 
-        error: 'Failed to add answer',
         message: error.message 
       })
     };
@@ -938,6 +827,132 @@ exports.updateConversationTitle = async (event) => {
       headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to update conversation title',
+        message: error.message 
+      })
+    };
+  }
+};
+
+// Add answer to a question (REST API for public users)
+exports.addAnswer = async (event) => {
+  try {
+    const { questionId } = event.pathParameters || {};
+    
+    if (!questionId) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Question ID is required' })
+      };
+    }
+
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body || '{}');
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Invalid JSON in request body' })
+      };
+    }
+    
+    const { content, userId } = requestBody;
+    
+    if (!content || !content.trim()) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Answer content is required' })
+      };
+    }
+
+    // Verify question exists and get thread info
+    const questionResult = await dynamodb.get({
+      TableName: questionsTable,
+      Key: { id: questionId }
+    }).promise();
+
+    if (!questionResult.Item) {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Question not found' })
+      };
+    }
+
+    const question = questionResult.Item;
+    const threadId = question.thread_id;
+
+    // Create new answer
+    const answerId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const answer = {
+      id: answerId,
+      question_id: questionId,
+      questionId: questionId, // Dual compatibility
+      content: content.trim(),
+      user_id: userId || null,
+      userId: userId || null, // Dual compatibility
+      is_ai: false,
+      isAI: false, // Dual compatibility
+      is_pinned: false,
+      isPinned: false, // Dual compatibility
+      interaction_count: 0,
+      interactionCount: 0, // Dual compatibility
+      created_at: now,
+      timestamp: now // Dual compatibility
+    };
+
+    await dynamodb.put({
+      TableName: answersTable,
+      Item: answer
+    }).promise();
+
+    console.log('✅ Created answer:', answerId, 'for question:', questionId);
+
+    // Update thread timestamp to reflect activity
+    await dynamodb.update({
+      TableName: threadsTable,
+      Key: { id: threadId },
+      UpdateExpression: 'SET updated_at = :updatedAt, answer_count = if_not_exists(answer_count, :zero) + :inc',
+      ExpressionAttributeValues: {
+        ':updatedAt': now,
+        ':zero': 0,
+        ':inc': 1
+      }
+    }).promise();
+
+    // Return the created answer in frontend format
+    const responseAnswer = {
+      id: answerId,
+      content: content.trim(),
+      timestamp: now,
+      userId: userId || null,
+      questionId: questionId,
+      isPinned: false,
+      isAI: false,
+      interactionCount: 0
+    };
+
+    return {
+      statusCode: 201,
+      headers: corsHeaders,
+      body: JSON.stringify({
+        success: true,
+        answer: responseAnswer,
+        threadId: threadId
+      })
+    };
+
+  } catch (error) {
+    console.error('Add answer error:', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Failed to add answer',
         message: error.message 
       })
     };

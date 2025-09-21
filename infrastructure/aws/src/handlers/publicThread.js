@@ -206,3 +206,23 @@ async function broadcastToAll(data) {
     console.error('Broadcast error:', error);
   }
 }
+
+async function sendToConnection(connectionId, data) {
+  try {
+    await apigateway.postToConnection({
+      ConnectionId: connectionId,
+      Data: JSON.stringify(data)
+    }).promise();
+  } catch (error) {
+    if (error.statusCode === 410) {
+      console.log('Connection is stale, removing:', connectionId);
+      // Connection is stale, remove it
+      await dynamodb.delete({
+        TableName: connectionsTable,
+        Key: { connectionId }
+      }).promise();
+    } else {
+      console.error('Failed to send to connection:', error);
+    }
+  }
+}
