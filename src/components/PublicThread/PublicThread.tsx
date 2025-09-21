@@ -518,6 +518,40 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
 
         {/* Questions and Answers */}
         <div className="p-6 space-y-8">
+          {/* Add Follow-up Question (for original user) - Show at top when latest first */}
+          {isOriginalUser && questionSortOrder === 'desc' && (
+            <Card className="border-dashed border-2 border-indigo-300 bg-gradient-to-r from-indigo-50 to-blue-50">
+              <CardContent className="p-4">
+                <div className="flex items-center mb-3">
+                  <Plus className="w-4 h-4 text-indigo-600 mr-2" />
+                  <h4 className="font-semibold text-indigo-800">Add a follow-up question</h4>
+                  <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 text-xs ml-2">
+                    Latest First
+                  </Badge>
+                </div>
+                <p className="text-sm text-indigo-700 mb-3">
+                  Continue the conversation by asking related questions
+                </p>
+                <Textarea
+                  placeholder="What else would you like to know about this topic?"
+                  value={newQuestionContent}
+                  onChange={(e) => setNewQuestionContent(e.target.value)}
+                  className="mb-3 bg-white"
+                  rows={2}
+                />
+                <Button
+                  onClick={handleAddQuestion}
+                  disabled={!newQuestionContent.trim()}
+                  size="sm"
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Question
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {sortedQuestions.map((question, questionIndex) => {
             const questionAnswers = answers[question.id] || [];
             const pinnedAnswer = questionAnswers.find(a => a.isPinned);
@@ -835,13 +869,16 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
             );
           })}
 
-          {/* Add Follow-up Question (for original user) */}
-          {isOriginalUser && (
+          {/* Add Follow-up Question (for original user) - Show at bottom when oldest first */}
+          {isOriginalUser && questionSortOrder === 'asc' && (
             <Card className="border-dashed border-2 border-indigo-300 bg-gradient-to-r from-indigo-50 to-blue-50">
               <CardContent className="p-4">
                 <div className="flex items-center mb-3">
                   <Plus className="w-4 h-4 text-indigo-600 mr-2" />
                   <h4 className="font-semibold text-indigo-800">Add a follow-up question</h4>
+                  <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs ml-2">
+                    Oldest First
+                  </Badge>
                 </div>
                 <p className="text-sm text-indigo-700 mb-3">
                   Continue the conversation by asking related questions
