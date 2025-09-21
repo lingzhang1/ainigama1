@@ -96,39 +96,42 @@ class WebSocketService {
   }
 
   private handleAWSMessage(data: any) {
-    // Handle different message types from AWS with duplicate prevention
+    console.log('🔵 AWS WebSocket received:', data.type, data);
+    
+    // Handle different message types from AWS with enhanced duplicate prevention
     const handlers = this.eventHandlers.get(data.type) || [];
     
-    // Add duplicate prevention for AWS WebSocket messages
+    // Enhanced duplicate prevention for AWS WebSocket messages
     if (data.type === 'new_comment' && data.comment) {
-      // Check if we already processed this comment recently
-      const commentKey = `${data.comment.id}_${data.answerId}`;
+      const commentKey = `comment_${data.comment.id}_${data.answerId}`;
       const now = Date.now();
       
       if (!this.recentMessages) {
         this.recentMessages = new Map();
       }
       
-      // If we processed this message in the last 1 second, skip it
+      // If we processed this message in the last 2 seconds, skip it
       if (this.recentMessages.has(commentKey)) {
         const lastProcessed = this.recentMessages.get(commentKey);
-        if (now - lastProcessed < 1000) {
-          console.log('🚫 AWS: Skipping duplicate comment:', data.comment.id);
+        if (now - lastProcessed < 2000) {
+          console.log('🚫 AWS WebSocket: Skipping duplicate comment:', data.comment.id, 'last processed:', now - lastProcessed, 'ms ago');
           return;
         }
       }
       
       // Mark this message as processed
       this.recentMessages.set(commentKey, now);
+      console.log('✅ AWS WebSocket: Processing comment:', data.comment.id);
       
-      // Clean up old entries (older than 5 seconds)
+      // Clean up old entries (older than 10 seconds)
       for (const [key, timestamp] of this.recentMessages.entries()) {
-        if (now - timestamp > 5000) {
+        if (now - timestamp > 10000) {
           this.recentMessages.delete(key);
         }
       }
     }
     
+    console.log('🎯 AWS WebSocket: Calling', handlers.length, 'handlers for', data.type);
     handlers.forEach(handler => handler(data));
   }
 
