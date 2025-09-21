@@ -161,15 +161,6 @@ exports.addComment = async (event) => {
       statusCode: 200,
       body: JSON.stringify({ success: true })
     };
-      type: 'new_comment',
-      answerId,
-      comment
-    });
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ success: true })
-    };
 
   } catch (error) {
     console.error('Add comment error:', error);
