@@ -133,65 +133,48 @@ class WebSocketService {
 
   // Thread management methods
   joinThread(threadId: string) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        action: 'joinThread',
-        threadId
-      }));
-    }
+    this.emit('join_thread', { threadId });
   }
 
   leaveThread(threadId: string) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        action: 'leaveThread',
-        threadId
-      }));
-    }
+    this.emit('leave_thread', { threadId });
   }
 
   addAnswer(threadId: string, questionId: string, content: string) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        action: 'addAnswer',
-        threadId,
-        questionId,
-        content
-      }));
-    }
+    this.emit('add_answer', { threadId, questionId, content });
   }
 
   addComment(answerId: string, content: string, parentId?: string) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        action: 'addComment',
-        answerId,
-        content,
-        parentId
-      }));
-    }
+    this.emit('add_comment', { answerId, content, parentId });
   }
 
   startTyping(threadId: string, type: 'answer' | 'comment', targetId: string) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        action: 'startTyping',
-        threadId,
-        type,
-        targetId
-      }));
-    }
+    this.emit('start_typing', { threadId, type, targetId });
   }
 
   stopTyping(threadId: string, type: 'answer' | 'comment', targetId: string) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        action: 'stopTyping',
-        threadId,
-        type,
-        targetId
-      }));
-    }
+    this.emit('stop_typing', { threadId, type, targetId });
+  }
+
+  // Event listener methods expected by usePublicThread hook
+  onNewAnswer(callback: Function) {
+    this.on('new_answer', callback);
+  }
+
+  onNewComment(callback: Function) {
+    this.on('new_comment', callback);
+  }
+
+  onThreadUpdate(callback: Function) {
+    this.on('thread_update', callback);
+  }
+
+  onTyping(callback: Function) {
+    this.on('typing', callback);
+  }
+
+  onStopTyping(callback: Function) {
+    this.on('stop_typing', callback);
   }
 }
 

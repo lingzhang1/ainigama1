@@ -4,27 +4,19 @@ import { Message, Answer, Comment, Thread } from '../types';
 
 export const useWebSocket = (userId: string) => {
   const isConnected = useRef(false);
-  const cleanupRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!isConnected.current && userId && userId.trim() !== '') {
       wsService.connect(userId);
       isConnected.current = true;
-      
-      // Store cleanup function
-      cleanupRef.current = () => {
-        if (isConnected.current) {
-          wsService.disconnect();
-          isConnected.current = false;
-        }
-      };
     }
 
     return () => {
-      // Use cleanup function to prevent multiple disconnections
-      if (cleanupRef.current) {
-        cleanupRef.current();
-        cleanupRef.current = null;
+      if (isConnected.current) {
+        wsService.disconnect();
+        if (isConnected.current) {
+          isConnected.current = false;
+        }
       }
     };
   }, [userId]);
