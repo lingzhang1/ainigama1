@@ -837,21 +837,13 @@ exports.updateConversationTitle = async (event) => {
 
 // Delete conversation
 exports.deleteConversation = async (event) => {
-  // Handle CORS preflight request
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, X-Amz-Date, Authorization, X-Api-Key, X-Amz-Security-Token',
-        'Access-Control-Max-Age': '86400'
-      },
-      body: ''
-    };
-  }
-
   try {
+    console.log('🗑️ AWS: Delete conversation called with event:', {
+      httpMethod: event.httpMethod,
+      pathParameters: event.pathParameters,
+      headers: event.headers
+    });
+    
     const { conversationId } = event.pathParameters || {};
     
     if (!conversationId) {
@@ -908,10 +900,7 @@ exports.deleteConversation = async (event) => {
 
     return {
       statusCode: 200,
-      headers: {
-        ...corsHeaders,
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({ 
         success: true, 
         message: 'Conversation deleted successfully' 
@@ -924,20 +913,14 @@ exports.deleteConversation = async (event) => {
     if (error.code === 'ConditionalCheckFailedException') {
       return {
         statusCode: 404,
-        headers: {
-          ...corsHeaders,
-          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
-        },
+        headers: corsHeaders,
         body: JSON.stringify({ error: 'Conversation not found' })
       };
     }
     
     return {
       statusCode: 500,
-      headers: {
-        ...corsHeaders,
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to delete conversation',
         message: error.message 
