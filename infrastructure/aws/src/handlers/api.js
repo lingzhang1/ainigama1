@@ -22,22 +22,26 @@ exports.getThreads = async (event) => {
     
     let result;
     if (filter === 'trending') {
-      // Use GSI for trending (most recently updated)
-      result = await dynamodb.query({
-        TableName: threadsTable,
-        IndexName: 'UpdatedAtIndexV2',
-        KeyConditionExpression: 'updated_at = :updatedAt',
-        FilterExpression: 'is_public = :isPublic',
-        ExpressionAttributeValues: {
-          ':updatedAt': new Date().toISOString().split('T')[0], // Today's date
-          ':isPublic': true
-        },
-        ScanIndexForward: false,
-        Limit: 20
-      }).promise();
-      
-      // Fallback to scan if no results from GSI
-      if (!result.Items || result.Items.length === 0) {
+      // Use UpdatedAtIndexV2 GSI for trending (most recently updated)
+      try {
+        result = await dynamodb.query({
+          TableName: threadsTable,
+          IndexName: 'UpdatedAtIndexV2',
+          KeyConditionExpression: '#gsi_pk = :gsi_pk',
+          FilterExpression: 'is_public = :isPublic',
+          ExpressionAttributeNames: {
+            '#gsi_pk': 'gsi_pk'
+          },
+          ExpressionAttributeValues: {
+            ':gsi_pk': 'THREAD',
+            ':isPublic': true
+          },
+          ScanIndexForward: false,
+          Limit: 20
+        }).promise();
+      } catch (gsiError) {
+        console.log('GSI query failed, falling back to scan:', gsiError.message);
+        // Fallback to scan if GSI query fails
         result = await dynamodb.scan({
           TableName: threadsTable,
           FilterExpression: 'is_public = :isPublic',
@@ -53,7 +57,7 @@ exports.getThreads = async (event) => {
         );
       }
     } else {
-      // Use scan for recent (most recently created)
+      // Use scan for recent (most recently created) - GSI not needed for this
       result = await dynamodb.scan({
         TableName: threadsTable,
         FilterExpression: 'is_public = :isPublic',
@@ -70,6 +74,7 @@ exports.getThreads = async (event) => {
     }
     
     // Transform threads to include proper structure
+    const transformedThreads = (result.Items || []).map(thread => ({
       id: thread.id,
       title: thread.title,
       creator: {
