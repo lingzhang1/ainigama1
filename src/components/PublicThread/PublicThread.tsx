@@ -12,13 +12,16 @@ import {
   SortAsc,
   SortDesc,
   Brain,
-  Loader2
+  Loader2,
+  Send,
+  Reply
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
+import { Input } from '../ui/input';
 import { Thread, Question, Answer, Comment } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { usePublicThread } from '../../hooks/useWebSocket';
@@ -46,6 +49,13 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [aiAnswering, setAiAnswering] = useState<{ [questionId: string]: boolean }>({});
   const [aiThinking, setAiThinking] = useState<{ [questionId: string]: string }>({});
   const [aiContent, setAiContent] = useState<{ [questionId: string]: string }>({});
+
+  // Answer Interaction Panel state
+  const [showInteractionPanel, setShowInteractionPanel] = useState(false);
+  const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
+  const [newCommentContent, setNewCommentContent] = useState('');
+  const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+  const [loadingComments, setLoadingComments] = useState(false);
 
   // State for collapsed/expanded answer input sections
   const [expandedAnswerInputs, setExpandedAnswerInputs] = useState<{ [questionId: string]: boolean }>({});
@@ -117,6 +127,19 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
         ...prev,
         [comment.answerId]: [...(prev[comment.answerId] || []), comment]
       }));
+      
+      // Update answer interaction count
+      setAnswers(prev => {
+        const updated = { ...prev };
+        Object.keys(updated).forEach(questionId => {
+          updated[questionId] = updated[questionId].map(answer => 
+            answer.id === comment.answerId 
+              ? { ...answer, interactionCount: answer.interactionCount + 1 }
+              : answer
+          );
+        });
+        return updated;
+      });
     },
     (updatedThread: Thread) => {
       setThread(updatedThread);
@@ -124,11 +147,100 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   );
 
 
-  const handleAddComment = () => {
+  // Load comments for selected answer
+  const loadCommentsForAnswer = async (answerId: string) => {
+    try {
+      setLoadingComments(true);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/answers/${answerId}/comments`);
+      
+      if (response.ok) {
+        const commentsData = await response.json();
+        setComments(prev => ({
+          ...prev,
+          [answerId]: commentsData
+        }));
+      } else {
+        console.error('Failed to load comments:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handleAddComment = async () => {
     if (!newCommentContent.trim() || !selectedAnswer) return;
 
-    addComment(selectedAnswer.id, newCommentContent);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/answers/${selectedAnswer.id}/comments`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: newCommentContent.trim(),
+          userId: state.currentUser?.id,
+          parentId: replyingTo?.id || null
+        })
+      });
+
+      if (response.ok) {
+        const newComment = await response.json();
+        
+        // Update local comments state
+        setComments(prev => ({
+          ...prev,
+          [selectedAnswer.id]: [...(prev[selectedAnswer.id] || []), newComment]
+        }));
+        
+        // Update answer interaction count
+        setAnswers(prev => {
+          const updated = { ...prev };
+          Object.keys(updated).forEach(questionId => {
+            updated[questionId] = updated[questionId].map(answer => 
+              answer.id === selectedAnswer.id 
+                ? { ...answer, interactionCount: answer.interactionCount + 1 }
+                : answer
+            );
+          });
+          return updated;
+        });
+        
+        // Also broadcast via WebSocket for real-time updates
+        addComment(selectedAnswer.id, newCommentContent.trim(), replyingTo?.id);
+        
+        // Clear input and reply state
+        setNewCommentContent('');
+        setReplyingTo(null);
+        
+        console.log('✅ Comment added successfully');
+      } else {
+        console.error('Failed to add comment:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
+  };
+
+  const openInteractionPanel = (answer: Answer) => {
+    setSelectedAnswer(answer);
+    setShowInteractionPanel(true);
+    loadCommentsForAnswer(answer.id);
+  };
+
+  const closeInteractionPanel = () => {
+    setShowInteractionPanel(false);
+    setSelectedAnswer(null);
     setNewCommentContent('');
+    setReplyingTo(null);
+  };
+
+  const handleReplyToComment = (comment: Comment) => {
+    setReplyingTo(comment);
+    setNewCommentContent(`@${comment.userId || 'User'} `);
   };
 
   const handleAddQuestion = () => {
@@ -628,7 +740,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                           className="text-gray-600 hover:text-gray-800"
                         >
                           <MessageSquare className="w-4 h-4 mr-1" />
-                          {pinnedAnswer.interactionCount}
+                          {pinnedAnswer.interactionCount || 0}
                         </Button>
                       </div>
                       
@@ -774,7 +886,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                                   className="text-gray-600 hover:text-gray-800"
                                 >
                                   <MessageSquare className="w-4 h-4 mr-1" />
-                                  {answer.interactionCount}
+                                  {answer.interactionCount || 0}
                                 </Button>
                               </div>
                               <div className="text-gray-800 whitespace-pre-wrap mb-3 leading-relaxed">
