@@ -20,32 +20,52 @@ exports.getThreads = async (event) => {
   try {
     const { filter = 'recent' } = event.queryStringParameters || {};
     
-    // Use scan for all queries to avoid GSI conflicts
-    const result = await dynamodb.scan({
+    // Use GSI for efficient public thread queries
+    const params = {
       TableName: threadsTable,
-      FilterExpression: 'is_public = :isPublic',
+      IndexName: 'PublicThreadsIndex',
+      KeyConditionExpression: 'is_public = :isPublic',
       ExpressionAttributeValues: {
-        ':isPublic': true
+        ':isPublic': 'true'
       },
-      Limit: 50
-    }).promise();
-    
-    // Sort in memory based on filter
-    let sortedItems;
-    if (filter === 'trending') {
-      sortedItems = result.Items.sort((a, b) => 
-        new Date(b.updated_at || b.updatedAt || 0).getTime() - 
-        new Date(a.updated_at || a.updatedAt || 0).getTime()
-      );
-    } else {
-      sortedItems = result.Items.sort((a, b) => 
-        new Date(b.created_at || b.createdAt || 0).getTime() - 
-        new Date(a.created_at || a.createdAt || 0).getTime()
-      );
+      ScanIndexForward: filter === 'recent' ? false : false, // Both use descending order
+      Limit: 20
+    };
+
+    let result;
+    try {
+      result = await dynamodb.query(params).promise();
+    } catch (gsiError) {
+      console.log('GSI query failed, falling back to scan:', gsiError.message);
+      // Fallback to scan if GSI query fails
+      result = await dynamodb.scan({
+        TableName: threadsTable,
+        FilterExpression: 'is_public = :isPublic',
+        ExpressionAttributeValues: {
+          ':isPublic': true
+        },
+        Limit: 50
+      }).promise();
     }
     
-    // Take only first 20 after sorting
-    const limitedItems = sortedItems.slice(0, 20);
+    let sortedItems = result.Items || [];
+    
+    // If we used scan (fallback), sort in memory
+    if (!params.IndexName || result.Items.length > 20) {
+      if (filter === 'trending') {
+        sortedItems = sortedItems.sort((a, b) => 
+          new Date(b.updated_at || b.updatedAt || 0).getTime() - 
+          new Date(a.updated_at || a.updatedAt || 0).getTime()
+        );
+      } else {
+        sortedItems = sortedItems.sort((a, b) => 
+          new Date(b.created_at || b.createdAt || 0).getTime() - 
+          new Date(a.created_at || a.createdAt || 0).getTime()
+        );
+      }
+      // Take only first 20 after sorting
+      sortedItems = sortedItems.slice(0, 20);
+    }
     
     // Transform threads to include proper structure
     const transformedThreads = limitedItems.map(thread => ({
@@ -124,7 +144,7 @@ exports.createThread = async (event) => {
       title,
       creator_id: creatorId,
       category: category || 'General',
-      is_public: true,
+      is_public: 'true', // String for GSI compatibility
       created_at: now,
       updated_at: now,
       question_count: questions.length,
