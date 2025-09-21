@@ -130,6 +130,69 @@ class WebSocketService {
     }
     this.eventHandlers.clear();
   }
+
+  // Thread management methods
+  joinThread(threadId: string) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        action: 'joinThread',
+        threadId
+      }));
+    }
+  }
+
+  leaveThread(threadId: string) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        action: 'leaveThread',
+        threadId
+      }));
+    }
+  }
+
+  addAnswer(threadId: string, questionId: string, content: string) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        action: 'addAnswer',
+        threadId,
+        questionId,
+        content
+      }));
+    }
+  }
+
+  addComment(answerId: string, content: string, parentId?: string) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        action: 'addComment',
+        answerId,
+        content,
+        parentId
+      }));
+    }
+  }
+
+  startTyping(threadId: string, type: 'answer' | 'comment', targetId: string) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        action: 'startTyping',
+        threadId,
+        type,
+        targetId
+      }));
+    }
+  }
+
+  stopTyping(threadId: string, type: 'answer' | 'comment', targetId: string) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        action: 'stopTyping',
+        threadId,
+        type,
+        targetId
+      }));
+    }
+  }
 }
 
 export const wsService = new WebSocketService();

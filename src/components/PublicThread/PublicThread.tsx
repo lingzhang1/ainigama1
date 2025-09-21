@@ -165,7 +165,12 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
       
       try {
         setIsLoading(true);
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+        const apiUrl = import.meta.env.VITE_API_URL;
+        if (!apiUrl) {
+          console.error('VITE_API_URL not configured');
+          return;
+        }
+        
         const response = await fetch(`${apiUrl}/threads/${state.currentThreadId}`);
         
         if (response.ok) {
