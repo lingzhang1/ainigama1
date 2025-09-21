@@ -1068,6 +1068,64 @@ app.put('/api/conversations/:conversationId/title', (req, res) => {
   );
 });
 
+// Delete conversation
+app.delete('/api/conversations/:conversationId', (req, res) => {
+  const { conversationId } = req.params;
+  
+  if (!conversationId) {
+    return res.status(400).json({ error: 'Conversation ID is required' });
+  }
+  
+  // Start transaction to delete conversation and all its messages
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+    
+    // First, delete all messages in the conversation
+    db.run(
+      'DELETE FROM messages WHERE conversation_id = ?',
+      [conversationId],
+      function(err) {
+        if (err) {
+          console.error('Failed to delete messages:', err);
+          db.run('ROLLBACK');
+          return res.status(500).json({ error: 'Failed to delete conversation messages' });
+        }
+        
+        console.log('✅ Deleted', this.changes, 'messages for conversation:', conversationId);
+        
+        // Then delete the conversation itself
+        db.run(
+          'DELETE FROM private_conversations WHERE id = ?',
+          [conversationId],
+          function(err) {
+            if (err) {
+              console.error('Failed to delete conversation:', err);
+              db.run('ROLLBACK');
+              return res.status(500).json({ error: 'Failed to delete conversation' });
+            }
+            
+            if (this.changes === 0) {
+              db.run('ROLLBACK');
+              return res.status(404).json({ error: 'Conversation not found' });
+            }
+            
+            // Commit the transaction
+            db.run('COMMIT', (commitErr) => {
+              if (commitErr) {
+                console.error('Failed to commit transaction:', commitErr);
+                return res.status(500).json({ error: 'Failed to delete conversation' });
+              }
+              
+              console.log('✅ Successfully deleted conversation:', conversationId);
+              res.json({ success: true, message: 'Conversation deleted successfully' });
+            });
+          }
+        );
+      }
+    );
+  });
+});
+
 // Add question to thread
 app.post('/api/threads/:threadId/questions', (req, res) => {
   const { threadId } = req.params;

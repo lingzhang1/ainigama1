@@ -835,6 +835,94 @@ exports.updateConversationTitle = async (event) => {
   }
 };
 
+// Delete conversation
+exports.deleteConversation = async (event) => {
+  try {
+    const { conversationId } = event.pathParameters || {};
+    
+    if (!conversationId) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Conversation ID is required' })
+      };
+    }
+
+    console.log('🗑️ Deleting conversation:', conversationId);
+
+    // First, delete all messages in the conversation
+    const messagesResult = await dynamodb.query({
+      TableName: messagesTable,
+      IndexName: 'ConversationIdIndex',
+      KeyConditionExpression: 'conversationId = :conversationId',
+      ExpressionAttributeValues: {
+        ':conversationId': conversationId
+      },
+      ProjectionExpression: 'id'
+    }).promise();
+
+    // Delete messages in batches
+    const messages = messagesResult.Items || [];
+    if (messages.length > 0) {
+      const deleteRequests = messages.map(message => ({
+        DeleteRequest: {
+          Key: { id: message.id }
+        }
+      }));
+
+      // Process in batches of 25 (DynamoDB limit)
+      for (let i = 0; i < deleteRequests.length; i += 25) {
+        const batch = deleteRequests.slice(i, i + 25);
+        await dynamodb.batchWrite({
+          RequestItems: {
+            [messagesTable]: batch
+          }
+        }).promise();
+      }
+
+      console.log('✅ Deleted', messages.length, 'messages for conversation:', conversationId);
+    }
+
+    // Then delete the conversation itself
+    await dynamodb.delete({
+      TableName: conversationsTable,
+      Key: { id: conversationId },
+      ConditionExpression: 'attribute_exists(id)'
+    }).promise();
+
+    console.log('✅ Successfully deleted conversation:', conversationId);
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        success: true, 
+        message: 'Conversation deleted successfully' 
+      })
+    };
+
+  } catch (error) {
+    console.error('Delete conversation error:', error);
+    
+    if (error.code === 'ConditionalCheckFailedException') {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Conversation not found' })
+      };
+    }
+    
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Failed to delete conversation',
+        message: error.message 
+      })
+    };
+  }
+};
+
 // Add question to thread
 exports.addQuestion = async (event) => {
   try {

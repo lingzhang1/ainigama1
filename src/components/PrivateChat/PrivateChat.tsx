@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Lock, Globe, MessageSquare, X, Settings, Brain, Loader2 } from 'lucide-react';
+import { Send, Lock, Globe, MessageSquare, X, Settings, Brain, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent } from '../ui/card';
@@ -400,6 +400,41 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     }
   };
 
+  const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent conversation selection when clicking delete
+    
+    if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+      return;
+    }
+    
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/conversations/${conversationId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+      
+      if (response.ok) {
+        // Remove from conversations list
+        setConversations(prev => prev.filter(c => c.id !== conversationId));
+        
+        // If this was the current conversation, clear it
+        if (currentConversation?.id === conversationId) {
+          setCurrentConversation(null);
+        }
+        
+        console.log('✅ Conversation deleted:', conversationId);
+      } else {
+        console.error('Failed to delete conversation:', response.statusText);
+        alert('Failed to delete conversation. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      alert('Failed to delete conversation. Please try again.');
+    }
+  };
 
   const handleMakePublic = () => {
     setShowPublishModal(true);
@@ -519,7 +554,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           {conversations.map((conversation) => (
             <div
               key={conversation.id}
-              className={`p-4 border-b cursor-pointer hover:bg-gray-50 ${
+              className={`p-4 border-b cursor-pointer hover:bg-gray-50 group relative ${
                 currentConversation?.id === conversation.id ? 'bg-blue-50 border-blue-200' : ''
               }`}
               onClick={() => {
@@ -534,11 +569,24 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 }
               }}
             >
-              <div className="font-medium text-gray-800 mb-1">
-                {conversation.title || 'New Conversation'}
-              </div>
-              <div className="text-xs text-gray-400 mt-1">
-                {formatDistanceToNow(conversation.updatedAt)} ago
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-gray-800 mb-1 truncate">
+                    {conversation.title || 'New Conversation'}
+                  </div>
+                  <div className="text-xs text-gray-400">
+                    {formatDistanceToNow(conversation.updatedAt)} ago
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                  onClick={(e) => handleDeleteConversation(conversation.id, e)}
+                  title="Delete conversation"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
               </div>
             </div>
           ))}

@@ -266,6 +266,23 @@ functions:
             allowCredentials: false
             maxAge: 86400
 
+  deleteConversation:
+    handler: src/handlers/api.deleteConversation
+    events:
+      - http:
+          path: /conversations/{conversationId}
+          method: delete
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
   addQuestion:
     handler: src/handlers/api.addQuestion
     events:
