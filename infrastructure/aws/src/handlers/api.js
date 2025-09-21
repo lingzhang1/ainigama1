@@ -20,58 +20,35 @@ exports.getThreads = async (event) => {
   try {
     const { filter = 'recent' } = event.queryStringParameters || {};
     
-    let result;
+    // Use scan for all queries to avoid GSI conflicts
+    const result = await dynamodb.scan({
+      TableName: threadsTable,
+      FilterExpression: 'is_public = :isPublic',
+      ExpressionAttributeValues: {
+        ':isPublic': true
+      },
+      Limit: 50
+    }).promise();
+    
+    // Sort in memory based on filter
+    let sortedItems;
     if (filter === 'trending') {
-      // Use ThreadsTrendingIndexV3 GSI for trending (most recently updated)
-      try {
-        result = await dynamodb.query({
-          TableName: threadsTable,
-          IndexName: 'ThreadsTrendingIndexV3',
-          KeyConditionExpression: 'thread_type = :thread_type',
-          FilterExpression: 'is_public = :isPublic',
-          ExpressionAttributeValues: {
-            ':thread_type': 'PUBLIC',
-            ':isPublic': true
-          },
-          ScanIndexForward: false,
-          Limit: 20
-        }).promise();
-      } catch (gsiError) {
-        console.log('GSI query failed, falling back to scan:', gsiError.message);
-        // Fallback to scan if GSI query fails
-        result = await dynamodb.scan({
-          TableName: threadsTable,
-          FilterExpression: 'is_public = :isPublic',
-          ExpressionAttributeValues: {
-            ':isPublic': true
-          },
-          Limit: 20
-        }).promise();
-        
-        result.Items = result.Items.sort((a, b) => 
-          new Date(b.updated_at || b.updatedAt || 0).getTime() - 
-          new Date(a.updated_at || a.updatedAt || 0).getTime()
-        );
-      }
+      sortedItems = result.Items.sort((a, b) => 
+        new Date(b.updated_at || b.updatedAt || 0).getTime() - 
+        new Date(a.updated_at || a.updatedAt || 0).getTime()
+      );
     } else {
-      // Use scan for recent (most recently created) - GSI not needed for this
-      result = await dynamodb.scan({
-        TableName: threadsTable,
-        FilterExpression: 'is_public = :isPublic',
-        ExpressionAttributeValues: {
-          ':isPublic': true
-        },
-        Limit: 20
-      }).promise();
-      
-      result.Items = result.Items.sort((a, b) => 
+      sortedItems = result.Items.sort((a, b) => 
         new Date(b.created_at || b.createdAt || 0).getTime() - 
         new Date(a.created_at || a.createdAt || 0).getTime()
       );
     }
     
+    // Take only first 20 after sorting
+    const limitedItems = sortedItems.slice(0, 20);
+    
     // Transform threads to include proper structure
-    const transformedThreads = (result.Items || []).map(thread => ({
+    const transformedThreads = limitedItems.map(thread => ({
       id: thread.id,
       title: thread.title,
       creator: {
@@ -150,8 +127,6 @@ exports.createThread = async (event) => {
       is_public: true,
       created_at: now,
       updated_at: now,
-      thread_type: 'PUBLIC', // Add GSI partition key for trending queries
-      updated_timestamp: now, // Add GSI sort key for efficient sorting
       question_count: questions.length,
       answer_count: initialAnswers?.length || 0
     };
