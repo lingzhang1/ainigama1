@@ -111,7 +111,7 @@ functions:
       - websocket:
           route: add_comment
 
-  # REST API
+  # REST API Functions
   getThreads:
     handler: src/handlers/api.getThreads
     events:
@@ -127,18 +127,7 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
             allowCredentials: false
-      - http:
-          path: /threads
-          method: options
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
+            maxAge: 86400
 
   createThread:
     handler: src/handlers/api.createThread
@@ -155,7 +144,8 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
             allowCredentials: false
-      - http:
+            maxAge: 86400
+
   getThread:
     handler: src/handlers/api.getThread
     events:
@@ -171,6 +161,7 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
             allowCredentials: false
+            maxAge: 86400
 
   getThreadAnswers:
     handler: src/handlers/api.getThreadAnswers
@@ -187,19 +178,8 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
             allowCredentials: false
+            maxAge: 86400
 
-          path: /threads
-          method: options
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
-  
   getUserConversations:
     handler: src/handlers/api.getUserConversations
     events:
@@ -215,18 +195,7 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
             allowCredentials: false
-      - http:
-          path: /user-conversations/{userId}
-          method: options
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
+            maxAge: 86400
 
   saveMessages:
     handler: src/handlers/api.saveMessages
@@ -243,18 +212,7 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
             allowCredentials: false
-      - http:
-          path: /save-messages
-          method: options
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
+            maxAge: 86400
 
   getMessages:
     handler: src/handlers/api.getMessages
@@ -271,18 +229,7 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
             allowCredentials: false
-      - http:
-          path: /messages/{conversationId}
-          method: options
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
+            maxAge: 86400
 
   createNewConversation:
     handler: src/handlers/api.createNewConversation
@@ -299,18 +246,7 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
             allowCredentials: false
-      - http:
-          path: /new-conversation
-          method: options
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
+            maxAge: 86400
 
   updateConversationTitle:
     handler: src/handlers/api.updateConversationTitle
@@ -327,18 +263,7 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
             allowCredentials: false
-      - http:
-          path: /conversations/{conversationId}/title
-          method: options
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
+            maxAge: 86400
 
 resources:
   Resources:
@@ -408,7 +333,7 @@ resources:
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S
-          - AttributeName: createdAt
+          - AttributeName: created_at
             AttributeType: S
         KeySchema:
           - AttributeName: id
@@ -416,7 +341,7 @@ resources:
         GlobalSecondaryIndexes:
           - IndexName: CreatedAtIndex
             KeySchema:
-              - AttributeName: createdAt
+              - AttributeName: created_at
                 KeyType: HASH
             Projection:
               ProjectionType: ALL
@@ -471,7 +396,7 @@ resources:
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S
-          - AttributeName: questionId
+          - AttributeName: question_id
             AttributeType: S
         KeySchema:
           - AttributeName: id
@@ -479,7 +404,7 @@ resources:
         GlobalSecondaryIndexes:
           - IndexName: QuestionIdIndex
             KeySchema:
-              - AttributeName: questionId
+              - AttributeName: question_id
                 KeyType: HASH
             Projection:
               ProjectionType: ALL
