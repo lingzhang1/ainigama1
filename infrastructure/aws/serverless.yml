@@ -332,9 +332,18 @@ resources:
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S
+          - AttributeName: updated_at
+            AttributeType: S
         KeySchema:
           - AttributeName: id
             KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UpdatedAtIndexV2
+            KeySchema:
+              - AttributeName: updated_at
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
 
     QuestionsTable:
@@ -421,26 +430,6 @@ resources:
               ProjectionType: ALL
         BillingMode: PAY_PER_REQUEST
 
-    ThreadsTable:
-      Type: AWS::DynamoDB::Table
-      Properties:
-        TableName: ${self:provider.environment.DYNAMODB_TABLE_THREADS}
-        AttributeDefinitions:
-          - AttributeName: id
-            AttributeType: S
-          - AttributeName: updated_at
-            AttributeType: S
-        KeySchema:
-          - AttributeName: id
-            KeyType: HASH
-        GlobalSecondaryIndexes:
-          - IndexName: UpdatedAtIndexV2
-            KeySchema:
-              - AttributeName: updated_at
-                KeyType: HASH
-            Projection:
-              ProjectionType: ALL
-        BillingMode: PAY_PER_REQUEST
     # Cognito User Pool
     CognitoUserPool:
       Type: AWS::Cognito::UserPool
