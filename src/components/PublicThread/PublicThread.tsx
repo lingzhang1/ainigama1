@@ -24,7 +24,7 @@ import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
 import { Thread, Question, Answer, Comment } from '../../types';
 import { useAppContext } from '../../context/AppContext';
-import { usePublicThread } from '../../hooks/useWebSocket';
+import { usePublicThread, useWebSocket } from '../../hooks/useWebSocket';
 import { deepSeekService, ChatMessage } from '../../services/deepseek';
 import { formatDistanceToNow } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
@@ -42,6 +42,7 @@ interface PublicThreadProps {
 
 export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
+  const ws = useWebSocket(state.currentUser?.id || '');
   const [thread, setThread] = useState<Thread | null>(null);
   const [expandedAnswers, setExpandedAnswers] = useState<{ [questionId: string]: boolean }>({});
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
