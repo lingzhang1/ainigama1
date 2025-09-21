@@ -51,6 +51,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
 
   // Answer Interaction Panel state
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+  const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [loadingComments, setLoadingComments] = useState(false);
 
   // State for collapsed/expanded answer input sections
