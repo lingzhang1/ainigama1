@@ -40,6 +40,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [showInteractionPanel, setShowInteractionPanel] = useState(false);
   const [newAnswerContent, setNewAnswerContent] = useState<{ [questionId: string]: string }>({});
+  const [answers, setAnswers] = useState<{ [questionId: string]: Answer[] }>({});
   const [newCommentContent, setNewCommentContent] = useState('');
   const [newQuestionContent, setNewQuestionContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
