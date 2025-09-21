@@ -346,7 +346,7 @@ exports.getThreadAnswers = async (event) => {
       const answersResult = await dynamodb.query({
         TableName: answersTable,
         IndexName: 'QuestionIdIndex',
-        KeyConditionExpression: 'questionId = :questionId',
+        KeyConditionExpression: 'question_id = :questionId',
         ExpressionAttributeValues: {
           ':questionId': questionId
         },
@@ -358,7 +358,7 @@ exports.getThreadAnswers = async (event) => {
         content: answer.content,
         timestamp: answer.created_at || answer.timestamp,
         userId: answer.user_id,
-        questionId: answer.questionId || answer.question_id,
+        questionId: answer.question_id,
         isPinned: Boolean(answer.is_pinned),
         isAI: Boolean(answer.is_ai),
         interactionCount: answer.interaction_count || 0
