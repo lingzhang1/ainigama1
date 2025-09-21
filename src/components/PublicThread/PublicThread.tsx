@@ -36,8 +36,6 @@ interface PublicThreadProps {
 export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
   const [thread, setThread] = useState<Thread | null>(null);
-  const [answers, setAnswers] = useState<{ [questionId: string]: Answer[] }>({});
-  const [comments, setComments] = useState<{ [answerId: string]: Comment[] }>({});
   const [expandedAnswers, setExpandedAnswers] = useState<{ [questionId: string]: boolean }>({});
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [showInteractionPanel, setShowInteractionPanel] = useState(false);

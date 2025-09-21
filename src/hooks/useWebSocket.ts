@@ -3,21 +3,13 @@ import { wsService } from '../services/websocket';
 import { Message, Answer, Comment, Thread } from '../types';
 
 export const useWebSocket = (userId: string) => {
-  const isConnected = useRef(false);
-
   useEffect(() => {
-    if (!isConnected.current && userId && userId.trim() !== '') {
+    if (userId && userId.trim() !== '') {
       wsService.connect(userId);
-      isConnected.current = true;
     }
 
     return () => {
-      if (isConnected.current) {
-        wsService.disconnect();
-        if (isConnected.current) {
-          isConnected.current = false;
-        }
-      }
+      wsService.disconnect();
     };
   }, [userId]);
 
