@@ -16,6 +16,7 @@ provider:
     DYNAMODB_TABLE_COMMENTS: ${self:service}-${self:provider.stage}-comments
     DYNAMODB_TABLE_CONNECTIONS: ${self:service}-${self:provider.stage}-connections
     DEEPSEEK_API_KEY: ${env:DEEPSEEK_API_KEY, 'sk-0dcbd0d5eca74684919812e175de65b7'}
+    NODE_ENV: ${self:provider.stage}
     WEBSOCKET_ENDPOINT: 
       Fn::Join:
         - ""

@@ -150,6 +150,71 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     }
   );
 
+  useEffect(() => {
+    const handleNewComment = (data: { answerId: string; comment: Comment }) => {
+      console.log('🔵 Frontend: Received new comment event:', data.comment.id, 'for answer:', data.answerId);
+      
+      // Enhanced duplicate prevention with global tracking
+      const commentKey = `${data.comment.id}_${data.answerId}`;
+      
+      // Initialize global comment tracking if not exists
+      if (!window.processedComments) {
+        window.processedComments = new Set();
+      }
+      
+      // Check if we already processed this comment
+      if (window.processedComments.has(commentKey)) {
+        console.log('🚫 Frontend: Skipping duplicate comment (global check):', data.comment.id);
+        return;
+      }
+      
+      // Mark as processed
+      window.processedComments.add(commentKey);
+      console.log('✅ Frontend: Processing new comment:', data.comment.id);
+      
+      // Clean up if set gets too large (prevent memory leaks)
+      if (window.processedComments.size > 1000) {
+        window.processedComments.clear();
+      }
+      
+      setComments(prev => {
+        const answerComments = prev[data.answerId] || [];
+        
+        // Double-check for duplicates at state level
+        const commentExists = answerComments.some(c => c.id === data.comment.id);
+        if (commentExists) {
+          console.log('🚫 Frontend: Comment already exists in state:', data.comment.id);
+          return prev;
+        }
+        
+        console.log('📝 Frontend: Adding comment to state:', data.comment.id);
+        const updatedComments = [...answerComments, data.comment]
+          .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+        
+        return {
+          ...prev,
+          [data.answerId]: updatedComments
+        };
+      });
+    };
+
+    // Clean up existing listeners first to prevent duplicates
+    if (ws.socket) {
+      ws.socket.off('new_comment');
+      console.log('🧹 Frontend: Cleaned up existing comment listeners');
+    }
+    
+    // Add the new listener
+    ws.onNewComment(handleNewComment);
+    console.log('👂 Frontend: Added new comment listener');
+
+    return () => {
+      if (ws.socket) {
+        ws.socket.off('new_comment');
+        console.log('🧹 Frontend: Cleanup on unmount');
+      }
+    };
+  }, [ws]);
 
   // Load comments for selected answer
   const loadCommentsForAnswer = async (answerId: string) => {
