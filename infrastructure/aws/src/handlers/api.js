@@ -40,6 +40,7 @@ exports.getThreads = async (event) => {
     }
     
     // Transform threads to include proper structure
+    const transformedThreads = sortedItems.map(thread => ({
       id: thread.id,
       title: thread.title,
       creator: {
