@@ -29,6 +29,13 @@ import { deepSeekService, ChatMessage } from '../../services/deepseek';
 import { formatDistanceToNow } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 
+// Add global type declaration for duplicate prevention
+declare global {
+  interface Window {
+    processedComments?: Set<string>;
+  }
+}
+
 interface PublicThreadProps {
   onLogout: () => void;
 }
