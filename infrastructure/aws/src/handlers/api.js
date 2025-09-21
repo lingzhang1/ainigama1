@@ -12,7 +12,8 @@ const answersTable = process.env.DYNAMODB_TABLE_ANSWERS;
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
+  'Access-Control-Max-Age': '86400'
 };
 
 exports.getThreads = async (event) => {
@@ -212,6 +213,175 @@ exports.createThread = async (event) => {
       headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to create thread',
+        message: error.message 
+      })
+    };
+  }
+};
+
+// Get individual thread by ID
+exports.getThread = async (event) => {
+  try {
+    const { threadId } = event.pathParameters || {};
+    
+    if (!threadId) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Thread ID is required' })
+      };
+    }
+
+    // Get thread with creator info
+    const threadResult = await dynamodb.get({
+      TableName: threadsTable,
+      Key: { id: threadId }
+    }).promise();
+
+    if (!threadResult.Item) {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Thread not found' })
+      };
+    }
+
+    const thread = threadResult.Item;
+
+    // Get questions for this thread
+    const questionsResult = await dynamodb.query({
+      TableName: questionsTable,
+      IndexName: 'ThreadIdIndex',
+      KeyConditionExpression: 'thread_id = :threadId',
+      ExpressionAttributeValues: {
+        ':threadId': threadId
+      },
+      ScanIndexForward: true
+    }).promise();
+
+    const questions = (questionsResult.Items || []).map(q => ({
+      id: q.id,
+      content: q.content,
+      timestamp: q.created_at || q.timestamp,
+      userId: q.user_id,
+      threadId: q.thread_id
+    }));
+
+    // Transform thread data
+    const transformedThread = {
+      id: thread.id,
+      title: thread.title,
+      creator: {
+        id: thread.creator_id,
+        name: thread.creator_name || 'Unknown User',
+        avatar: thread.creator_avatar || '/img-5.svg',
+        handle: thread.creator_handle || '@user'
+      },
+      isPublic: Boolean(thread.is_public),
+      createdAt: thread.created_at,
+      updatedAt: thread.updated_at,
+      questionCount: questions.length,
+      answerCount: thread.answer_count || 0,
+      interactionCount: questions.length + (thread.answer_count || 0),
+      questions,
+      category: thread.category
+    };
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify(transformedThread)
+    };
+
+  } catch (error) {
+    console.error('Get thread error:', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Failed to fetch thread',
+        message: error.message 
+      })
+    };
+  }
+};
+
+// Get answers for a specific thread
+exports.getThreadAnswers = async (event) => {
+  try {
+    const { threadId } = event.pathParameters || {};
+    
+    if (!threadId) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Thread ID is required' })
+      };
+    }
+
+    // Get all questions for this thread first
+    const questionsResult = await dynamodb.query({
+      TableName: questionsTable,
+      IndexName: 'ThreadIdIndex',
+      KeyConditionExpression: 'thread_id = :threadId',
+      ExpressionAttributeValues: {
+        ':threadId': threadId
+      }
+    }).promise();
+
+    const questionIds = (questionsResult.Items || []).map(q => q.id);
+
+    if (questionIds.length === 0) {
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({})
+      };
+    }
+
+    // Get answers for all questions
+    const answersByQuestion = {};
+    
+    for (const questionId of questionIds) {
+      const answersResult = await dynamodb.query({
+        TableName: answersTable,
+        IndexName: 'QuestionIdIndex',
+        KeyConditionExpression: 'questionId = :questionId',
+        ExpressionAttributeValues: {
+          ':questionId': questionId
+        },
+        ScanIndexForward: true
+      }).promise();
+
+      const answers = (answersResult.Items || []).map(answer => ({
+        id: answer.id,
+        content: answer.content,
+        timestamp: answer.created_at || answer.timestamp,
+        userId: answer.user_id,
+        questionId: answer.questionId || answer.question_id,
+        isPinned: Boolean(answer.is_pinned),
+        isAI: Boolean(answer.is_ai),
+        interactionCount: answer.interaction_count || 0
+      }));
+
+      if (answers.length > 0) {
+        answersByQuestion[questionId] = answers;
+      }
+    }
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify(answersByQuestion)
+    };
+
+  } catch (error) {
+    console.error('Get thread answers error:', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Failed to fetch thread answers',
         message: error.message 
       })
     };

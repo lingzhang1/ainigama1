@@ -156,6 +156,38 @@ functions:
               - X-Amz-Security-Token
             allowCredentials: false
       - http:
+  getThread:
+    handler: src/handlers/api.getThread
+    events:
+      - http:
+          path: /threads/{threadId}
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+
+  getThreadAnswers:
+    handler: src/handlers/api.getThreadAnswers
+    events:
+      - http:
+          path: /threads/{threadId}/answers
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+
           path: /threads
           method: options
           cors:
