@@ -91,6 +91,7 @@ functions:
     events:
       - websocket:
           route: save_conversation
+
   # Public Thread API
   joinThread:
     handler: src/handlers/publicThread.joinThread
@@ -117,28 +118,28 @@ functions:
       - http:
           path: /threads
           method: get
-          cors: true
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
       - http:
           path: /threads
           method: options
-          cors: true
-  
-  getUserConversations:
-    handler: src/handlers/api.getUserConversations
-    events:
-      - http:
-          path: /user-conversations/{userId}
-          method: get
-          cors: true
-      - http:
-          path: /user-conversations/{userId}
-          method: options
-          cors: true
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
 
-  saveMessages:
-    handler: src/handlers/api.saveMessages
-    events:
-      - http:
   createThread:
     handler: src/handlers/api.createThread
     events:
@@ -166,13 +167,62 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
             allowCredentials: false
+  
+  getUserConversations:
+    handler: src/handlers/api.getUserConversations
+    events:
+      - http:
+          path: /user-conversations/{userId}
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+      - http:
+          path: /user-conversations/{userId}
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+
+  saveMessages:
+    handler: src/handlers/api.saveMessages
+    events:
+      - http:
           path: /save-messages
           method: post
-          cors: true
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
       - http:
           path: /save-messages
           method: options
-          cors: true
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
 
   getMessages:
     handler: src/handlers/api.getMessages
@@ -217,22 +267,6 @@ functions:
               - X-Api-Key
               - X-Amz-Security-Token
             allowCredentials: false
-            origin: '*'
-            headers:
-              - Content-Type
-          cors:
-            origin: '*'
-            headers:
-              - Content-Type
-              - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
       - http:
           path: /new-conversation
           method: options
@@ -241,13 +275,6 @@ functions:
             headers:
               - Content-Type
               - X-Amz-Date
-              - Authorization
-              - X-Api-Key
-              - X-Amz-Security-Token
-            allowCredentials: false
-            origin: '*'
-            headers:
-              - Content-Type
               - Authorization
               - X-Api-Key
               - X-Amz-Security-Token
@@ -366,7 +393,7 @@ resources:
     QuestionsTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:service}-${self:provider.stage}-questions
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_QUESTIONS}
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S
@@ -473,7 +500,6 @@ resources:
         ExplicitAuthFlows:
           - ADMIN_NO_SRP_AUTH
         GenerateSecret: false
-
 
 plugins:
   - serverless-offline
