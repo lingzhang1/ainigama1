@@ -7,7 +7,8 @@ import {
   ChevronUp,
   X,
   Pin,
-  Bot
+  Bot,
+  ArrowLeft
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
@@ -457,8 +458,9 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
               onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
               variant="ghost"
               size="sm"
-              className="text-gray-500 hover:text-gray-700"
+              className="text-gray-500 hover:text-gray-700 flex items-center gap-2"
             >
+              <ArrowLeft className="w-4 h-4" />
               Back to Forum
             </Button>
           </div>
