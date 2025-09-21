@@ -20,7 +20,7 @@ exports.getThreads = async (event) => {
   try {
     const { filter = 'recent' } = event.queryStringParameters || {};
     
-    let params = {
+    const params = {
       TableName: threadsTable,
       FilterExpression: 'is_public = :isPublic',
       ExpressionAttributeValues: {
@@ -29,16 +29,17 @@ exports.getThreads = async (event) => {
       Limit: 20
     };
 
-    // Add sorting based on filter
-    if (filter === 'trending') {
-      params.IndexName = 'UpdatedAtIndex';
-      params.ScanIndexForward = false;
-    }
-
     const result = await dynamodb.scan(params).promise();
     
+    // Sort in memory based on filter
+    let sortedItems = result.Items || [];
+    if (filter === 'trending') {
+      sortedItems.sort((a, b) => new Date(b.updated_at || b.updatedAt || 0).getTime() - new Date(a.updated_at || a.updatedAt || 0).getTime());
+    } else {
+      sortedItems.sort((a, b) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime());
+    }
+    
     // Transform threads to include proper structure
-    const transformedThreads = (result.Items || []).map(thread => ({
       id: thread.id,
       title: thread.title,
       creator: {
