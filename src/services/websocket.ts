@@ -13,6 +13,7 @@ class WebSocketService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private eventHandlers: Map<string, Function[]> = new Map();
+  private recentMessages: Map<string, number> = new Map();
 
   connect(userId: string) {
     // Get WebSocket URL from environment variable
@@ -95,8 +96,39 @@ class WebSocketService {
   }
 
   private handleAWSMessage(data: any) {
-    // Handle different message types from AWS
+    // Handle different message types from AWS with duplicate prevention
     const handlers = this.eventHandlers.get(data.type) || [];
+    
+    // Add duplicate prevention for AWS WebSocket messages
+    if (data.type === 'new_comment' && data.comment) {
+      // Check if we already processed this comment recently
+      const commentKey = `${data.comment.id}_${data.answerId}`;
+      const now = Date.now();
+      
+      if (!this.recentMessages) {
+        this.recentMessages = new Map();
+      }
+      
+      // If we processed this message in the last 1 second, skip it
+      if (this.recentMessages.has(commentKey)) {
+        const lastProcessed = this.recentMessages.get(commentKey);
+        if (now - lastProcessed < 1000) {
+          console.log('🚫 AWS: Skipping duplicate comment:', data.comment.id);
+          return;
+        }
+      }
+      
+      // Mark this message as processed
+      this.recentMessages.set(commentKey, now);
+      
+      // Clean up old entries (older than 5 seconds)
+      for (const [key, timestamp] of this.recentMessages.entries()) {
+        if (now - timestamp > 5000) {
+          this.recentMessages.delete(key);
+        }
+      }
+    }
+    
     handlers.forEach(handler => handler(data));
   }
 

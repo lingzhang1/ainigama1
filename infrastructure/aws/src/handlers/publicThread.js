@@ -122,40 +122,13 @@ exports.addComment = async (event) => {
 
     console.log('📤 AWS: Broadcasting new comment:', comment.id, 'for answer:', answerId);
     
-    // Add delay to prevent race conditions and duplicates
-    setTimeout(async () => {
-      await broadcastToAll({
-        type: 'new_comment',
-        answerId,
-        comment
-      });
-    }, 100);
-
-    // Also broadcast to thread-specific connections if available
-    try {
-      // Get thread ID from answer
-      const answerResult = await dynamodb.get({
-        TableName: answersTable,
-        Key: { id: answerId }
-      }).promise();
-      
-      if (answerResult.Item && answerResult.Item.question_id) {
-        const questionResult = await dynamodb.get({
-          TableName: questionsTable,
-          Key: { id: answerResult.Item.question_id }
-        }).promise();
-        
-        if (questionResult.Item && questionResult.Item.thread_id) {
-          await broadcastToThread(questionResult.Item.thread_id, {
-            type: 'new_comment',
-            answerId,
-            comment
-          });
-        }
-      }
-    } catch (threadBroadcastError) {
-      console.error('Failed to broadcast to thread:', threadBroadcastError);
-    }
+    // Only broadcast to all connections once - no need for thread-specific broadcast
+    // since all connections receive the message anyway
+    await broadcastToAll({
+      type: 'new_comment',
+      answerId,
+      comment
+    });
 
     return {
       statusCode: 200,
