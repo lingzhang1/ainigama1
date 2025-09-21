@@ -22,18 +22,15 @@ exports.getThreads = async (event) => {
     
     let result;
     if (filter === 'trending') {
-      // Use UpdatedAtIndexV2 GSI for trending (most recently updated)
+      // Use ThreadsTrendingIndexV3 GSI for trending (most recently updated)
       try {
         result = await dynamodb.query({
           TableName: threadsTable,
-          IndexName: 'UpdatedAtIndexV2',
-          KeyConditionExpression: '#gsi_pk = :gsi_pk',
+          IndexName: 'ThreadsTrendingIndexV3',
+          KeyConditionExpression: 'thread_type = :thread_type',
           FilterExpression: 'is_public = :isPublic',
-          ExpressionAttributeNames: {
-            '#gsi_pk': 'gsi_pk'
-          },
           ExpressionAttributeValues: {
-            ':gsi_pk': 'THREAD',
+            ':thread_type': 'PUBLIC',
             ':isPublic': true
           },
           ScanIndexForward: false,
@@ -153,7 +150,8 @@ exports.createThread = async (event) => {
       is_public: true,
       created_at: now,
       updated_at: now,
-      gsi_pk: 'THREAD', // Add GSI partition key for trending queries
+      thread_type: 'PUBLIC', // Add GSI partition key for trending queries
+      updated_timestamp: now, // Add GSI sort key for efficient sorting
       question_count: questions.length,
       answer_count: initialAnswers?.length || 0
     };
