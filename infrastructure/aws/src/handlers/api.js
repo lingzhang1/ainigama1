@@ -345,7 +345,7 @@ exports.getThreadAnswers = async (event) => {
     for (const questionId of questionIds) {
       const answersResult = await dynamodb.query({
         TableName: answersTable,
-        IndexName: 'QuestionIdIndexV2',
+        IndexName: 'QuestionIdIndex',
         KeyConditionExpression: 'question_id = :questionId',
         ExpressionAttributeValues: {
           ':questionId': questionId
