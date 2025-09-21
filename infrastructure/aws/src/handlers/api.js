@@ -153,6 +153,7 @@ exports.createThread = async (event) => {
       is_public: true,
       created_at: now,
       updated_at: now,
+      gsi_pk: 'THREAD', // Add GSI partition key for trending queries
       question_count: questions.length,
       answer_count: initialAnswers?.length || 0
     };

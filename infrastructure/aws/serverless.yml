@@ -332,7 +332,7 @@ resources:
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S
-          - AttributeName: updated_at
+          - AttributeName: gsi_pk
             AttributeType: S
         KeySchema:
           - AttributeName: id
@@ -340,7 +340,7 @@ resources:
         GlobalSecondaryIndexes:
           - IndexName: UpdatedAtIndexV2
             KeySchema:
-              - AttributeName: updated_at
+              - AttributeName: gsi_pk
                 KeyType: HASH
             Projection:
               ProjectionType: ALL
