@@ -7,6 +7,7 @@ const conversationsTable = process.env.DYNAMODB_TABLE_CONVERSATIONS;
 const messagesTable = process.env.DYNAMODB_TABLE_MESSAGES;
 const questionsTable = process.env.DYNAMODB_TABLE_QUESTIONS || 'ainigama-dev-questions';
 const answersTable = process.env.DYNAMODB_TABLE_ANSWERS;
+const commentsTable = process.env.DYNAMODB_TABLE_COMMENTS;
 
 // Simple CORS headers - let API Gateway handle CORS
 const corsHeaders = {
@@ -1085,6 +1086,195 @@ exports.addAnswer = async (event) => {
       headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to add answer',
+        message: error.message 
+      })
+    };
+  }
+};
+
+// Get comments for a specific answer
+exports.getAnswerComments = async (event) => {
+  try {
+    const { answerId } = event.pathParameters || {};
+    
+    if (!answerId) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Answer ID is required' })
+      };
+    }
+
+    const params = {
+      TableName: commentsTable,
+      IndexName: 'AnswerIdIndex',
+      KeyConditionExpression: 'answerId = :answerId',
+      ExpressionAttributeValues: {
+        ':answerId': answerId
+      },
+      ScanIndexForward: true // Oldest first for comments
+    };
+
+    const result = await dynamodb.query(params).promise();
+
+    // Group comments by parent/child relationship
+    const allComments = result.Items || [];
+    const topLevelComments = allComments.filter(c => !c.parentId);
+    const replies = allComments.filter(c => c.parentId);
+
+    // Attach replies to their parent comments
+    const commentsWithReplies = topLevelComments.map(comment => ({
+      id: comment.id,
+      content: comment.content,
+      timestamp: comment.created_at || comment.timestamp,
+      userId: comment.user_id || comment.userId,
+      answerId: comment.answerId,
+      parentId: comment.parentId,
+      replies: replies
+        .filter(reply => reply.parentId === comment.id)
+        .map(reply => ({
+          id: reply.id,
+          content: reply.content,
+          timestamp: reply.created_at || reply.timestamp,
+          userId: reply.user_id || reply.userId,
+          answerId: reply.answerId,
+          parentId: reply.parentId
+        }))
+    }));
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify(commentsWithReplies)
+    };
+
+  } catch (error) {
+    console.error('Get answer comments error:', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Failed to fetch comments',
+        message: error.message 
+      })
+    };
+  }
+};
+
+// Add comment to answer
+exports.addAnswerComment = async (event) => {
+  try {
+    const { answerId } = event.pathParameters || {};
+    
+    if (!answerId) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Answer ID is required' })
+      };
+    }
+
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body || '{}');
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Invalid JSON in request body' })
+      };
+    }
+    
+    const { content, userId, parentId } = requestBody;
+    
+    if (!content || !content.trim()) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Comment content is required' })
+      };
+    }
+
+    if (!userId) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'User ID is required' })
+      };
+    }
+
+    // Verify answer exists
+    const answerResult = await dynamodb.get({
+      TableName: answersTable,
+      Key: { id: answerId }
+    }).promise();
+
+    if (!answerResult.Item) {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Answer not found' })
+      };
+    }
+
+    // Create new comment
+    const commentId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const comment = {
+      id: commentId,
+      answerId: answerId,
+      content: content.trim(),
+      user_id: userId,
+      userId: userId, // Dual compatibility
+      parent_id: parentId || null,
+      parentId: parentId || null, // Dual compatibility
+      created_at: now,
+      timestamp: now // Dual compatibility
+    };
+
+    await dynamodb.put({
+      TableName: commentsTable,
+      Item: comment
+    }).promise();
+
+    // Update answer interaction count
+    await dynamodb.update({
+      TableName: answersTable,
+      Key: { id: answerId },
+      UpdateExpression: 'SET interaction_count = if_not_exists(interaction_count, :zero) + :inc',
+      ExpressionAttributeValues: {
+        ':zero': 0,
+        ':inc': 1
+      }
+    }).promise();
+
+    // Return the created comment in frontend format
+    const responseComment = {
+      id: commentId,
+      content: content.trim(),
+      timestamp: now,
+      userId: userId,
+      answerId: answerId,
+      parentId: parentId || null,
+      replies: []
+    };
+
+    console.log('✅ Created comment:', commentId, 'for answer:', answerId);
+
+    return {
+      statusCode: 201,
+      headers: corsHeaders,
+      body: JSON.stringify(responseComment)
+    };
+
+  } catch (error) {
+    console.error('Add answer comment error:', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Failed to add comment',
         message: error.message 
       })
     };

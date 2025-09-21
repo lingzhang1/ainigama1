@@ -299,6 +299,40 @@ functions:
             allowCredentials: false
             maxAge: 86400
 
+  getAnswerComments:
+    handler: src/handlers/api.getAnswerComments
+    events:
+      - http:
+          path: /answers/{answerId}/comments
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  addAnswerComment:
+    handler: src/handlers/api.addAnswerComment
+    events:
+      - http:
+          path: /answers/{answerId}/comments
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
 resources:
   Resources:
     # WebSocket Connections Table
