@@ -8,49 +8,14 @@ const messagesTable = process.env.DYNAMODB_TABLE_MESSAGES;
 const questionsTable = process.env.DYNAMODB_TABLE_QUESTIONS || 'ainigama-dev-questions';
 const answersTable = process.env.DYNAMODB_TABLE_ANSWERS;
 
-// Enhanced CORS headers with support for WebContainer and Bolt domains
+// Simple CORS headers - let API Gateway handle CORS
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-  'Access-Control-Allow-Credentials': 'false'
-};
-
-// Dynamic CORS headers based on origin
-const getDynamicCorsHeaders = (event) => {
-  const origin = event.headers?.origin || event.headers?.Origin;
-  let allowedOrigin = '*';
-  
-  if (origin) {
-    // Allow WebContainer domains
-    if (origin.includes('.webcontainer-api.io') || 
-        origin.includes('.bolt.host') || 
-        origin.includes('localhost') ||
-        origin.includes('127.0.0.1')) {
-      allowedOrigin = origin;
-    }
-  }
-  
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
-    'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-    'Access-Control-Allow-Credentials': 'false'
-  };
+  'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
 };
 
 exports.getThreads = async (event) => {
-  const corsHeaders = getDynamicCorsHeaders(event);
-  
-  // Handle OPTIONS request for CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: ''
-    };
-  }
-
   try {
     const { filter = 'recent' } = event.queryStringParameters || {};
     
@@ -113,16 +78,147 @@ exports.getThreads = async (event) => {
   }
 };
 
-exports.getUserConversations = async (event) => {
-  // Handle OPTIONS request for CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
+// Create new thread (Make Public functionality)
+exports.createThread = async (event) => {
+  try {
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body || '{}');
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Invalid JSON in request body' })
+      };
+    }
+    
+    const { title, creatorId, category, questions, initialAnswers } = requestBody;
+    
+    if (!title || !creatorId || !questions || questions.length === 0) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Missing required fields: title, creatorId, questions' })
+      };
+    }
+    
+    const threadId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    
+    console.log('Creating thread:', threadId, 'with', questions.length, 'questions');
+    
+    // Create thread
+    const thread = {
+      id: threadId,
+      title,
+      creator_id: creatorId,
+      category: category || 'General',
+      is_public: true,
+      created_at: now,
+      updated_at: now,
+      question_count: questions.length,
+      answer_count: initialAnswers?.length || 0
+    };
+
+    await dynamodb.put({
+      TableName: threadsTable,
+      Item: thread
+    }).promise();
+
+    console.log('✅ Created thread:', threadId);
+    
+    // Create questions
+    for (const question of questions) {
+      const questionId = question.id || crypto.randomUUID();
+      
+      const questionItem = {
+        id: questionId,
+        thread_id: threadId,
+        content: question.content,
+        user_id: question.userId || creatorId,
+        created_at: question.timestamp || now
+      };
+
+      await dynamodb.put({
+        TableName: questionsTable,
+        Item: questionItem
+      }).promise();
+
+      console.log('✅ Created question:', questionId);
+      
+      // Create corresponding AI answer if exists
+      const correspondingAnswer = initialAnswers?.find(a => a.questionId === question.id);
+      if (correspondingAnswer) {
+        const answerId = correspondingAnswer.id || crypto.randomUUID();
+        
+        const answerItem = {
+          id: answerId,
+          question_id: questionId,
+          content: correspondingAnswer.content,
+          user_id: null, // AI answers don't have user_id
+          is_ai: true,
+          is_pinned: true,
+          interaction_count: 0,
+          created_at: correspondingAnswer.timestamp || now
+        };
+
+        await dynamodb.put({
+          TableName: answersTable,
+          Item: answerItem
+        }).promise();
+
+        console.log('✅ Created AI answer:', answerId);
+      }
+    }
+    
+    // Return the created thread
+    const newThread = {
+      id: threadId,
+      title,
+      creator: {
+        id: creatorId,
+        name: 'User',
+        avatar: '/img-5.svg',
+        handle: '@user'
+      },
+      isPublic: true,
+      createdAt: now,
+      updatedAt: now,
+      questionCount: questions.length,
+      answerCount: initialAnswers?.length || 0,
+      interactionCount: questions.length + (initialAnswers?.length || 0),
+      questions: questions.map(q => ({
+        id: q.id || crypto.randomUUID(),
+        content: q.content,
+        timestamp: q.timestamp || now,
+        userId: q.userId || creatorId,
+        threadId
+      })),
+      category: category || 'General'
+    };
+    
+    console.log('🎉 Successfully created public thread:', threadId);
+    
     return {
       statusCode: 200,
       headers: corsHeaders,
-      body: ''
+      body: JSON.stringify(newThread)
+    };
+
+  } catch (error) {
+    console.error('Create thread error:', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Failed to create thread',
+        message: error.message 
+      })
     };
   }
+};
 
+exports.getUserConversations = async (event) => {
   try {
     const { userId } = event.pathParameters || {};
     
@@ -171,15 +267,6 @@ exports.getUserConversations = async (event) => {
 
 // Get messages for a specific conversation
 exports.getMessages = async (event) => {
-  // Handle OPTIONS request for CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: ''
-    };
-  }
-
   try {
     const { conversationId } = event.pathParameters || {};
     
@@ -254,15 +341,6 @@ exports.getMessages = async (event) => {
 
 // Create new conversation
 exports.createNewConversation = async (event) => {
-  // Handle OPTIONS request for CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: ''
-    };
-  }
-
   try {
     let requestBody;
     try {
@@ -325,15 +403,6 @@ exports.createNewConversation = async (event) => {
 
 // Save messages to conversation
 exports.saveMessages = async (event) => {
-  // Handle OPTIONS request for CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: ''
-    };
-  }
-
   try {
     let requestBody;
     try {
@@ -459,17 +528,6 @@ exports.saveMessages = async (event) => {
 
 // Update conversation title
 exports.updateConversationTitle = async (event) => {
-  const corsHeaders = getDynamicCorsHeaders(event);
-  
-  // Handle OPTIONS request for CORS preflight
-  if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 200,
-      headers: corsHeaders,
-      body: ''
-    };
-  }
-
   try {
     const { conversationId } = event.pathParameters || {};
     
@@ -542,13 +600,4 @@ exports.updateConversationTitle = async (event) => {
       })
     };
   }
-};
-
-// Handle OPTIONS requests for CORS
-exports.options = async (event) => {
-  return {
-    statusCode: 200,
-    headers: corsHeaders,
-    body: ''
-  };
 };
