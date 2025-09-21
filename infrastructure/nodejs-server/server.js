@@ -993,6 +993,137 @@ app.put('/api/conversations/:conversationId/title', (req, res) => {
   );
 });
 
+// Add question to thread
+app.post('/api/threads/:threadId/questions', (req, res) => {
+  const { threadId } = req.params;
+  const { content, userId } = req.body;
+  
+  if (!content || !content.trim()) {
+    return res.status(400).json({ error: 'Question content is required' });
+  }
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+  
+  // Verify thread exists
+  db.get('SELECT id FROM threads WHERE id = ?', [threadId], (err, thread) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Failed to verify thread' });
+    }
+    
+    if (!thread) {
+      return res.status(404).json({ error: 'Thread not found' });
+    }
+    
+    const questionId = uuidv4();
+    const now = new Date().toISOString();
+    
+    db.run(
+      'INSERT INTO questions (id, thread_id, content, user_id, created_at) VALUES (?, ?, ?, ?, ?)',
+      [questionId, threadId, content.trim(), userId, now],
+      function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Failed to add question' });
+        }
+        
+        // Update thread timestamp and question count
+        db.run(
+          'UPDATE threads SET updated_at = ?, question_count = COALESCE(question_count, 0) + 1 WHERE id = ?',
+          [now, threadId],
+          (updateErr) => {
+            if (updateErr) {
+              console.error('Failed to update thread:', updateErr);
+            }
+            
+            const newQuestion = {
+              id: questionId,
+              content: content.trim(),
+              timestamp: now,
+              userId: userId,
+              threadId: threadId
+            };
+            
+            console.log('✅ Created question:', questionId, 'for thread:', threadId);
+            res.json(newQuestion);
+          }
+        );
+      }
+    );
+  });
+});
+
+// Add answer to question
+app.post('/api/questions/:questionId/answers', (req, res) => {
+  const { questionId } = req.params;
+  const { content, userId } = req.body;
+  
+  if (!content || !content.trim()) {
+    return res.status(400).json({ error: 'Answer content is required' });
+  }
+  
+  // Verify question exists and get thread info
+  db.get(
+    'SELECT q.*, t.id as thread_id FROM questions q JOIN threads t ON q.thread_id = t.id WHERE q.id = ?',
+    [questionId],
+    (err, question) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to verify question' });
+      }
+      
+      if (!question) {
+        return res.status(404).json({ error: 'Question not found' });
+      }
+      
+      const answerId = uuidv4();
+      const now = new Date().toISOString();
+      
+      db.run(
+        'INSERT INTO answers (id, question_id, content, user_id, is_ai, is_pinned, interaction_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [answerId, questionId, content.trim(), userId || null, 0, 0, 0, now],
+        function(err) {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Failed to add answer' });
+          }
+          
+          // Update thread timestamp and answer count
+          db.run(
+            'UPDATE threads SET updated_at = ?, answer_count = COALESCE(answer_count, 0) + 1 WHERE id = ?',
+            [now, question.thread_id],
+            (updateErr) => {
+              if (updateErr) {
+                console.error('Failed to update thread:', updateErr);
+              }
+              
+              const newAnswer = {
+                id: answerId,
+                content: content.trim(),
+                timestamp: now,
+                userId: userId || null,
+                questionId: questionId,
+                isPinned: false,
+                isAI: false,
+                interactionCount: 0
+              };
+              
+              console.log('✅ Created answer:', answerId, 'for question:', questionId);
+              res.json({
+                success: true,
+                answer: newAnswer,
+                threadId: question.thread_id
+              });
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Server error:', err);

@@ -833,6 +833,124 @@ exports.updateConversationTitle = async (event) => {
   }
 };
 
+// Add question to thread
+exports.addQuestion = async (event) => {
+  try {
+    const { threadId } = event.pathParameters || {};
+    
+    if (!threadId) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Thread ID is required' })
+      };
+    }
+
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body || '{}');
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Invalid JSON in request body' })
+      };
+    }
+    
+    const { content, userId } = requestBody;
+    
+    if (!content || !content.trim()) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Question content is required' })
+      };
+    }
+
+    if (!userId) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'User ID is required' })
+      };
+    }
+
+    // Verify thread exists
+    const threadResult = await dynamodb.get({
+      TableName: threadsTable,
+      Key: { id: threadId }
+    }).promise();
+
+    if (!threadResult.Item) {
+      return {
+        statusCode: 404,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Thread not found' })
+      };
+    }
+
+    // Create new question
+    const questionId = crypto.randomUUID();
+    const now = new Date().toISOString();
+
+    const question = {
+      id: questionId,
+      thread_id: threadId,
+      threadId: threadId, // Dual compatibility
+      content: content.trim(),
+      user_id: userId,
+      userId: userId, // Dual compatibility
+      created_at: now,
+      timestamp: now // Dual compatibility
+    };
+
+    await dynamodb.put({
+      TableName: questionsTable,
+      Item: question
+    }).promise();
+
+    console.log('✅ Created question:', questionId, 'for thread:', threadId);
+
+    // Update thread timestamp and question count
+    await dynamodb.update({
+      TableName: threadsTable,
+      Key: { id: threadId },
+      UpdateExpression: 'SET updated_at = :updatedAt, question_count = if_not_exists(question_count, :zero) + :inc',
+      ExpressionAttributeValues: {
+        ':updatedAt': now,
+        ':zero': 0,
+        ':inc': 1
+      }
+    }).promise();
+
+    // Return the created question in frontend format
+    const responseQuestion = {
+      id: questionId,
+      content: content.trim(),
+      timestamp: now,
+      userId: userId,
+      threadId: threadId
+    };
+
+    return {
+      statusCode: 201,
+      headers: corsHeaders,
+      body: JSON.stringify(responseQuestion)
+    };
+
+  } catch (error) {
+    console.error('Add question error:', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Failed to add question',
+        message: error.message 
+      })
+    };
+  }
+};
+
 // Add answer to a question (REST API for public users)
 exports.addAnswer = async (event) => {
   try {

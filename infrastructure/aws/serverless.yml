@@ -265,6 +265,40 @@ functions:
             allowCredentials: false
             maxAge: 86400
 
+  addQuestion:
+    handler: src/handlers/api.addQuestion
+    events:
+      - http:
+          path: /threads/{threadId}/questions
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  addAnswerToQuestion:
+    handler: src/handlers/api.addAnswer
+    events:
+      - http:
+          path: /questions/{questionId}/answers
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
 resources:
   Resources:
     # WebSocket Connections Table

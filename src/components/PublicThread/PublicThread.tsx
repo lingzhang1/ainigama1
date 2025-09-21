@@ -105,13 +105,6 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     }
   );
 
-  const handleAddAnswer = (questionId: string) => {
-    const content = newAnswerContent[questionId];
-    if (!content?.trim()) return;
-
-    addAnswer(questionId, content);
-    setNewAnswerContent(prev => ({ ...prev, [questionId]: '' }));
-  };
 
   const handleAddComment = () => {
     if (!newCommentContent.trim() || !selectedAnswer) return;
@@ -123,7 +116,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const handleAddQuestion = () => {
     if (!newQuestionContent.trim()) return;
 
-    const newQuestion: Question = {
+    const newQuestion = {
       id: uuidv4(),
       content: newQuestionContent,
       timestamp: new Date(),
@@ -131,11 +124,85 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
       threadId: thread?.id || ''
     };
 
-    setThread(prev => prev ? ({
-      ...prev,
-      questions: [...prev.questions, newQuestion],
-      questionCount: prev.questionCount + 1
-    }) : null);
+    // Send to backend via API
+    const addQuestionToBackend = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+        const response = await fetch(`${apiUrl}/threads/${thread?.id}/questions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: newQuestionContent.trim(),
+            userId: state.currentUser?.id
+          })
+        });
+
+        if (response.ok) {
+          const savedQuestion = await response.json();
+          // Update local state with saved question
+          setThread(prev => prev ? ({
+            ...prev,
+            questions: [...prev.questions, savedQuestion],
+            questionCount: prev.questionCount + 1,
+            updatedAt: new Date()
+          }) : null);
+          setNewQuestionContent('');
+        } else {
+          console.error('Failed to add question:', response.statusText);
+        }
+      } catch (error) {
+        console.error('Error adding question:', error);
+      }
+    };
+
+    addQuestionToBackend();
+  };
+
+  const handleAddAnswer = async (questionId: string) => {
+    const content = newAnswerContent[questionId];
+    if (!content?.trim()) return;
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/questions/${questionId}/answers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: content.trim(),
+          userId: state.currentUser?.id
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const newAnswer = result.answer;
+        
+        // Update local answers state
+        setAnswers(prev => ({
+          ...prev,
+          [questionId]: [...(prev[questionId] || []), newAnswer]
+        }));
+        
+        // Update thread answer count
+        setThread(prev => prev ? ({
+          ...prev,
+          answerCount: prev.answerCount + 1,
+          updatedAt: new Date()
+        }) : null);
+        
+        // Clear input
+        setNewAnswerContent(prev => ({ ...prev, [questionId]: '' }));
+      } else {
+        console.error('Failed to add answer:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error adding answer:', error);
+    }
+  };
 
     setNewQuestionContent('');
   };
