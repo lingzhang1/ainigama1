@@ -450,54 +450,6 @@ app.get('/api/threads', (req, res) => {
         category: thread.category
       }));
       
-      res.json(transformedThreads);
-    }
-  );
-});
-
-app.get('/api/threads', (req, res) => {
-  const { filter = 'recent' } = req.query;
-  
-  let orderBy = 'created_at DESC';
-  if (filter === 'trending') {
-    orderBy = 'updated_at DESC';
-  }
-
-  db.all(
-    `SELECT t.*, u.name as creator_name, u.avatar as creator_avatar, u.handle as creator_handle,
-     (SELECT COUNT(*) FROM questions WHERE thread_id = t.id) as question_count,
-     (SELECT COUNT(*) FROM answers a JOIN questions q ON a.question_id = q.id WHERE q.thread_id = t.id) as answer_count
-     FROM threads t 
-     LEFT JOIN users u ON t.creator_id = u.id 
-     WHERE t.is_public = 1 
-     ORDER BY ${orderBy} 
-     LIMIT 20`,
-    (err, threads) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to fetch threads' });
-      }
-      
-      // Transform the data to match frontend expectations
-      const transformedThreads = threads.map(thread => ({
-        id: thread.id,
-        title: thread.title,
-        creator: {
-          id: thread.creator_id,
-          name: thread.creator_name || 'Unknown User',
-          avatar: thread.creator_avatar || '/img-5.svg',
-          handle: thread.creator_handle || '@user'
-        },
-        isPublic: Boolean(thread.is_public),
-        createdAt: new Date(thread.created_at),
-        updatedAt: new Date(thread.updated_at),
-        questionCount: thread.question_count || 0,
-        answerCount: thread.answer_count || 0,
-        interactionCount: (thread.question_count || 0) + (thread.answer_count || 0),
-        questions: [],
-        category: thread.category
-      }));
-      
       // Return consistent format with threads wrapped in an object
       res.json({ threads: transformedThreads });
     }
@@ -856,6 +808,125 @@ app.get('/api/threads/:threadId/answers', (req, res) => {
       res.json(answersByQuestion);
     }
   );
+});
+
+// Get comments for a specific answer
+app.get('/api/answers/:answerId/comments', (req, res) => {
+  const { answerId } = req.params;
+  
+  db.all(
+    `SELECT c.*, 
+     (SELECT json_group_array(
+       json_object(
+         'id', r.id,
+         'content', r.content,
+         'userId', r.user_id,
+         'parentId', r.parent_id,
+         'timestamp', r.created_at
+       )
+     ) FROM comments r WHERE r.parent_id = c.id) as replies_json
+     FROM comments c 
+     WHERE c.answer_id = ? AND c.parent_id IS NULL 
+     ORDER BY c.created_at ASC`,
+    [answerId],
+    (err, comments) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Failed to fetch comments' });
+      }
+      
+      // Transform the data to include nested replies
+      const transformedComments = comments.map(comment => {
+        let replies = [];
+        try {
+          if (comment.replies_json && comment.replies_json !== '[null]') {
+            replies = JSON.parse(comment.replies_json).filter(r => r.id !== null);
+          }
+        } catch (parseError) {
+          console.error('Error parsing replies:', parseError);
+        }
+        
+        return {
+          id: comment.id,
+          content: comment.content,
+          timestamp: new Date(comment.created_at),
+          userId: comment.user_id,
+          answerId: comment.answer_id,
+          parentId: comment.parent_id,
+          replies: replies.map(reply => ({
+            ...reply,
+            timestamp: new Date(reply.timestamp)
+          }))
+        };
+      });
+      
+      res.json(transformedComments);
+    }
+  );
+});
+
+// Add comment to answer
+app.post('/api/answers/:answerId/comments', (req, res) => {
+  const { answerId } = req.params;
+  const { content, userId, parentId } = req.body;
+  
+  if (!content || !content.trim()) {
+    return res.status(400).json({ error: 'Comment content is required' });
+  }
+  
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID is required' });
+  }
+  
+  // Verify answer exists
+  db.get('SELECT id FROM answers WHERE id = ?', [answerId], (err, answer) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Failed to verify answer' });
+    }
+    
+    if (!answer) {
+      return res.status(404).json({ error: 'Answer not found' });
+    }
+    
+    const commentId = uuidv4();
+    const now = new Date().toISOString();
+    
+    db.run(
+      'INSERT INTO comments (id, answer_id, content, user_id, parent_id, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+      [commentId, answerId, content.trim(), userId, parentId || null, now],
+      function(err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Failed to add comment' });
+        }
+        
+        // Update answer interaction count
+        db.run(
+          'UPDATE answers SET interaction_count = interaction_count + 1 WHERE id = ?',
+          [answerId],
+          (updateErr) => {
+            if (updateErr) {
+              console.error('Failed to update interaction count:', updateErr);
+            }
+            
+            const newComment = {
+              id: commentId,
+              content: content.trim(),
+              timestamp: now,
+              userId: userId,
+              answerId: answerId,
+              parentId: parentId || null,
+              replies: []
+            };
+            
+            console.log('✅ Created comment:', commentId, 'for answer:', answerId);
+            res.json(newComment);
+          }
+        );
+      }
+    );
+  });
 });
 
 app.get('/api/user-conversations/:userId', (req, res) => {

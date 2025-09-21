@@ -51,9 +51,6 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [aiContent, setAiContent] = useState<{ [questionId: string]: string }>({});
 
   // Answer Interaction Panel state
-  const [showInteractionPanel, setShowInteractionPanel] = useState(false);
-  const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
-  const [newCommentContent, setNewCommentContent] = useState('');
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
   const [loadingComments, setLoadingComments] = useState(false);
 
@@ -354,17 +351,6 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
       ...prev,
       [questionId]: !prev[questionId]
     }));
-  };
-
-  const openInteractionPanel = (answer: Answer) => {
-    setSelectedAnswer(answer);
-    setShowInteractionPanel(true);
-  };
-
-  const closeInteractionPanel = () => {
-    setShowInteractionPanel(false);
-    setSelectedAnswer(null);
-    setNewCommentContent('');
   };
 
   const isOriginalUser = state.currentUser?.id === thread?.creator.id;
@@ -1018,7 +1004,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
       </main>
 
       {/* Right Sidebar */}
-      <aside className="w-80 h-full bg-white border-l overflow-y-auto">
+      <aside className={`${showInteractionPanel ? 'w-0 overflow-hidden' : 'w-80'} h-full bg-white border-l overflow-y-auto transition-all duration-300`}>
         <div className="p-4">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center">
@@ -1079,85 +1065,196 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
         </div>
       </aside>
 
-      {/* Answer Interaction Panel */}
+      {/* Answer Interaction Panel - Side Drawer */}
       {showInteractionPanel && selectedAnswer && (
-        <div className="fixed inset-y-0 right-0 w-96 bg-white border-l shadow-lg z-50 flex flex-col">
+        <div className="fixed inset-y-0 right-0 w-96 bg-white border-l shadow-xl z-50 flex flex-col">
           {/* Panel Header */}
           <div className="p-4 border-b bg-gray-50">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-gray-800">Answer Discussion</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-800 flex items-center">
+                <MessageSquare className="w-5 h-5 mr-2" />
+                Answer Discussion
+              </h3>
               <Button variant="ghost" size="sm" onClick={closeInteractionPanel}>
                 <X className="w-4 h-4" />
               </Button>
             </div>
-            <div className="flex items-center mb-2">
-              {selectedAnswer.isPinned && (
-                <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs mr-2">
-                  <Pin className="w-3 h-3 mr-1" />
-                  Pinned
+            
+            {/* Answer Preview */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                {selectedAnswer.isPinned && (
+                  <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                    <Pin className="w-3 h-3 mr-1" />
+                    Pinned
+                  </Badge>
+                )}
+                {selectedAnswer.isAI && (
+                  <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
+                    <Bot className="w-3 h-3 mr-1" />
+                    AI
+                  </Badge>
+                )}
+                <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs">
+                  {selectedAnswer.interactionCount || 0} interactions
                 </Badge>
+              </div>
+              
+              <div className="text-sm text-gray-700 bg-gray-100 p-3 rounded-md max-h-32 overflow-y-auto">
+                {selectedAnswer.content}
+              </div>
+              
+              {selectedAnswer.isAI && selectedAnswer.thinking && (
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
+                    <Brain className="w-3 h-3 inline mr-1" />
+                    View AI thinking process
+                  </summary>
+                  <div className="mt-2 text-gray-600 bg-gray-50 p-2 rounded font-mono text-xs max-h-24 overflow-y-auto">
+                    {selectedAnswer.thinking}
+                  </div>
+                </details>
               )}
-              {selectedAnswer.isAI && (
-                <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
-                  <Bot className="w-3 h-3 mr-1" />
-                  AI
-                </Badge>
-              )}
-            </div>
-            <div className="text-sm text-gray-700 bg-gray-100 p-3 rounded-md">
-              {selectedAnswer.content}
             </div>
           </div>
 
           {/* Comments List */}
           <div className="flex-1 overflow-y-auto p-4">
-            {(comments[selectedAnswer.id] || []).length > 0 ? (
+            {loadingComments ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                <span className="ml-2 text-gray-500">Loading comments...</span>
+              </div>
+            ) : (comments[selectedAnswer.id] || []).length > 0 ? (
               <div className="space-y-4">
                 {(comments[selectedAnswer.id] || []).map((comment) => (
                   <div key={comment.id} className="space-y-2">
                     <div className="flex items-start space-x-3">
-                      <Avatar className="w-6 h-6">
-                        <AvatarFallback>U</AvatarFallback>
+                      <Avatar className="w-7 h-7 flex-shrink-0">
+                        <AvatarFallback className="text-xs">
+                          {comment.userId?.charAt(0)?.toUpperCase() || 'U'}
+                        </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
-                        <div className="text-sm text-gray-800 leading-relaxed">{comment.content}</div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {formatDistanceToNow(comment.timestamp)} ago
+                      <div className="flex-1 min-w-0">
+                        <div className="bg-gray-50 rounded-lg p-3">
+                          <div className="text-sm text-gray-800 leading-relaxed break-words">
+                            {comment.content}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <div className="text-xs text-gray-500">
+                            {formatDistanceToNow(comment.timestamp)} ago
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleReplyToComment(comment)}
+                            className="text-xs text-gray-500 hover:text-gray-700 h-6 px-2"
+                          >
+                            <Reply className="w-3 h-3 mr-1" />
+                            Reply
+                          </Button>
                         </div>
                       </div>
                     </div>
+                    
+                    {/* Nested replies */}
+                    {comment.replies && comment.replies.length > 0 && (
+                      <div className="ml-10 space-y-3">
+                        {comment.replies.map((reply) => (
+                          <div key={reply.id} className="flex items-start space-x-3">
+                            <Avatar className="w-6 h-6 flex-shrink-0">
+                              <AvatarFallback className="text-xs">
+                                {reply.userId?.charAt(0)?.toUpperCase() || 'U'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <div className="bg-blue-50 rounded-lg p-2">
+                                <div className="text-sm text-gray-800 leading-relaxed break-words">
+                                  {reply.content}
+                                </div>
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                {formatDistanceToNow(reply.timestamp)} ago
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <MessageSquare className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">No comments yet</p>
-                <p className="text-xs text-gray-400">Be the first to share your thoughts</p>
+              <div className="flex flex-col items-center justify-center h-full text-center py-12">
+                <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+                <p className="text-sm text-gray-500 mb-2">No comments yet</p>
+                <p className="text-xs text-gray-400">Be the first to share your thoughts on this answer</p>
               </div>
             )}
           </div>
 
           {/* Comment Input */}
           <div className="p-4 border-t bg-gray-50">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Add a comment</label>
-              <Textarea
-                placeholder="Share your thoughts on this answer..."
-                value={newCommentContent}
-                onChange={(e) => setNewCommentContent(e.target.value)}
-                rows={3}
-                className="bg-white"
-              />
-              <Button
-                onClick={handleAddComment}
-                disabled={!newCommentContent.trim()}
-                size="sm"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white"
-              >
-                <MessageSquare className="w-4 h-4 mr-1" />
-                Post Comment
-              </Button>
+            <div className="space-y-3">
+              {replyingTo && (
+                <div className="flex items-center justify-between bg-blue-50 p-2 rounded text-sm">
+                  <span className="text-blue-700">
+                    <Reply className="w-3 h-3 inline mr-1" />
+                    Replying to comment
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setReplyingTo(null);
+                      setNewCommentContent('');
+                    }}
+                    className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              )}
+              
+              <div className="flex items-start space-x-2">
+                <Avatar className="w-8 h-8 flex-shrink-0">
+                  <AvatarImage src={state.currentUser?.avatar} alt={state.currentUser?.name} />
+                  <AvatarFallback>{state.currentUser?.name?.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 space-y-2">
+                  <Textarea
+                    placeholder={replyingTo ? "Write a reply..." : "Add a comment..."}
+                    value={newCommentContent}
+                    onChange={(e) => setNewCommentContent(e.target.value)}
+                    rows={3}
+                    className="bg-white resize-none"
+                  />
+                  <div className="flex justify-end space-x-2">
+                    {replyingTo && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setReplyingTo(null);
+                          setNewCommentContent('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                    <Button
+                      onClick={handleAddComment}
+                      disabled={!newCommentContent.trim()}
+                      size="sm"
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Send className="w-4 h-4 mr-1" />
+                      {replyingTo ? 'Reply' : 'Comment'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
