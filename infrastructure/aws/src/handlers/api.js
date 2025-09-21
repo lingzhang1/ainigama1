@@ -286,7 +286,7 @@ exports.getThread = async (event) => {
       ExpressionAttributeValues: {
         ':threadId': threadId
       },
-      ScanIndexForward: true
+      ScanIndexForward: false // Get newest first by default
     }).promise();
 
     const questions = (questionsResult.Items || []).map(q => ({

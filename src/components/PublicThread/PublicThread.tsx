@@ -8,7 +8,9 @@ import {
   X,
   Pin,
   Bot,
-  ArrowLeft
+  ArrowLeft,
+  SortAsc,
+  SortDesc
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
@@ -37,6 +39,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [newCommentContent, setNewCommentContent] = useState('');
   const [newQuestionContent, setNewQuestionContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [questionSortOrder, setQuestionSortOrder] = useState<'desc' | 'asc'>('desc'); // Latest first by default
 
   // Load thread data from backend
   useEffect(() => {
@@ -224,6 +227,22 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
 
   const isOriginalUser = state.currentUser?.id === thread?.creator.id;
 
+  // Sort questions based on selected order
+  const sortedQuestions = thread?.questions ? [...thread.questions].sort((a, b) => {
+    const timeA = new Date(a.timestamp).getTime();
+    const timeB = new Date(b.timestamp).getTime();
+    
+    if (questionSortOrder === 'desc') {
+      return timeB - timeA; // Latest first
+    } else {
+      return timeA - timeB; // Oldest first
+    }
+  }) : [];
+
+  const toggleSortOrder = () => {
+    setQuestionSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+  };
+
   // Show loading state
   if (isLoading) {
     return (
@@ -291,11 +310,41 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
               </Badge>
             )}
           </div>
+
+          {/* Question Sort Controls */}
+          {sortedQuestions.length > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-gray-600">Sort questions:</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleSortOrder}
+                  className="flex items-center gap-2"
+                >
+                  {questionSortOrder === 'desc' ? (
+                    <>
+                      <SortDesc className="w-4 h-4" />
+                      Latest First
+                    </>
+                  ) : (
+                    <>
+                      <SortAsc className="w-4 h-4" />
+                      Oldest First
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="text-sm text-gray-500">
+                {sortedQuestions.length} question{sortedQuestions.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+          )}
         </header>
 
         {/* Questions and Answers */}
         <div className="p-6 space-y-8">
-          {thread.questions.map((question) => {
+          {sortedQuestions.map((question, questionIndex) => {
             const questionAnswers = answers[question.id] || [];
             const pinnedAnswer = questionAnswers.find(a => a.isPinned);
             const otherAnswers = questionAnswers.filter(a => !a.isPinned);
@@ -311,8 +360,18 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                         <div className="flex items-center mb-2">
                           <MessageSquare className="w-5 h-5 text-indigo-600 mr-2" />
                           <Badge variant="secondary" className="bg-indigo-100 text-indigo-700 text-xs">
-                            Question
+                            Question #{sortedQuestions.length - questionIndex}
                           </Badge>
+                          {questionIndex === 0 && questionSortOrder === 'desc' && (
+                            <Badge variant="secondary" className="bg-green-100 text-green-700 text-xs">
+                              Latest
+                            </Badge>
+                          )}
+                          {questionIndex === sortedQuestions.length - 1 && questionSortOrder === 'asc' && (
+                            <Badge variant="secondary" className="bg-blue-100 text-blue-700 text-xs">
+                              Original
+                            </Badge>
+                          )}
                         </div>
                         <h3 className="text-lg font-semibold text-gray-900 mb-3 leading-relaxed">
                           {question.content}
@@ -325,6 +384,10 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                           <span>{thread.creator.name}</span>
                           <span className="mx-2">•</span>
                           <span>{formatDistanceToNow(question.timestamp)} ago</span>
+                          <span className="mx-2">•</span>
+                          <span className="text-xs bg-gray-100 px-2 py-1 rounded">
+                            {new Date(question.timestamp).toLocaleDateString()} {new Date(question.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
                         </div>
                       </div>
                     </div>

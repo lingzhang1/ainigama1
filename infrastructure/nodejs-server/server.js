@@ -775,7 +775,7 @@ app.get('/api/threads/:threadId', (req, res) => {
       
       // Get questions for this thread
       db.all(
-        'SELECT * FROM questions WHERE thread_id = ? ORDER BY created_at ASC',
+        'SELECT * FROM questions WHERE thread_id = ? ORDER BY datetime(created_at) DESC',
         [threadId],
         (err, questions) => {
           if (err) {
