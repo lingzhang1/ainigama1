@@ -258,9 +258,13 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
           })
         });
 
-        if (response.ok) {
+        // Add comment to local state with proper sorting
           const savedQuestion = await response.json();
           // Update local state with saved question
+          const updatedComments = [...answerComments, newComment].sort((a, b) => 
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+          
           setThread(prev => prev ? ({
             ...prev,
             questions: [...prev.questions, savedQuestion],
@@ -400,7 +404,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
       
       for (const q of sortedQuestions) {
         contextMessages.push({
-          role: 'user',
+            [selectedAnswer.id]: updatedComments
           content: q.content
         });
         
