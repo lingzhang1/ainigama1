@@ -20,27 +20,56 @@ exports.getThreads = async (event) => {
   try {
     const { filter = 'recent' } = event.queryStringParameters || {};
     
-    const params = {
-      TableName: threadsTable,
-      FilterExpression: 'is_public = :isPublic',
-      ExpressionAttributeValues: {
-        ':isPublic': true
-      },
-      Limit: 20
-    };
-
-    const result = await dynamodb.scan(params).promise();
-    
-    // Sort in memory based on filter
-    let sortedItems = result.Items || [];
+    let result;
     if (filter === 'trending') {
-      sortedItems.sort((a, b) => new Date(b.updated_at || b.updatedAt || 0).getTime() - new Date(a.updated_at || a.updatedAt || 0).getTime());
+      // Use GSI for trending (most recently updated)
+      result = await dynamodb.query({
+        TableName: threadsTable,
+        IndexName: 'UpdatedAtIndexV2',
+        KeyConditionExpression: 'updated_at = :updatedAt',
+        FilterExpression: 'is_public = :isPublic',
+        ExpressionAttributeValues: {
+          ':updatedAt': new Date().toISOString().split('T')[0], // Today's date
+          ':isPublic': true
+        },
+        ScanIndexForward: false,
+        Limit: 20
+      }).promise();
+      
+      // Fallback to scan if no results from GSI
+      if (!result.Items || result.Items.length === 0) {
+        result = await dynamodb.scan({
+          TableName: threadsTable,
+          FilterExpression: 'is_public = :isPublic',
+          ExpressionAttributeValues: {
+            ':isPublic': true
+          },
+          Limit: 20
+        }).promise();
+        
+        result.Items = result.Items.sort((a, b) => 
+          new Date(b.updated_at || b.updatedAt || 0).getTime() - 
+          new Date(a.updated_at || a.updatedAt || 0).getTime()
+        );
+      }
     } else {
-      sortedItems.sort((a, b) => new Date(b.created_at || b.createdAt || 0).getTime() - new Date(a.created_at || a.createdAt || 0).getTime());
+      // Use scan for recent (most recently created)
+      result = await dynamodb.scan({
+        TableName: threadsTable,
+        FilterExpression: 'is_public = :isPublic',
+        ExpressionAttributeValues: {
+          ':isPublic': true
+        },
+        Limit: 20
+      }).promise();
+      
+      result.Items = result.Items.sort((a, b) => 
+        new Date(b.created_at || b.createdAt || 0).getTime() - 
+        new Date(a.created_at || a.createdAt || 0).getTime()
+      );
     }
     
     // Transform threads to include proper structure
-    const transformedThreads = sortedItems.map(thread => ({
       id: thread.id,
       title: thread.title,
       creator: {
@@ -345,13 +374,15 @@ exports.getThreadAnswers = async (event) => {
     const answersByQuestion = {};
     
     for (const questionId of questionIds) {
-      // Use scan with filter instead of GSI query
-      const answersResult = await dynamodb.scan({
+      // Use GSI query with new index name
+      const answersResult = await dynamodb.query({
         TableName: answersTable,
-        FilterExpression: 'question_id = :questionId',
+        IndexName: 'QuestionIdIndexV2',
+        KeyConditionExpression: 'question_id = :questionId',
         ExpressionAttributeValues: {
           ':questionId': questionId
-        }
+        },
+        ScanIndexForward: true
       }).promise();
 
       const answers = (answersResult.Items || []).map(answer => ({
