@@ -40,7 +40,7 @@ provider:
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONVERSATIONS}"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONVERSATIONS}/index/UserIdIndex"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_THREADS}"
-        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_THREADS}/index/CreatedAtIndex"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_THREADS}/index/UpdatedAtIndex"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_MESSAGES}"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_MESSAGES}/index/ConversationIdIndex"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_QUESTIONS}"
@@ -333,15 +333,15 @@ resources:
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S
-          - AttributeName: created_at
+          - AttributeName: updated_at
             AttributeType: S
         KeySchema:
           - AttributeName: id
             KeyType: HASH
         GlobalSecondaryIndexes:
-          - IndexName: CreatedAtIndex
+          - IndexName: UpdatedAtIndex
             KeySchema:
-              - AttributeName: created_at
+              - AttributeName: updated_at
                 KeyType: HASH
             Projection:
               ProjectionType: ALL
