@@ -194,8 +194,18 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
         <header className="bg-white border-b p-6">
           <div className="flex items-start justify-between mb-4">
             <div className="flex-1">
-              <h1 className="text-2xl font-semibold text-gray-800 mb-2">{thread.title}</h1>
-              <div className="flex items-center space-x-4 text-sm text-gray-500">
+              <div className="flex items-center mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
+                  className="mr-3 text-gray-500 hover:text-gray-700"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </Button>
+                <h1 className="text-2xl font-semibold text-gray-800">{thread.title}</h1>
+              </div>
+              <div className="flex items-center space-x-4 text-sm text-gray-500 ml-11">
                 <div className="flex items-center">
                   <Avatar className="w-6 h-6 mr-2">
                     <AvatarImage src={thread.creator.avatar} alt={thread.creator.name} />
@@ -457,12 +467,12 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
               </div>
             </div>
             <Button
-              onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
+              onClick={onLogout}
               variant="ghost"
               size="sm"
               className="text-gray-500 hover:text-gray-700"
             >
-              Back to Forum
+              Sign Out
             </Button>
           </div>
 
