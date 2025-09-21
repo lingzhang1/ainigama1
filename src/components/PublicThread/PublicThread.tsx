@@ -167,8 +167,11 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     const content = newAnswerContent[questionId];
     if (!content?.trim()) return;
 
+    console.log('Adding answer to question:', questionId, 'Content:', content.trim());
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      console.log('API URL:', apiUrl);
+      
       const response = await fetch(`${apiUrl}/questions/${questionId}/answers`, {
         method: 'POST',
         headers: {
@@ -180,8 +183,11 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
         })
       });
 
+      console.log('Response status:', response.status);
+      
       if (response.ok) {
         const result = await response.json();
+        console.log('Answer creation result:', result);
         const newAnswer = result.answer;
         
         // Update local answers state
@@ -199,8 +205,11 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
         
         // Clear input
         setNewAnswerContent(prev => ({ ...prev, [questionId]: '' }));
+        
+        console.log('✅ Answer added successfully');
       } else {
-        console.error('Failed to add answer:', response.statusText);
+        const errorText = await response.text();
+        console.error('Failed to add answer:', response.status, response.statusText, errorText);
       }
     } catch (error) {
       console.error('Error adding answer:', error);
@@ -208,6 +217,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   };
 
   const toggleAnswersExpanded = (questionId: string) => {
+    console.log('Toggling answers for question:', questionId, 'Current state:', expandedAnswers[questionId]);
     setExpandedAnswers(prev => ({
       ...prev,
       [questionId]: !prev[questionId]
@@ -512,13 +522,15 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                   </div>
                 )}
 
-                {/* Add Answer (for public users) */}
-                {!isOriginalUser && (
+                {/* Add Answer (for all users) */}
+                <div className="mt-4">
                   <Card className="border-dashed border-2 border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors">
                     <CardContent className="p-4">
                       <div className="flex items-center mb-3">
                         <Plus className="w-4 h-4 text-gray-500 mr-2" />
-                        <span className="text-sm font-medium text-gray-700">Add your answer</span>
+                        <span className="text-sm font-medium text-gray-700">
+                          {isOriginalUser ? 'Add your own answer' : 'Add your answer'}
+                        </span>
                       </div>
                       <Textarea
                         placeholder="Share your thoughts and insights on this question..."
@@ -541,7 +553,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                       </Button>
                     </CardContent>
                   </Card>
-                )}
+                </div>
               </div>
             );
           })}
