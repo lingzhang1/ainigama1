@@ -345,14 +345,13 @@ exports.getThreadAnswers = async (event) => {
     const answersByQuestion = {};
     
     for (const questionId of questionIds) {
-      const answersResult = await dynamodb.query({
+      // Use scan with filter instead of GSI query
+      const answersResult = await dynamodb.scan({
         TableName: answersTable,
-        IndexName: 'QuestionIdIndex',
-        KeyConditionExpression: 'question_id = :questionId',
+        FilterExpression: 'question_id = :questionId',
         ExpressionAttributeValues: {
           ':questionId': questionId
-        },
-        ScanIndexForward: true
+        }
       }).promise();
 
       const answers = (answersResult.Items || []).map(answer => ({
