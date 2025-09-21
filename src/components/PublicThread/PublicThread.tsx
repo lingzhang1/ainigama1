@@ -47,6 +47,9 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [aiThinking, setAiThinking] = useState<{ [questionId: string]: string }>({});
   const [aiContent, setAiContent] = useState<{ [questionId: string]: string }>({});
 
+  // State for collapsed/expanded answer input sections
+  const [expandedAnswerInputs, setExpandedAnswerInputs] = useState<{ [questionId: string]: boolean }>({});
+
   // Refs for AI streaming display
   const aiStreamingRefs = useRef<{ [questionId: string]: {
     thinkingElement: HTMLDivElement | null;
@@ -170,6 +173,13 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     addQuestionToBackend();
   };
 
+  const toggleAnswerInput = (questionId: string) => {
+    setExpandedAnswerInputs(prev => ({
+      ...prev,
+      [questionId]: !prev[questionId]
+    }));
+  };
+
   const handleAddAnswer = async (questionId: string) => {
     const content = newAnswerContent[questionId];
     if (!content?.trim()) return;
@@ -212,6 +222,9 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
         
         // Clear input
         setNewAnswerContent(prev => ({ ...prev, [questionId]: '' }));
+        
+        // Collapse the answer input after successful submission
+        setExpandedAnswerInputs(prev => ({ ...prev, [questionId]: false }));
         
         console.log('✅ Answer added successfully');
       } else {
@@ -755,35 +768,68 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
 
                 {/* Add Answer (for all users) */}
                 <div className="mt-4">
-                  <Card className="border-dashed border-2 border-gray-300 bg-gray-50 hover:bg-gray-100 transition-colors">
-                    <CardContent className="p-4">
-                      <div className="flex items-center mb-3">
-                        <Plus className="w-4 h-4 text-gray-500 mr-2" />
-                        <span className="text-sm font-medium text-gray-700">
-                          {isOriginalUser ? 'Add your own answer' : 'Add your answer'}
-                        </span>
-                      </div>
-                      <Textarea
-                        placeholder="Share your thoughts and insights on this question..."
-                        value={newAnswerContent[question.id] || ''}
-                        onChange={(e) => setNewAnswerContent(prev => ({
-                          ...prev,
-                          [question.id]: e.target.value
-                        }))}
-                        className="mb-3 bg-white"
-                        rows={3}
-                      />
-                      <Button
-                        onClick={() => handleAddAnswer(question.id)}
-                        disabled={!newAnswerContent[question.id]?.trim()}
-                        size="sm"
-                        className="bg-indigo-600 hover:bg-indigo-700 text-white"
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Post Answer
-                      </Button>
-                    </CardContent>
-                  </Card>
+                  {!expandedAnswerInputs[question.id] ? (
+                    // Collapsed state - just a button
+                    <Button
+                      variant="outline"
+                      onClick={() => toggleAnswerInput(question.id)}
+                      className="w-full border-dashed border-2 border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-700 h-12 transition-colors"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      {isOriginalUser ? 'Add your own answer' : 'Add your answer'}
+                    </Button>
+                  ) : (
+                    // Expanded state - full input form
+                    <Card className="border-dashed border-2 border-indigo-300 bg-gradient-to-r from-indigo-50 to-blue-50 shadow-sm">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center">
+                            <Plus className="w-4 h-4 text-indigo-600 mr-2" />
+                            <span className="text-sm font-medium text-indigo-800">
+                              {isOriginalUser ? 'Add your own answer' : 'Add your answer'}
+                            </span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleAnswerInput(question.id)}
+                            className="text-gray-500 hover:text-gray-700 h-6 w-6 p-0"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <Textarea
+                          placeholder="Share your thoughts and insights on this question..."
+                          value={newAnswerContent[question.id] || ''}
+                          onChange={(e) => setNewAnswerContent(prev => ({
+                            ...prev,
+                            [question.id]: e.target.value
+                          }))}
+                          className="mb-3 bg-white border-indigo-200 focus:border-indigo-400"
+                          rows={3}
+                        />
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => handleAddAnswer(question.id)}
+                            disabled={!newAnswerContent[question.id]?.trim()}
+                            size="sm"
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white"
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Post Answer
+                          </Button>
+                          <Button
+                            onClick={() => toggleAnswerInput(question.id)}
+                            variant="outline"
+                            size="sm"
+                            className="text-gray-600 hover:text-gray-800"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
               </div>
             );
