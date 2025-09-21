@@ -838,15 +838,21 @@ exports.updateConversationTitle = async (event) => {
 // Delete conversation
 exports.deleteConversation = async (event) => {
   try {
-    console.log('🗑️ AWS: Delete conversation called with event:', {
+    console.log('🗑️ AWS: Delete conversation handler called');
+    console.log('📋 Event details:', {
       httpMethod: event.httpMethod,
       pathParameters: event.pathParameters,
-      headers: event.headers
+      path: event.path,
+      resource: event.resource,
+      headers: Object.keys(event.headers || {})
     });
     
     const { conversationId } = event.pathParameters || {};
     
+    console.log('🔍 Extracted conversationId:', conversationId);
+    
     if (!conversationId) {
+      console.log('❌ No conversationId provided');
       return {
         statusCode: 400,
         headers: corsHeaders,
@@ -903,12 +909,14 @@ exports.deleteConversation = async (event) => {
       headers: corsHeaders,
       body: JSON.stringify({ 
         success: true, 
-        message: 'Conversation deleted successfully' 
+        message: 'Conversation deleted successfully',
+        conversationId: conversationId
       })
     };
 
   } catch (error) {
     console.error('Delete conversation error:', error);
+    console.error('Error stack:', error.stack);
     
     if (error.code === 'ConditionalCheckFailedException') {
       return {
@@ -923,7 +931,8 @@ exports.deleteConversation = async (event) => {
       headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to delete conversation',
-        message: error.message 
+        message: error.message,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       })
     };
   }
