@@ -110,6 +110,7 @@ db.serialize(() => {
     is_ai BOOLEAN DEFAULT 0,
     is_pinned BOOLEAN DEFAULT 0,
     interaction_count INTEGER DEFAULT 0,
+    thinking TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (question_id) REFERENCES questions (id),
     FOREIGN KEY (user_id) REFERENCES users (id)

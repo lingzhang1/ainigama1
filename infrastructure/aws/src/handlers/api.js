@@ -975,7 +975,7 @@ exports.addAnswer = async (event) => {
       };
     }
     
-    const { content, userId } = requestBody;
+    const { content, userId, isAI, isPinned, thinking } = requestBody;
     
     if (!content || !content.trim()) {
       return {
@@ -1013,12 +1013,13 @@ exports.addAnswer = async (event) => {
       content: content.trim(),
       user_id: userId || null,
       userId: userId || null, // Dual compatibility
-      is_ai: false,
-      isAI: false, // Dual compatibility
-      is_pinned: false,
-      isPinned: false, // Dual compatibility
+      is_ai: Boolean(isAI),
+      isAI: Boolean(isAI), // Dual compatibility
+      is_pinned: Boolean(isPinned),
+      isPinned: Boolean(isPinned), // Dual compatibility
       interaction_count: 0,
       interactionCount: 0, // Dual compatibility
+      thinking: thinking || null,
       created_at: now,
       timestamp: now // Dual compatibility
     };

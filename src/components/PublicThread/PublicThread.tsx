@@ -10,7 +10,9 @@ import {
   Bot,
   ArrowLeft,
   SortAsc,
-  SortDesc
+  SortDesc,
+  Brain,
+  Loader2
 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
@@ -20,6 +22,7 @@ import { Textarea } from '../ui/textarea';
 import { Thread, Question, Answer, Comment } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { usePublicThread } from '../../hooks/useWebSocket';
+import { deepSeekService, ChatMessage } from '../../services/deepseek';
 import { formatDistanceToNow } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -40,6 +43,15 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [newQuestionContent, setNewQuestionContent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [questionSortOrder, setQuestionSortOrder] = useState<'desc' | 'asc'>('desc'); // Latest first by default
+  const [aiAnswering, setAiAnswering] = useState<{ [questionId: string]: boolean }>({});
+  const [aiThinking, setAiThinking] = useState<{ [questionId: string]: string }>({});
+  const [aiContent, setAiContent] = useState<{ [questionId: string]: string }>({});
+
+  // Refs for AI streaming display
+  const aiStreamingRefs = useRef<{ [questionId: string]: {
+    thinkingElement: HTMLDivElement | null;
+    contentElement: HTMLDivElement | null;
+  } }>({});
 
   // Load thread data from backend
   useEffect(() => {
@@ -119,14 +131,6 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const handleAddQuestion = () => {
     if (!newQuestionContent.trim()) return;
 
-    const newQuestion = {
-      id: uuidv4(),
-      content: newQuestionContent,
-      timestamp: new Date(),
-      userId: state.currentUser?.id || '',
-      threadId: thread?.id || ''
-    };
-
     // Send to backend via API
     const addQuestionToBackend = async () => {
       try {
@@ -152,6 +156,9 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
             updatedAt: new Date()
           }) : null);
           setNewQuestionContent('');
+          
+          // Trigger AI answer for the new question
+          generateAIAnswer(savedQuestion);
         } else {
           console.error('Failed to add question:', response.statusText);
         }
@@ -251,6 +258,150 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
 
   const toggleSortOrder = () => {
     setQuestionSortOrder(prev => prev === 'desc' ? 'asc' : 'desc');
+  };
+
+  // Generate AI answer for a question
+  const generateAIAnswer = async (question: Question) => {
+    if (!thread) return;
+    
+    console.log('🤖 Generating AI answer for question:', question.id);
+    
+    // Set AI answering state
+    setAiAnswering(prev => ({ ...prev, [question.id]: true }));
+    setAiThinking(prev => ({ ...prev, [question.id]: '' }));
+    setAiContent(prev => ({ ...prev, [question.id]: '' }));
+    
+    try {
+      // Prepare context for AI
+      const contextMessages: ChatMessage[] = [
+        {
+          role: 'system',
+          content: `You are an AI assistant helping with a discussion thread titled "${thread.title}". 
+          The thread is in the ${thread.category} category. 
+          Provide thoughtful, helpful answers based on the context of the conversation.`
+        }
+      ];
+      
+      // Add previous questions and answers as context
+      const sortedQuestions = [...thread.questions].sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+      
+      for (const q of sortedQuestions) {
+        contextMessages.push({
+          role: 'user',
+          content: q.content
+        });
+        
+        // Add existing answers as context
+        const questionAnswers = answers[q.id] || [];
+        const pinnedAnswer = questionAnswers.find(a => a.isPinned);
+        if (pinnedAnswer) {
+          contextMessages.push({
+            role: 'assistant',
+            content: pinnedAnswer.content
+          });
+        }
+      }
+      
+      // Add the new question
+      contextMessages.push({
+        role: 'user',
+        content: question.content
+      });
+      
+      let fullThinking = '';
+      let fullContent = '';
+      
+      // Stream AI response
+      await deepSeekService.streamChat(contextMessages, {
+        onThinking: (thinking) => {
+          fullThinking += thinking;
+          setAiThinking(prev => ({ ...prev, [question.id]: fullThinking }));
+          
+          // Update DOM directly for smooth streaming
+          const thinkingElement = aiStreamingRefs.current[question.id]?.thinkingElement;
+          if (thinkingElement) {
+            thinkingElement.textContent = fullThinking;
+          }
+        },
+        onContent: (content) => {
+          fullContent += content;
+          setAiContent(prev => ({ ...prev, [question.id]: fullContent }));
+          
+          // Update DOM directly for smooth streaming
+          const contentElement = aiStreamingRefs.current[question.id]?.contentElement;
+          if (contentElement) {
+            contentElement.textContent = fullContent;
+          }
+        },
+        onComplete: async (finalContent) => {
+          console.log('🎉 AI answer complete for question:', question.id);
+          
+          // Save AI answer to backend
+          try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+            const response = await fetch(`${apiUrl}/questions/${question.id}/answers`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                content: finalContent,
+                userId: null, // AI answers don't have userId
+                isAI: true,
+                isPinned: true,
+                thinking: fullThinking
+              })
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              const aiAnswer: Answer = {
+                ...result.answer,
+                isAI: true,
+                isPinned: true,
+                thinking: fullThinking
+              };
+              
+              // Update answers state
+              setAnswers(prev => ({
+                ...prev,
+                [question.id]: [aiAnswer, ...(prev[question.id] || [])]
+              }));
+              
+              // Update thread answer count
+              setThread(prev => prev ? ({
+                ...prev,
+                answerCount: prev.answerCount + 1,
+                updatedAt: new Date()
+              }) : null);
+              
+              console.log('✅ AI answer saved to backend');
+            } else {
+              console.error('Failed to save AI answer:', response.statusText);
+            }
+          } catch (error) {
+            console.error('Error saving AI answer:', error);
+          }
+          
+          // Clear AI answering state
+          setAiAnswering(prev => ({ ...prev, [question.id]: false }));
+          setAiThinking(prev => ({ ...prev, [question.id]: '' }));
+          setAiContent(prev => ({ ...prev, [question.id]: '' }));
+        },
+        onError: (error) => {
+          console.error('AI answer error:', error);
+          setAiAnswering(prev => ({ ...prev, [question.id]: false }));
+          setAiThinking(prev => ({ ...prev, [question.id]: '' }));
+          setAiContent(prev => ({ ...prev, [question.id]: '' }));
+        }
+      });
+      
+    } catch (error) {
+      console.error('Error generating AI answer:', error);
+      setAiAnswering(prev => ({ ...prev, [question.id]: false }));
+    }
   };
 
   // Show loading state
@@ -433,6 +584,24 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                           {pinnedAnswer.interactionCount}
                         </Button>
                       </div>
+                      
+                      {/* Show AI thinking process if available */}
+                      {pinnedAnswer.isAI && pinnedAnswer.thinking && (
+                        <Card className="bg-gray-50 border-gray-200 mb-3">
+                          <CardContent className="p-3">
+                            <div className="flex items-center mb-2">
+                              <Brain className="w-4 h-4 text-gray-500 mr-2" />
+                              <span className="text-xs font-medium text-gray-600">
+                                AI Thought Process
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs max-h-32 overflow-y-auto">
+                              {pinnedAnswer.thinking}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                      
                       <div className="text-gray-900 whitespace-pre-wrap mb-3 leading-relaxed">
                         {pinnedAnswer.content}
                       </div>
@@ -447,6 +616,68 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                           </>
                         )}
                         <span>{formatDistanceToNow(pinnedAnswer.timestamp)} ago</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* AI Streaming Answer */}
+                {aiAnswering[question.id] && (
+                  <Card className="border-2 border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-md">
+                    <CardContent className="p-4">
+                      <div className="flex items-center mb-3">
+                        <Bot className="w-4 h-4 text-blue-600 mr-1" />
+                        <Badge variant="secondary" className="bg-blue-100 text-blue-800 text-xs mr-2 font-medium">
+                          AI Answering...
+                        </Badge>
+                        <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
+                      </div>
+                      
+                      {/* AI Thinking Process */}
+                      {aiThinking[question.id] && (
+                        <Card className="bg-gray-50 border-gray-200 mb-3">
+                          <CardContent className="p-3">
+                            <div className="flex items-center mb-2">
+                              <Brain className="w-4 h-4 text-gray-500 mr-2" />
+                              <span className="text-xs font-medium text-gray-600">
+                                AI Thought Process
+                              </span>
+                              <Loader2 className="w-3 h-3 text-gray-400 ml-2 animate-spin" />
+                            </div>
+                            <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs max-h-32 overflow-y-auto">
+                              <div 
+                                ref={(el) => {
+                                  if (!aiStreamingRefs.current[question.id]) {
+                                    aiStreamingRefs.current[question.id] = { thinkingElement: null, contentElement: null };
+                                  }
+                                  aiStreamingRefs.current[question.id].thinkingElement = el;
+                                }}
+                              >
+                                {aiThinking[question.id]}
+                              </div>
+                              <span className="animate-pulse">|</span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+                      
+                      {/* AI Response Content */}
+                      <div className="text-gray-900 whitespace-pre-wrap mb-3 leading-relaxed">
+                        <div 
+                          ref={(el) => {
+                            if (!aiStreamingRefs.current[question.id]) {
+                              aiStreamingRefs.current[question.id] = { thinkingElement: null, contentElement: null };
+                            }
+                            aiStreamingRefs.current[question.id].contentElement = el;
+                          }}
+                        >
+                          {aiContent[question.id]}
+                        </div>
+                        {aiContent[question.id] && <span className="animate-pulse">|</span>}
+                      </div>
+                      
+                      <div className="flex items-center text-sm text-gray-500">
+                        <span>AI is generating response...</span>
                       </div>
                     </CardContent>
                   </Card>
