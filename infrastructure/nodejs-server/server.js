@@ -821,7 +821,7 @@ app.get('/api/threads/:threadId/answers', (req, res) => {
   const { threadId } = req.params;
   
   db.all(
-    `SELECT a.*, q.thread_id 
+    `SELECT a.*, q.thread_id, a.thinking
      FROM answers a 
      JOIN questions q ON a.question_id = q.id 
      WHERE q.thread_id = ? 
@@ -848,6 +848,7 @@ app.get('/api/threads/:threadId/answers', (req, res) => {
           questionId: answer.question_id,
           isPinned: Boolean(answer.is_pinned),
           isAI: Boolean(answer.is_ai),
+          thinking: answer.thinking || null,
           interactionCount: answer.interaction_count || 0
         });
       });
@@ -1059,7 +1060,7 @@ app.post('/api/threads/:threadId/questions', (req, res) => {
 // Add answer to question
 app.post('/api/questions/:questionId/answers', (req, res) => {
   const { questionId } = req.params;
-  const { content, userId } = req.body;
+  const { content, userId, isAI, isPinned, thinking } = req.body;
   
   if (!content || !content.trim()) {
     return res.status(400).json({ error: 'Answer content is required' });
@@ -1082,14 +1083,28 @@ app.post('/api/questions/:questionId/answers', (req, res) => {
       const answerId = uuidv4();
       const now = new Date().toISOString();
       
+      console.log('💾 Saving answer with AI data:', {
+        answerId,
+        isAI: Boolean(isAI),
+        isPinned: Boolean(isPinned),
+        hasThinking: !!thinking
+      });
+      
       db.run(
-        'INSERT INTO answers (id, question_id, content, user_id, is_ai, is_pinned, interaction_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [answerId, questionId, content.trim(), userId || null, 0, 0, 0, now],
+        'INSERT INTO answers (id, question_id, content, user_id, is_ai, is_pinned, interaction_count, thinking, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [answerId, questionId, content.trim(), userId || null, Boolean(isAI) ? 1 : 0, Boolean(isPinned) ? 1 : 0, 0, thinking || null, now],
         function(err) {
           if (err) {
             console.error('Database error:', err);
             return res.status(500).json({ error: 'Failed to add answer' });
           }
+          
+          console.log('✅ Answer saved successfully:', {
+            answerId,
+            isAI: Boolean(isAI),
+            isPinned: Boolean(isPinned),
+            thinkingLength: thinking ? thinking.length : 0
+          });
           
           // Update thread timestamp and answer count
           db.run(
@@ -1106,8 +1121,9 @@ app.post('/api/questions/:questionId/answers', (req, res) => {
                 timestamp: now,
                 userId: userId || null,
                 questionId: questionId,
-                isPinned: false,
-                isAI: false,
+                isPinned: Boolean(isPinned),
+                isAI: Boolean(isAI),
+                thinking: thinking || null,
                 interactionCount: 0
               };
               
