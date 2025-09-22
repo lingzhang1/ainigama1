@@ -271,7 +271,7 @@ functions:
     timeout: 30
     events:
       - http:
-          path: conversations/{conversationId}
+          path: /conversations/{conversationId}
           method: delete
           cors:
             origin: '*'
@@ -281,7 +281,6 @@ functions:
               - Authorization
               - X-Api-Key
               - X-Amz-Security-Token
-            allowCredentials: false
 
   addQuestion:
     handler: src/handlers/api.addQuestion

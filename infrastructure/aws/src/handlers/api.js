@@ -839,16 +839,11 @@ exports.updateConversationTitle = async (event) => {
 exports.deleteConversation = async (event) => {
   try {
     console.log('🗑️ AWS: Delete conversation handler called');
-    console.log('📋 Event details:', {
-      httpMethod: event.httpMethod,
-      pathParameters: event.pathParameters,
-      path: event.path,
-      resource: event.resource,
-      headers: Object.keys(event.headers || {})
-    });
+    console.log('📋 Full event:', JSON.stringify(event, null, 2));
     
     const { conversationId } = event.pathParameters || {};
     
+    console.log('🔍 Path parameters:', event.pathParameters);
     console.log('🔍 Extracted conversationId:', conversationId);
     
     if (!conversationId) {
