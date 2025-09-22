@@ -64,10 +64,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
     setTimeout(() => {
       const user = {
         id: `user-${Date.now()}`,
-        name: mode === 'signup' ? formData.name : 'Alex Morgan',
+        name: mode === 'signup' ? formData.name : formData.name || 'Alex Morgan',
         email: formData.email,
         avatar: '/img-5.svg',
-        handle: `@${(mode === 'signup' ? formData.name : 'alexmorgan').toLowerCase().replace(/\s+/g, '')}`
+        handle: `@${(mode === 'signup' ? formData.name : formData.name || 'alexmorgan').toLowerCase().replace(/\s+/g, '')}`
       };
       
       onLogin(user);

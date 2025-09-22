@@ -242,7 +242,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                         <AvatarImage src={thread.creator.avatar} alt={thread.creator.name} />
                         <AvatarFallback>{thread.creator.name.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <span>{thread.creator.name}</span>
+                      <span>{thread.creator.name || state.currentUser?.name || 'Anonymous'}</span>
                     </div>
 
                     <div className="flex items-center">

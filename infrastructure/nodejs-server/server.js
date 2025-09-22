@@ -158,6 +158,21 @@ io.on('connection', (socket) => {
     if (connection) {
       connection.userId = data.userId;
       activeConnections.set(socket.id, connection);
+      
+      // Store or update user information in database
+      if (data.user) {
+        db.run(
+          'INSERT OR REPLACE INTO users (id, name, email, avatar, handle, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+          [data.user.id, data.user.name, data.user.email, data.user.avatar, data.user.handle, new Date().toISOString()],
+          function(err) {
+            if (err) {
+              console.error('Failed to store user info:', err);
+            } else {
+              console.log('✅ Stored user info for:', data.user.name);
+            }
+          }
+        );
+      }
     }
   });
 
@@ -418,7 +433,10 @@ app.get('/api/threads', (req, res) => {
   }
 
   db.all(
-    `SELECT t.*, u.name as creator_name, u.avatar as creator_avatar, u.handle as creator_handle,
+    `SELECT t.*, 
+     COALESCE(u.name, 'Anonymous User') as creator_name, 
+     COALESCE(u.avatar, '/img-5.svg') as creator_avatar, 
+     COALESCE(u.handle, '@anonymous') as creator_handle,
      (SELECT COUNT(*) FROM questions WHERE thread_id = t.id) as question_count,
      (SELECT COUNT(*) FROM answers a JOIN questions q ON a.question_id = q.id WHERE q.thread_id = t.id) as answer_count
      FROM threads t 
@@ -438,7 +456,7 @@ app.get('/api/threads', (req, res) => {
         title: thread.title,
         creator: {
           id: thread.creator_id,
-          name: thread.creator_name || 'Unknown User',
+          name: thread.creator_name,
           avatar: thread.creator_avatar || '/img-5.svg',
           handle: thread.creator_handle || '@user'
         },
@@ -469,6 +487,18 @@ app.post('/api/threads', (req, res) => {
   const threadId = uuidv4();
   const now = new Date().toISOString();
   
+  // Get user information for the creator
+  db.get('SELECT name, avatar, handle FROM users WHERE id = ?', [creatorId], (userErr, user) => {
+    if (userErr) {
+      console.error('Failed to get user info:', userErr);
+    }
+    
+    const creatorInfo = user || {
+      name: 'Anonymous User',
+      avatar: '/img-5.svg',
+      handle: '@anonymous'
+    };
+    
   // Start transaction
   db.serialize(() => {
     db.run('BEGIN TRANSACTION');
@@ -535,9 +565,9 @@ app.post('/api/threads', (req, res) => {
                           title,
                           creator: {
                             id: creatorId,
-                            name: 'User', // Will be populated from user lookup
-                            avatar: '/img-5.svg',
-                            handle: '@user'
+                            name: creatorInfo.name,
+                            avatar: creatorInfo.avatar,
+                            handle: creatorInfo.handle
                           },
                           isPublic: true,
                           createdAt: new Date(now),
@@ -576,9 +606,9 @@ app.post('/api/threads', (req, res) => {
                       title,
                       creator: {
                         id: creatorId,
-                        name: 'User',
-                        avatar: '/img-5.svg',
-                        handle: '@user'
+                        name: creatorInfo.name,
+                        avatar: creatorInfo.avatar,
+                        handle: creatorInfo.handle
                       },
                       isPublic: true,
                       createdAt: new Date(now),
@@ -606,6 +636,7 @@ app.post('/api/threads', (req, res) => {
         });
       }
     );
+  });
   });
 });
 
@@ -713,7 +744,10 @@ app.get('/api/threads/:threadId', (req, res) => {
   
   // Get thread with questions and answers
   db.get(
-    `SELECT t.*, u.name as creator_name, u.avatar as creator_avatar, u.handle as creator_handle
+    `SELECT t.*, 
+     COALESCE(u.name, 'Anonymous User') as creator_name, 
+     COALESCE(u.avatar, '/img-5.svg') as creator_avatar, 
+     COALESCE(u.handle, '@anonymous') as creator_handle
      FROM threads t 
      LEFT JOIN users u ON t.creator_id = u.id 
      WHERE t.id = ?`,
@@ -743,7 +777,7 @@ app.get('/api/threads/:threadId', (req, res) => {
             title: thread.title,
             creator: {
               id: thread.creator_id,
-              name: thread.creator_name || 'Unknown User',
+              name: thread.creator_name,
               avatar: thread.creator_avatar || '/img-5.svg',
               handle: thread.creator_handle || '@user'
             },
