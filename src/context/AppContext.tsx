@@ -95,6 +95,17 @@ const AppContext = createContext<{
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(appReducer, initialState);
 
+  const handleLogin = (user: User) => {
+    // Save user to localStorage for persistence
+    localStorage.setItem('ainigama_user', JSON.stringify(user));
+    dispatch({ type: 'SET_USER', payload: user });
+    
+    // Send user info to WebSocket for storage
+    if (wsService.socket?.connected) {
+      wsService.socket.emit('authenticate', { userId: user.id, user });
+    }
+  };
+
   useEffect(() => {
     // Check for existing authentication
     const checkAuth = async () => {

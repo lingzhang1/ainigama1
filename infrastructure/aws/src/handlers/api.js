@@ -68,24 +68,49 @@ exports.getThreads = async (event) => {
       sortedItems = sortedItems.slice(0, 20);
     }
     
-    // Transform threads to include proper structure
-    const transformedThreads = sortedItems.map(thread => ({
-      id: thread.id,
-      title: thread.title,
-      creator: {
+    // Get user information for each thread creator
+    const transformedThreads = await Promise.all(sortedItems.map(async (thread) => {
+      let creatorInfo = {
         id: thread.creator_id || thread.creatorId,
-        name: thread.creator_name || 'Unknown User',
-        avatar: thread.creator_avatar || '/img-5.svg',
-        handle: thread.creator_handle || '@user'
-      },
-      isPublic: Boolean(thread.is_public),
-      createdAt: thread.created_at || thread.createdAt,
-      updatedAt: thread.updated_at || thread.updatedAt,
-      questionCount: thread.question_count || 0,
-      answerCount: thread.answer_count || 0,
-      interactionCount: (thread.question_count || 0) + (thread.answer_count || 0),
-      questions: [],
-      category: thread.category
+        name: 'Anonymous User',
+        avatar: '/img-5.svg',
+        handle: '@anonymous'
+      };
+
+      // Try to get user info from users table
+      if (thread.creator_id) {
+        try {
+          const userResult = await dynamodb.get({
+            TableName: process.env.DYNAMODB_TABLE_USERS,
+            Key: { id: thread.creator_id }
+          }).promise();
+
+          if (userResult.Item) {
+            creatorInfo = {
+              id: userResult.Item.id,
+              name: userResult.Item.name || 'Anonymous User',
+              avatar: userResult.Item.avatar || '/img-5.svg',
+              handle: userResult.Item.handle || '@anonymous'
+            };
+          }
+        } catch (userError) {
+          console.error('Failed to get user info for thread creator:', userError);
+        }
+      }
+
+      return {
+        id: thread.id,
+        title: thread.title,
+        creator: creatorInfo,
+        isPublic: Boolean(thread.is_public),
+        createdAt: thread.created_at || thread.createdAt,
+        updatedAt: thread.updated_at || thread.updatedAt,
+        questionCount: thread.question_count || 0,
+        answerCount: thread.answer_count || 0,
+        interactionCount: (thread.question_count || 0) + (thread.answer_count || 0),
+        questions: [],
+        category: thread.category
+      };
     }));
 
     return {
@@ -139,6 +164,32 @@ exports.createThread = async (event) => {
     
     console.log('Creating thread:', threadId, 'with', questions.length, 'questions');
     
+    // Get user information for the creator
+    let creatorInfo = {
+      id: creatorId,
+      name: 'Anonymous User',
+      avatar: '/img-5.svg',
+      handle: '@anonymous'
+    };
+
+    try {
+      const userResult = await dynamodb.get({
+        TableName: process.env.DYNAMODB_TABLE_USERS,
+        Key: { id: creatorId }
+      }).promise();
+
+      if (userResult.Item) {
+        creatorInfo = {
+          id: userResult.Item.id,
+          name: userResult.Item.name || 'Anonymous User',
+          avatar: userResult.Item.avatar || '/img-5.svg',
+          handle: userResult.Item.handle || '@anonymous'
+        };
+      }
+    } catch (userError) {
+      console.error('Failed to get user info for thread creator:', userError);
+    }
+
     // Create thread
     const thread = {
       id: threadId,
@@ -207,12 +258,7 @@ exports.createThread = async (event) => {
     const newThread = {
       id: threadId,
       title,
-      creator: {
-        id: creatorId,
-        name: 'User',
-        avatar: '/img-5.svg',
-        handle: '@user'
-      },
+      creator: creatorInfo,
       isPublic: true,
       createdAt: now,
       updatedAt: now,
@@ -279,6 +325,33 @@ exports.getThread = async (event) => {
 
     const thread = threadResult.Item;
 
+    // Get creator information
+    let creatorInfo = {
+      id: thread.creator_id,
+      name: 'Anonymous User',
+      avatar: '/img-5.svg',
+      handle: '@anonymous'
+    };
+
+    if (thread.creator_id) {
+      try {
+        const userResult = await dynamodb.get({
+          TableName: process.env.DYNAMODB_TABLE_USERS,
+          Key: { id: thread.creator_id }
+        }).promise();
+
+        if (userResult.Item) {
+          creatorInfo = {
+            id: userResult.Item.id,
+            name: userResult.Item.name || 'Anonymous User',
+            avatar: userResult.Item.avatar || '/img-5.svg',
+            handle: userResult.Item.handle || '@anonymous'
+          };
+        }
+      } catch (userError) {
+        console.error('Failed to get user info for thread creator:', userError);
+      }
+    }
     // Get questions for this thread
     const questionsResult = await dynamodb.query({
       TableName: questionsTable,
@@ -320,12 +393,7 @@ exports.getThread = async (event) => {
     const transformedThread = {
       id: thread.id,
       title: thread.title,
-      creator: {
-        id: thread.creator_id,
-        name: thread.creator_name || 'Unknown User',
-        avatar: thread.creator_avatar || '/img-5.svg',
-        handle: thread.creator_handle || '@user'
-      },
+      creator: creatorInfo,
       isPublic: Boolean(thread.is_public),
       createdAt: thread.created_at,
       updatedAt: thread.updated_at,

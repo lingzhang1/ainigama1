@@ -53,6 +53,51 @@ exports.disconnect = async (event) => {
   }
 };
 
+// Handle user authentication and store user info
+exports.authenticate = async (event) => {
+  const connectionId = event.requestContext.connectionId;
+  const { userId, user } = JSON.parse(event.body);
+
+  try {
+    // Update connection with user info
+    await dynamodb.update({
+      TableName: connectionsTable,
+      Key: { connectionId },
+      UpdateExpression: 'SET userId = :userId',
+      ExpressionAttributeValues: {
+        ':userId': userId
+      }
+    }).promise();
+
+    // Store or update user information in database
+    if (user) {
+      await dynamodb.put({
+        TableName: process.env.DYNAMODB_TABLE_USERS,
+        Item: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          avatar: user.avatar,
+          handle: user.handle,
+          created_at: new Date().toISOString()
+        }
+      }).promise();
+
+      console.log('✅ Stored user info for:', user.name);
+    }
+
+    return {
+      statusCode: 200,
+      body: JSON.stringify({ message: 'Authenticated successfully' })
+    };
+  } catch (error) {
+    console.error('Authentication error:', error);
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Failed to authenticate' })
+    };
+  }
+};
 exports.default = async (event) => {
   return {
     statusCode: 200,

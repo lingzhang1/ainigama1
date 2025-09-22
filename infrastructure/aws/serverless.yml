@@ -81,6 +81,12 @@ functions:
       - websocket:
           route: $default
 
+  # Authentication handler
+  websocketAuthenticate:
+    handler: src/handlers/websocket.authenticate
+    events:
+      - websocket:
+          route: authenticate
   # Private Chat API
   sendPrivateMessage:
     handler: src/handlers/privateChat.sendMessage
