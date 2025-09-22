@@ -17,10 +17,10 @@ export class AWSService {
   async authenticateUser(token: string) {
     // AWS Cognito authentication
     return {
-      id: 'user-123',
-      name: 'Alex Morgan',
+      id: `user-${Date.now()}`,
+      name: 'User',
       avatar: '/img-5.svg',
-      handle: '@alexmorgan'
+      handle: '@user'
     };
   }
 

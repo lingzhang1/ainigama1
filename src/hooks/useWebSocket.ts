@@ -5,10 +5,12 @@ import { Message, Answer, Comment, Thread } from '../types';
 export const useWebSocket = (userId: string) => {
   useEffect(() => {
     if (userId && userId.trim() !== '') {
+      console.log('🔌 Connecting WebSocket for user:', userId);
       wsService.connect(userId);
     }
 
     return () => {
+      console.log('🔌 Disconnecting WebSocket');
       wsService.disconnect();
     };
   }, [userId]);

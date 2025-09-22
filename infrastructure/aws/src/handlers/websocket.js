@@ -79,11 +79,12 @@ exports.authenticate = async (event) => {
           email: user.email,
           avatar: user.avatar,
           handle: user.handle,
-          created_at: new Date().toISOString()
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         }
       }).promise();
 
-      console.log('✅ Stored user info for:', user.name);
+      console.log('✅ AWS: Successfully stored user info for:', user.name, user.email);
     }
 
     return {

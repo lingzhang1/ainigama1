@@ -72,9 +72,9 @@ exports.getThreads = async (event) => {
     const transformedThreads = await Promise.all(sortedItems.map(async (thread) => {
       let creatorInfo = {
         id: thread.creator_id || thread.creatorId,
-        name: 'Anonymous User',
+        name: 'Unknown User',
         avatar: '/img-5.svg',
-        handle: '@anonymous'
+        handle: '@unknown'
       };
 
       // Try to get user info from users table
@@ -88,9 +88,9 @@ exports.getThreads = async (event) => {
           if (userResult.Item) {
             creatorInfo = {
               id: userResult.Item.id,
-              name: userResult.Item.name || 'Anonymous User',
+              name: userResult.Item.name || 'Unknown User',
               avatar: userResult.Item.avatar || '/img-5.svg',
-              handle: userResult.Item.handle || '@anonymous'
+              handle: userResult.Item.handle || '@unknown'
             };
           }
         } catch (userError) {
@@ -167,9 +167,9 @@ exports.createThread = async (event) => {
     // Get user information for the creator
     let creatorInfo = {
       id: creatorId,
-      name: 'Anonymous User',
+      name: 'Unknown User',
       avatar: '/img-5.svg',
-      handle: '@anonymous'
+      handle: '@unknown'
     };
 
     try {
@@ -181,9 +181,9 @@ exports.createThread = async (event) => {
       if (userResult.Item) {
         creatorInfo = {
           id: userResult.Item.id,
-          name: userResult.Item.name || 'Anonymous User',
+          name: userResult.Item.name || 'Unknown User',
           avatar: userResult.Item.avatar || '/img-5.svg',
-          handle: userResult.Item.handle || '@anonymous'
+          handle: userResult.Item.handle || '@unknown'
         };
       }
     } catch (userError) {
@@ -328,9 +328,9 @@ exports.getThread = async (event) => {
     // Get creator information
     let creatorInfo = {
       id: thread.creator_id,
-      name: 'Anonymous User',
+      name: 'Unknown User',
       avatar: '/img-5.svg',
-      handle: '@anonymous'
+      handle: '@unknown'
     };
 
     if (thread.creator_id) {
@@ -343,9 +343,9 @@ exports.getThread = async (event) => {
         if (userResult.Item) {
           creatorInfo = {
             id: userResult.Item.id,
-            name: userResult.Item.name || 'Anonymous User',
+            name: userResult.Item.name || 'Unknown User',
             avatar: userResult.Item.avatar || '/img-5.svg',
-            handle: userResult.Item.handle || '@anonymous'
+            handle: userResult.Item.handle || '@unknown'
           };
         }
       } catch (userError) {

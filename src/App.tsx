@@ -16,11 +16,23 @@ const AppContent: React.FC = () => {
 
   const handleLogin = (user: User) => {
     // Save user to localStorage for persistence
+    console.log('💾 Saving user to localStorage:', user.name);
     localStorage.setItem('ainigama_user', JSON.stringify(user));
     dispatch({ type: 'SET_USER', payload: user });
+    
+    // Send user info to WebSocket for storage after a short delay to ensure connection
+    setTimeout(() => {
+      if (wsService.socket?.connected) {
+        console.log('📡 Sending user info to WebSocket:', user.name);
+        wsService.socket.emit('authenticate', { userId: user.id, user });
+      } else {
+        console.warn('⚠️ WebSocket not connected, user info not sent to backend');
+      }
+    }, 1000);
   };
 
   const handleLogout = () => {
+    console.log('🚪 Logging out user');
     localStorage.removeItem('ainigama_user');
     dispatch({ type: 'LOGOUT' });
   };

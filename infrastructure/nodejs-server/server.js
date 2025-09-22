@@ -161,6 +161,7 @@ io.on('connection', (socket) => {
       
       // Store or update user information in database
       if (data.user) {
+        console.log('👤 Storing user info:', data.user.name, data.user.email);
         db.run(
           'INSERT OR REPLACE INTO users (id, name, email, avatar, handle, created_at) VALUES (?, ?, ?, ?, ?, ?)',
           [data.user.id, data.user.name, data.user.email, data.user.avatar, data.user.handle, new Date().toISOString()],
@@ -168,7 +169,7 @@ io.on('connection', (socket) => {
             if (err) {
               console.error('Failed to store user info:', err);
             } else {
-              console.log('✅ Stored user info for:', data.user.name);
+              console.log('✅ Successfully stored user info for:', data.user.name);
             }
           }
         );
@@ -434,9 +435,9 @@ app.get('/api/threads', (req, res) => {
 
   db.all(
     `SELECT t.*, 
-     COALESCE(u.name, 'Anonymous User') as creator_name, 
+     COALESCE(u.name, 'Unknown User') as creator_name, 
      COALESCE(u.avatar, '/img-5.svg') as creator_avatar, 
-     COALESCE(u.handle, '@anonymous') as creator_handle,
+     COALESCE(u.handle, '@unknown') as creator_handle,
      (SELECT COUNT(*) FROM questions WHERE thread_id = t.id) as question_count,
      (SELECT COUNT(*) FROM answers a JOIN questions q ON a.question_id = q.id WHERE q.thread_id = t.id) as answer_count
      FROM threads t 
@@ -458,7 +459,7 @@ app.get('/api/threads', (req, res) => {
           id: thread.creator_id,
           name: thread.creator_name,
           avatar: thread.creator_avatar || '/img-5.svg',
-          handle: thread.creator_handle || '@user'
+          handle: thread.creator_handle || '@unknown'
         },
         isPublic: Boolean(thread.is_public),
         createdAt: new Date(thread.created_at),
@@ -494,9 +495,9 @@ app.post('/api/threads', (req, res) => {
     }
     
     const creatorInfo = user || {
-      name: 'Anonymous User',
+      name: 'Unknown User',
       avatar: '/img-5.svg',
-      handle: '@anonymous'
+      handle: '@unknown'
     };
     
   // Start transaction
@@ -745,9 +746,9 @@ app.get('/api/threads/:threadId', (req, res) => {
   // Get thread with questions and answers
   db.get(
     `SELECT t.*, 
-     COALESCE(u.name, 'Anonymous User') as creator_name, 
+     COALESCE(u.name, 'Unknown User') as creator_name, 
      COALESCE(u.avatar, '/img-5.svg') as creator_avatar, 
-     COALESCE(u.handle, '@anonymous') as creator_handle
+     COALESCE(u.handle, '@unknown') as creator_handle
      FROM threads t 
      LEFT JOIN users u ON t.creator_id = u.id 
      WHERE t.id = ?`,
