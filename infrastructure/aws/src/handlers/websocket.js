@@ -77,6 +77,7 @@ exports.authenticate = async (event) => {
           id: user.id,
           name: user.name,
           email: user.email,
+          alias: user.alias,
           avatar: user.avatar,
           handle: user.handle,
           created_at: new Date().toISOString(),

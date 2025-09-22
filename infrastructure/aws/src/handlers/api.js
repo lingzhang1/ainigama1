@@ -15,6 +15,49 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
   'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
   'Access-Control-Max-Age': '86400'
+// Check alias availability
+exports.checkAlias = async (event) => {
+  try {
+    const { alias } = event.pathParameters || {};
+    
+    if (!alias || alias.length < 3) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Alias must be at least 3 characters' })
+      };
+    }
+    
+    if (!/^[a-z0-9_]+$/.test(alias)) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Alias can only contain lowercase letters, numbers, and underscores' })
+      };
+    }
+
+    const result = await dynamodb.get({
+      TableName: process.env.DYNAMODB_TABLE_USERS,
+      Key: { alias: alias }
+    }).promise();
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ available: !result.Item })
+    };
+};
+  } catch (error) {
+    console.error('Check alias error:', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Failed to check alias availability',
+        message: error.message 
+      })
+    };
+  }
 };
 
 exports.getThreads = async (event) => {
@@ -182,6 +225,7 @@ exports.createThread = async (event) => {
         creatorInfo = {
           id: userResult.Item.id,
           name: userResult.Item.name || 'Unknown User',
+          alias: userResult.Item.alias || 'unknown',
           avatar: userResult.Item.avatar || '/img-5.svg',
           handle: userResult.Item.handle || '@unknown'
         };

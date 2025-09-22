@@ -50,10 +50,14 @@ db.serialize(() => {
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
+    alias TEXT UNIQUE NOT NULL,
     avatar TEXT,
     handle TEXT UNIQUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
+
+  // Create index on alias for fast lookups
+  db.run(`CREATE INDEX IF NOT EXISTS idx_users_alias ON users(alias)`);
 
   // Private conversations
   db.run(`CREATE TABLE IF NOT EXISTS private_conversations (
@@ -163,8 +167,8 @@ io.on('connection', (socket) => {
       if (data.user) {
         console.log('👤 Storing user info:', data.user.name, data.user.email);
         db.run(
-          'INSERT OR REPLACE INTO users (id, name, email, avatar, handle, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-          [data.user.id, data.user.name, data.user.email, data.user.avatar, data.user.handle, new Date().toISOString()],
+          'INSERT OR REPLACE INTO users (id, name, email, alias, avatar, handle, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [data.user.id, data.user.name, data.user.email, data.user.alias, data.user.avatar, data.user.handle, new Date().toISOString()],
           function(err) {
             if (err) {
               console.error('Failed to store user info:', err);
@@ -417,6 +421,28 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Check alias availability
+app.get('/api/check-alias/:alias', (req, res) => {
+  const { alias } = req.params;
+  
+  if (!alias || alias.length < 3) {
+    return res.status(400).json({ error: 'Alias must be at least 3 characters' });
+  }
+  
+  if (!/^[a-z0-9_]+$/.test(alias)) {
+    return res.status(400).json({ error: 'Alias can only contain lowercase letters, numbers, and underscores' });
+  }
+  
+  db.get('SELECT id FROM users WHERE alias = ?', [alias], (err, row) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Failed to check alias availability' });
+    }
+    
+    res.json({ available: !row });
+  });
+});
+
 // Add OPTIONS handler for CORS preflight requests
 app.options('*', (req, res) => {
   res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5173');
@@ -435,7 +461,8 @@ app.get('/api/threads', (req, res) => {
 
   db.all(
     `SELECT t.*, 
-     COALESCE(u.name, 'Unknown User') as creator_name, 
+     COALESCE(u.name, 'Unknown User') as creator_name,
+     COALESCE(u.alias, 'unknown') as creator_alias,
      COALESCE(u.avatar, '/img-5.svg') as creator_avatar, 
      COALESCE(u.handle, '@unknown') as creator_handle,
      (SELECT COUNT(*) FROM questions WHERE thread_id = t.id) as question_count,
@@ -458,6 +485,7 @@ app.get('/api/threads', (req, res) => {
         creator: {
           id: thread.creator_id,
           name: thread.creator_name,
+          alias: thread.creator_alias,
           avatar: thread.creator_avatar || '/img-5.svg',
           handle: thread.creator_handle || '@unknown'
         },
@@ -496,6 +524,7 @@ app.post('/api/threads', (req, res) => {
     
     const creatorInfo = user || {
       name: 'Unknown User',
+      alias: 'unknown',
       avatar: '/img-5.svg',
       handle: '@unknown'
     };
@@ -567,6 +596,7 @@ app.post('/api/threads', (req, res) => {
                           creator: {
                             id: creatorId,
                             name: creatorInfo.name,
+                            alias: creatorInfo.alias,
                             avatar: creatorInfo.avatar,
                             handle: creatorInfo.handle
                           },

@@ -358,6 +358,22 @@ functions:
             allowCredentials: false
             maxAge: 86400
 
+  checkAlias:
+    handler: src/handlers/api.checkAlias
+    events:
+      - http:
+          path: /check-alias/{alias}
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
 resources:
   Resources:
     # WebSocket Connections Table

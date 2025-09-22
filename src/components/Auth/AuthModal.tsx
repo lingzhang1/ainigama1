@@ -15,6 +15,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    alias: '',
     password: '',
     confirmPassword: ''
   });
@@ -22,9 +23,57 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isCheckingAlias, setIsCheckingAlias] = useState(false);
+  const [aliasAvailable, setAliasAvailable] = useState<boolean | null>(null);
 
   if (!isOpen) return null;
 
+  // Generate suggested alias from name
+  const generateSuggestedAlias = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '')
+      .substring(0, 15);
+  };
+
+  // Check alias availability
+  const checkAliasAvailability = async (alias: string) => {
+    if (!alias || alias.length < 3) {
+      setAliasAvailable(null);
+      return;
+    }
+
+    setIsCheckingAlias(true);
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/check-alias/${encodeURIComponent(alias)}`);
+      const result = await response.json();
+      setAliasAvailable(result.available);
+    } catch (error) {
+      console.error('Failed to check alias availability:', error);
+      setAliasAvailable(null);
+    } finally {
+      setIsCheckingAlias(false);
+    }
+  };
+
+  // Debounced alias checking
+  React.useEffect(() => {
+    if (mode === 'signup' && formData.alias) {
+      const timer = setTimeout(() => {
+        checkAliasAvailability(formData.alias);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [formData.alias, mode]);
+
+  // Auto-suggest alias when name changes
+  React.useEffect(() => {
+    if (mode === 'signup' && formData.name && !formData.alias) {
+      const suggested = generateSuggestedAlias(formData.name);
+      setFormData(prev => ({ ...prev, alias: suggested }));
+    }
+  }, [formData.name, mode]);
   const validateForm = () => {
     const newErrors: { [key: string]: string } = {};
 
@@ -43,6 +92,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
     if (mode === 'signup') {
       if (!formData.name) {
         newErrors.name = 'Name is required';
+      }
+      if (!formData.alias) {
+        newErrors.alias = 'Alias is required';
+      } else if (formData.alias.length < 3) {
+        newErrors.alias = 'Alias must be at least 3 characters';
+      } else if (!/^[a-z0-9_]+$/.test(formData.alias)) {
+        newErrors.alias = 'Alias can only contain lowercase letters, numbers, and underscores';
+      } else if (aliasAvailable === false) {
+        newErrors.alias = 'This alias is already taken';
       }
       if (formData.password !== formData.confirmPassword) {
         newErrors.confirmPassword = 'Passwords do not match';
@@ -66,8 +124,9 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
         id: `user-${Date.now()}`,
         name: mode === 'signup' ? formData.name : (formData.name || formData.email.split('@')[0]),
         email: formData.email,
+        alias: mode === 'signup' ? formData.alias : generateSuggestedAlias(formData.email.split('@')[0]),
         avatar: '/img-5.svg',
-        handle: `@${(mode === 'signup' ? formData.name : (formData.name || formData.email.split('@')[0])).toLowerCase().replace(/\s+/g, '')}`
+        handle: `@${mode === 'signup' ? formData.alias : generateSuggestedAlias(formData.email.split('@')[0])}`
       };
       
       onLogin(user);
@@ -125,6 +184,52 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
               </div>
             )}
 
+            {mode === 'signup' && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Username
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">@</span>
+                  <Input
+                    type="text"
+                    placeholder="username"
+                    value={formData.alias}
+                    onChange={(e) => {
+                      const value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '');
+                      handleInputChange('alias', value);
+                      setAliasAvailable(null);
+                    }}
+                    className={`pl-8 ${errors.alias ? 'border-red-500' : aliasAvailable === true ? 'border-green-500' : aliasAvailable === false ? 'border-red-500' : ''}`}
+                    maxLength={20}
+                  />
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    {isCheckingAlias && (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                    )}
+                    {!isCheckingAlias && aliasAvailable === true && (
+                      <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs">✓</span>
+                      </div>
+                    )}
+                    {!isCheckingAlias && aliasAvailable === false && (
+                      <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs">✗</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {errors.alias && (
+                  <p className="text-sm text-red-600">{errors.alias}</p>
+                )}
+                {!errors.alias && aliasAvailable === true && (
+                  <p className="text-sm text-green-600">Username is available!</p>
+                )}
+                {!errors.alias && aliasAvailable === false && (
+                  <p className="text-sm text-red-600">Username is already taken</p>
+                )}
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">
                 Email
