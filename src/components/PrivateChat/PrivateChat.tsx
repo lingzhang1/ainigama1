@@ -177,42 +177,54 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         onThinking: (thinking) => {
           setStreamingData(prev => {
             if (prev.isActive) {
-              const newData = { ...prev, thinking: prev.thinking + thinking };
-              // Auto-scroll after state update
-              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 0);
-              return newData;
+              return { ...prev, thinking: prev.thinking + thinking };
             }
             return prev;
           });
+          // Auto-scroll after state update
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 0);
         },
         onContent: (content) => {
           setStreamingData(prev => {
             if (prev.isActive) {
-              const newData = { ...prev, content: prev.content + content };
-              // Auto-scroll after state update
-              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 0);
-              return newData;
+              return { ...prev, content: prev.content + content };
             }
             return prev;
           });
+          // Auto-scroll after state update
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 0);
         },
         onComplete: async (fullContent) => {
-          // Mark streaming as inactive
-          setStreamingData(prev => ({ ...prev, isActive: false }));
+          // Capture the final thinking and content from current streaming state
+          setStreamingData(prev => {
+            const finalThinking = prev.thinking;
+            const finalContent = fullContent || prev.content;
           
-          // Ensure we capture the thinking process
-          const finalThinking = streamingData.thinking;
-          console.log('Captured thinking for persistence:', finalThinking); // Debug log
-          
-          const aiMessage: Message = {
-            id: uuidv4(),
-            content: fullContent,
-            timestamp: new Date(),
-            sender: 'ai',
-            thinking: finalThinking || undefined
-          };
+            const aiMessage: Message = {
+              id: uuidv4(),
+              content: finalContent,
+              timestamp: new Date(),
+              sender: 'ai',
+              thinking: finalThinking || undefined
+            };
 
-          console.log('AI message with thinking:', aiMessage); // Debug log
+            // Add AI message to conversation immediately
+            const finalConversation = {
+              ...updatedConversation,
+              messages: [...updatedConversation.messages, aiMessage],
+              title: generatedTitle,
+              updatedAt: new Date()
+            };
+            
+            setCurrentConversation(finalConversation);
+            setConversations(prevConvs => 
+              prevConvs.map(c => c.id === finalConversation.id ? finalConversation : c)
+                .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+            );
+
+            // Mark streaming as inactive and clear streaming data
+            return { thinking: '', content: '', isActive: false };
+          });
 
           // Generate title if this is the first message
           let generatedTitle = currentConversation.title;
@@ -243,19 +255,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               }
             }
           }
-          // Add AI message to conversation
-          const finalConversation = {
-            ...updatedConversation,
-            messages: [...updatedConversation.messages, aiMessage],
-            title: generatedTitle,
-            updatedAt: new Date()
-          };
-          
-          setCurrentConversation(finalConversation);
-          setConversations(prev => 
-            prev.map(c => c.id === finalConversation.id ? finalConversation : c)
-              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-          );
 
           // Save title to backend if generated
           if (shouldGenerateTitle && generatedTitle) {
@@ -275,10 +274,15 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           }
           // Send both messages to backend for persistence in correct order
           if (ws.socket?.connected) {
-            console.log('Sending messages to backend in order:', [userMessage, aiMessage]);
             ws.socket.emit('save_conversation', {
               conversationId: currentConversation.id,
-              messages: [userMessage, aiMessage] // Ensure correct order: user first, then AI
+              messages: [userMessage, {
+                id: uuidv4(),
+                content: fullContent,
+                timestamp: new Date(),
+                sender: 'ai',
+                thinking: streamingData.thinking || undefined
+              }] // Ensure correct order: user first, then AI
             });
           } else {
             console.warn('WebSocket not connected, attempting to save via API');
@@ -292,7 +296,13 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 },
                 body: JSON.stringify({
                   conversationId: currentConversation.id,
-                  messages: [userMessage, aiMessage] // Ensure correct order: user first, then AI
+                  messages: [userMessage, {
+                    id: uuidv4(),
+                    content: fullContent,
+                    timestamp: new Date(),
+                    sender: 'ai',
+                    thinking: streamingData.thinking || undefined
+                  }] // Ensure correct order: user first, then AI
                 })
               });
               console.log('Messages saved via REST API fallback');
