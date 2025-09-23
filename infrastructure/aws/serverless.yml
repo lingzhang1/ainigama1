@@ -374,6 +374,16 @@ functions:
               - X-Amz-Security-Token
             allowCredentials: false
             maxAge: 86400
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
 resources:
   Resources:
     # WebSocket Connections Table
