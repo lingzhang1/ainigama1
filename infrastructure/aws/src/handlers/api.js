@@ -39,15 +39,18 @@ exports.checkAlias = async (event) => {
       };
     }
 
-    const result = await dynamodb.get({
+    const result = await dynamodb.scan({
       TableName: process.env.DYNAMODB_TABLE_USERS,
-      Key: { alias: alias }
+      FilterExpression: 'alias = :alias',
+      ExpressionAttributeValues: {
+        ':alias': alias
+      }
     }).promise();
 
     return {
       statusCode: 200,
       headers: corsHeaders,
-      body: JSON.stringify({ available: !result.Item })
+      body: JSON.stringify({ available: result.Items.length === 0 })
     };
   } catch (error) {
     console.error('Check alias error:', error);
