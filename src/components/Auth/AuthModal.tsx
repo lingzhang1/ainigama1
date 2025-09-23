@@ -26,8 +26,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
   const [isCheckingAlias, setIsCheckingAlias] = useState(false);
   const [aliasAvailable, setAliasAvailable] = useState<boolean | null>(null);
 
-  if (!isOpen) return null;
-
   // Generate suggested alias from name
   const generateSuggestedAlias = (name: string) => {
     return name
@@ -141,6 +139,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
