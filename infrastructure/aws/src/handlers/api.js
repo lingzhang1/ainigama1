@@ -15,6 +15,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
   'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
   'Access-Control-Max-Age': '86400'
+};
+
 // Check alias availability
 exports.checkAlias = async (event) => {
   try {
@@ -46,7 +48,6 @@ exports.checkAlias = async (event) => {
       headers: corsHeaders,
       body: JSON.stringify({ available: !result.Item })
     };
-};
   } catch (error) {
     console.error('Check alias error:', error);
     return {
