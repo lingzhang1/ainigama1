@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { useWebSocket } from './hooks/useWebSocket';
+import { wsService } from './services/websocket';
 import { LoginScreen } from './components/Auth/LoginScreen';
 import { ForumFeed } from './components/ForumFeed/ForumFeed';
 import { PrivateChat } from './components/PrivateChat/PrivateChat';
