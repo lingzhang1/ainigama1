@@ -291,6 +291,7 @@ exports.createThread = async (event) => {
           is_ai: true,
           is_pinned: true,
           interaction_count: 0,
+          thinking: correspondingAnswer.thinking || null,
           created_at: correspondingAnswer.timestamp || now
         };
 

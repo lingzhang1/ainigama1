@@ -479,7 +479,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             content: aiMsg.content,
             isAI: true,
             isPinned: true,
-            thinking: aiMsg.thinking
+            thinking: aiMsg.thinking || undefined
           };
         })
       };

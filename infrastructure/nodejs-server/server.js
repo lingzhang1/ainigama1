@@ -572,8 +572,8 @@ app.post('/api/threads', (req, res) => {
                 const answerId = correspondingAnswer.id || uuidv4();
                 
                 db.run(
-                  'INSERT INTO answers (id, question_id, content, user_id, is_ai, is_pinned, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                  [answerId, questionId, correspondingAnswer.content, null, 1, 1, correspondingAnswer.timestamp || now],
+                  'INSERT INTO answers (id, question_id, content, user_id, is_ai, is_pinned, thinking, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                  [answerId, questionId, correspondingAnswer.content, null, 1, 1, correspondingAnswer.thinking || null, correspondingAnswer.timestamp || now],
                   function(answerErr) {
                     if (answerErr) {
                       console.error('Failed to create answer:', answerErr);
