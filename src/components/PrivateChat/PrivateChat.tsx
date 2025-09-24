@@ -26,16 +26,26 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Streaming state
-  const [streamingData, setStreamingData] = useState<{
+  // Use refs for streaming to completely avoid state updates
+  const streamingRef = useRef<{
     thinking: string;
     content: string;
     isActive: boolean;
+    isTyping: boolean;
+    thinkingElement: HTMLDivElement | null;
+    contentElement: HTMLDivElement | null;
+    streamingContainer: HTMLDivElement | null;
   }>({
     thinking: '',
     content: '',
     isActive: false,
+    isTyping: false,
+    thinkingElement: null,
+    contentElement: null,
+    streamingContainer: null,
   });
+  
+  const [isStreaming, setIsStreaming] = useState(false);
 
   // Initialize WebSocket connection for persistence only
   const ws = useWebSocket(state.currentUser?.id || '');
@@ -158,12 +168,30 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     }
     setNewMessage('');
     
-    // Reset streaming state and show streaming UI
-    setStreamingData({
+    // Reset streaming refs and show streaming UI
+    streamingRef.current = {
       thinking: '',
       content: '',
       isActive: true,
-    });
+      isTyping: true,
+      thinkingElement: null,
+      contentElement: null,
+      streamingContainer: null,
+    };
+
+    // Show streaming container via DOM manipulation
+    const showStreamingUI = () => {
+      if (streamingRef.current.streamingContainer) {
+        streamingRef.current.streamingContainer.style.display = 'block';
+      }
+    };
+
+    // Hide streaming container via DOM manipulation
+    const hideStreamingUI = () => {
+      if (streamingRef.current.streamingContainer) {
+        streamingRef.current.streamingContainer.style.display = 'none';
+      }
+    };
 
     try {
       // Prepare conversation history for AI
@@ -172,59 +200,54 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         content: msg.content
       }));
 
+      // Direct DOM manipulation for streaming display
+      const updateStreamingDisplay = () => {
+        showStreamingUI();
+        if (streamingRef.current.thinkingElement) {
+          streamingRef.current.thinkingElement.textContent = streamingRef.current.thinking;
+        }
+        if (streamingRef.current.contentElement) {
+          streamingRef.current.contentElement.textContent = streamingRef.current.content;
+        }
+        // Auto-scroll
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      };
+
       // Stream AI response using DeepSeek service
       await deepSeekService.streamChat(chatMessages, {
         onThinking: (thinking) => {
-          setStreamingData(prev => {
-            if (prev.isActive) {
-              return { ...prev, thinking: prev.thinking + thinking };
-            }
-            return prev;
-          });
-          // Auto-scroll after state update
-          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 0);
+          if (streamingRef.current.isActive) {
+            streamingRef.current.thinking += thinking;
+            updateStreamingDisplay();
+          }
         },
         onContent: (content) => {
-          setStreamingData(prev => {
-            if (prev.isActive) {
-              return { ...prev, content: prev.content + content };
-            }
-            return prev;
-          });
-          // Auto-scroll after state update
-          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 0);
+          if (streamingRef.current.isActive) {
+            streamingRef.current.content += content;
+            updateStreamingDisplay();
+          }
         },
         onComplete: async (fullContent) => {
-          // Capture the final thinking and content from current streaming state
-          setStreamingData(prev => {
-            const finalThinking = prev.thinking;
-            const finalContent = fullContent || prev.content;
+          // Mark streaming as inactive
+          streamingRef.current.isActive = false;
+          streamingRef.current.isTyping = false;
           
-            const aiMessage: Message = {
-              id: uuidv4(),
-              content: finalContent,
-              timestamp: new Date(),
-              sender: 'ai',
-              thinking: finalThinking || undefined
-            };
+          // Hide streaming UI
+          hideStreamingUI();
+          
+          // Ensure we capture the thinking process
+          const finalThinking = streamingRef.current.thinking;
+          console.log('Captured thinking for persistence:', finalThinking); // Debug log
+          
+          const aiMessage: Message = {
+            id: uuidv4(),
+            content: fullContent,
+            timestamp: new Date(),
+            sender: 'ai',
+            thinking: finalThinking || undefined
+          };
 
-            // Add AI message to conversation immediately
-            const finalConversation = {
-              ...updatedConversation,
-              messages: [...updatedConversation.messages, aiMessage],
-              title: generatedTitle,
-              updatedAt: new Date()
-            };
-            
-            setCurrentConversation(finalConversation);
-            setConversations(prevConvs => 
-              prevConvs.map(c => c.id === finalConversation.id ? finalConversation : c)
-                .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-            );
-
-            // Mark streaming as inactive and clear streaming data
-            return { thinking: '', content: '', isActive: false };
-          });
+          console.log('AI message with thinking:', aiMessage); // Debug log
 
           // Generate title if this is the first message
           let generatedTitle = currentConversation.title;
@@ -255,6 +278,19 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               }
             }
           }
+          // Add AI message to conversation
+          const finalConversation = {
+            ...updatedConversation,
+            messages: [...updatedConversation.messages, aiMessage],
+            title: generatedTitle,
+            updatedAt: new Date()
+          };
+          
+          setCurrentConversation(finalConversation);
+          setConversations(prev => 
+            prev.map(c => c.id === finalConversation.id ? finalConversation : c)
+              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+          );
 
           // Save title to backend if generated
           if (shouldGenerateTitle && generatedTitle) {
@@ -274,15 +310,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           }
           // Send both messages to backend for persistence in correct order
           if (ws.socket?.connected) {
+            console.log('Sending messages to backend in order:', [userMessage, aiMessage]);
             ws.socket.emit('save_conversation', {
               conversationId: currentConversation.id,
-              messages: [userMessage, {
-                id: uuidv4(),
-                content: fullContent,
-                timestamp: new Date(),
-                sender: 'ai',
-                thinking: streamingData.thinking || undefined
-              }] // Ensure correct order: user first, then AI
+              messages: [userMessage, aiMessage] // Ensure correct order: user first, then AI
             });
           } else {
             console.warn('WebSocket not connected, attempting to save via API');
@@ -296,13 +327,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 },
                 body: JSON.stringify({
                   conversationId: currentConversation.id,
-                  messages: [userMessage, {
-                    id: uuidv4(),
-                    content: fullContent,
-                    timestamp: new Date(),
-                    sender: 'ai',
-                    thinking: streamingData.thinking || undefined
-                  }] // Ensure correct order: user first, then AI
+                  messages: [userMessage, aiMessage] // Ensure correct order: user first, then AI
                 })
               });
               console.log('Messages saved via REST API fallback');
@@ -313,7 +338,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         },
         onError: (error) => {
           console.error('AI streaming error:', error);
-          setStreamingData(prev => ({ ...prev, isActive: false }));
+          streamingRef.current.isActive = false;
+          streamingRef.current.isTyping = false;
+          
+          // Hide streaming UI
+          hideStreamingUI();
           
           // Show error message
           const errorMessage: Message = {
@@ -338,7 +367,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
     } catch (error) {
       console.error('Failed to send message:', error);
-      setStreamingData(prev => ({ ...prev, isActive: false }));
+      streamingRef.current.isTyping = false;
+      hideStreamingUI();
     }
   };
 
@@ -658,8 +688,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </div>
               ))}
 
-              {/* Streaming AI Response */}
-              {streamingData.isActive && (
+              {/* Streaming AI Response - Direct DOM manipulation */}
+              {isStreaming && (
                 <div className="flex justify-start">
                   <div className="flex items-start space-x-3 max-w-[70%]">
                     <Avatar className="w-8 h-8 flex-shrink-0">
@@ -682,10 +712,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                             </div>
                             <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
                               <div 
+                                ref={(el) => { streamingRef.current.thinkingElement = el; }}
                                 className="min-h-[1em]"
-                              >
-                                {streamingData.thinking}
-                              </div>
+                              />
                               <span className="animate-pulse">|</span>
                             </div>
                           </CardContent>
@@ -697,10 +726,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                         <CardContent className="p-3">
                           <div className="text-sm whitespace-pre-wrap">
                             <div 
+                              ref={(el) => { streamingRef.current.contentElement = el; }}
                               className="min-h-[1em]"
-                            >
-                              {streamingData.content}
-                            </div>
+                            />
                             <span className="animate-pulse">|</span>
                           </div>
                         </CardContent>
@@ -713,6 +741,60 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               <div ref={messagesEndRef} />
             </div>
 
+            {/* Streaming AI Response - Always present, controlled via DOM */}
+            <div 
+              ref={(el) => { streamingRef.current.streamingContainer = el; }}
+              className="flex justify-start px-4"
+              style={{ display: 'none' }}
+            >
+              <div className="flex items-start space-x-3 max-w-[70%]">
+                <Avatar className="w-8 h-8 flex-shrink-0">
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">AI</span>
+                  </div>
+                </Avatar>
+                
+                <div className="space-y-2 flex-1">
+                  {/* Thinking Process */}
+                  {showThinking && (
+                    <Card className="bg-gray-50 border-gray-200">
+                      <CardContent className="p-3">
+                        <div className="flex items-center mb-2">
+                          <Brain className="w-4 h-4 text-gray-500 mr-2" />
+                          <span className="text-xs font-medium text-gray-600">
+                            Thought Process
+                          </span>
+                          <Loader2 className="w-3 h-3 text-gray-400 ml-2 animate-spin" />
+                        </div>
+                        <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
+                          <div 
+                            ref={(el) => { streamingRef.current.thinkingElement = el; }}
+                            className="min-h-[1em]"
+                          />
+                          <span className="animate-pulse">|</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Main Response */}
+                  <Card className="bg-white border-gray-200">
+                    <CardContent className="p-3">
+                      <div className="text-sm whitespace-pre-wrap">
+                        <div 
+                          ref={(el) => { streamingRef.current.contentElement = el; }}
+                          className="min-h-[1em]"
+                        />
+                        <span className="animate-pulse">|</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </div>
+
+            <div ref={messagesEndRef} />
+
             {/* Message Input */}
             <div className="bg-white border-t p-4">
               <div className="flex space-x-2">
@@ -722,9 +804,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                   placeholder="Ask DeepSeek anything..."
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   className="flex-1"
-                  disabled={streamingData.isActive}
+                  disabled={streamingRef.current.isTyping}
                 />
-                <Button onClick={handleSendMessage} disabled={!newMessage.trim() || streamingData.isActive}>
+                <Button onClick={handleSendMessage} disabled={!newMessage.trim() || streamingRef.current.isTyping}>
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
