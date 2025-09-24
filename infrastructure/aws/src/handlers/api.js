@@ -291,7 +291,7 @@ exports.createThread = async (event) => {
           is_ai: true,
           is_pinned: true,
           interaction_count: 0,
-          thinking: correspondingAnswer.thinking || null,
+          thinking: correspondingAnswer.thinking || null, // Include AI thinking process
           created_at: correspondingAnswer.timestamp || now
         };
 
@@ -1203,11 +1203,12 @@ exports.addAnswer = async (event) => {
       };
     }
 
-    console.log('💾 AWS: Saving answer with AI data:', {
+    console.log('💾 AWS: Saving answer with AI data and thinking:', {
       questionId,
       isAI: Boolean(isAI),
       isPinned: Boolean(isPinned),
-      hasThinking: !!thinking
+      hasThinking: !!thinking,
+      thinkingLength: thinking ? thinking.length : 0
     });
     // Verify question exists and get thread info
     const questionResult = await dynamodb.get({
@@ -1253,7 +1254,7 @@ exports.addAnswer = async (event) => {
       Item: answer
     }).promise();
 
-    console.log('✅ AWS: Answer saved successfully:', {
+    console.log('✅ AWS: Answer saved successfully with thinking:', {
       answerId,
       isAI: Boolean(isAI),
       isPinned: Boolean(isPinned),
