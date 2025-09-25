@@ -358,6 +358,57 @@ functions:
             allowCredentials: false
             maxAge: 86400
 
+  checkUserExists:
+    handler: src/handlers/api.checkUserExists
+    events:
+      - http:
+          path: /check-user-exists
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  registerUser:
+    handler: src/handlers/api.registerUser
+    events:
+      - http:
+          path: /register
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  loginUser:
+    handler: src/handlers/api.loginUser
+    events:
+      - http:
+          path: /login
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
   checkAlias:
     handler: src/handlers/api.checkAlias
     events:

@@ -19,6 +19,244 @@ const corsHeaders = {
   'Content-Type': 'application/json'
 };
 
+// Check if user exists
+exports.checkUserExists = async (event) => {
+  try {
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body || '{}');
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Invalid JSON in request body' })
+      };
+    }
+    
+    const { email } = requestBody;
+    
+    if (!email) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Email is required' })
+      };
+    }
+
+    const result = await dynamodb.scan({
+      TableName: process.env.DYNAMODB_TABLE_USERS,
+      FilterExpression: 'email = :email',
+      ExpressionAttributeValues: {
+        ':email': email.toLowerCase()
+      }
+    }).promise();
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ exists: result.Items.length > 0 })
+    };
+  } catch (error) {
+    console.error('Check user exists error:', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Failed to check user existence',
+        message: error.message 
+      })
+    };
+  }
+};
+
+// User registration
+exports.registerUser = async (event) => {
+  try {
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body || '{}');
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Invalid JSON in request body' })
+      };
+    }
+    
+    const { name, email, alias, password } = requestBody;
+    
+    if (!name || !email || !alias || !password) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'All fields are required' })
+      };
+    }
+    
+    if (password.length < 6) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Password must be at least 6 characters' })
+      };
+    }
+
+    // Check if user already exists
+    const existingUser = await dynamodb.scan({
+      TableName: process.env.DYNAMODB_TABLE_USERS,
+      FilterExpression: 'email = :email OR alias = :alias',
+      ExpressionAttributeValues: {
+        ':email': email.toLowerCase(),
+        ':alias': alias.toLowerCase()
+      }
+    }).promise();
+    
+    if (existingUser.Items.length > 0) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'User with this email or username already exists' })
+      };
+    }
+    
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+    
+    // Create user
+    const userId = crypto.randomUUID();
+    const handle = `@${alias}`;
+    const now = new Date().toISOString();
+    
+    const user = {
+      id: userId,
+      name,
+      email: email.toLowerCase(),
+      alias: alias.toLowerCase(),
+      password_hash: passwordHash,
+      avatar: '/img-5.svg',
+      handle,
+      created_at: now,
+      updated_at: now
+    };
+
+    await dynamodb.put({
+      TableName: process.env.DYNAMODB_TABLE_USERS,
+      Item: user
+    }).promise();
+    
+    // Return user data (without password hash)
+    const userData = {
+      id: userId,
+      name,
+      email: email.toLowerCase(),
+      alias: alias.toLowerCase(),
+      avatar: '/img-5.svg',
+      handle
+    };
+    
+    console.log('✅ User registered successfully:', email);
+    
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ user: userData })
+    };
+  } catch (error) {
+    console.error('Registration error:', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Registration failed',
+        message: error.message 
+      })
+    };
+  }
+};
+
+// User login
+exports.loginUser = async (event) => {
+  try {
+    let requestBody;
+    try {
+      requestBody = JSON.parse(event.body || '{}');
+    } catch (parseError) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Invalid JSON in request body' })
+      };
+    }
+    
+    const { email, password } = requestBody;
+    
+    if (!email || !password) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Email and password are required' })
+      };
+    }
+
+    // Find user by email
+    const result = await dynamodb.scan({
+      TableName: process.env.DYNAMODB_TABLE_USERS,
+      FilterExpression: 'email = :email',
+      ExpressionAttributeValues: {
+        ':email': email.toLowerCase()
+      }
+    }).promise();
+    
+    if (result.Items.length === 0) {
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Invalid email or password' })
+      };
+    }
+    
+    const user = result.Items[0];
+    
+    // Verify password
+    const passwordValid = await bcrypt.compare(password, user.password_hash);
+    if (!passwordValid) {
+      return {
+        statusCode: 401,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Invalid email or password' })
+      };
+    }
+    
+    // Return user data (without password hash)
+    const userData = {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      alias: user.alias,
+      avatar: user.avatar,
+      handle: user.handle
+    };
+    
+    console.log('✅ User logged in successfully:', email);
+    
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body: JSON.stringify({ user: userData })
+    };
+  } catch (error) {
+    console.error('Login error:', error);
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ 
+        error: 'Login failed',
+        message: error.message 
+      })
+    };
+  }
+};
+
 // Check alias availability
 exports.checkAlias = async (event) => {
   try {
