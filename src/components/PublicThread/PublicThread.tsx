@@ -42,6 +42,7 @@ interface PublicThreadProps {
 
 export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
+  const isGuest = state.isGuestMode && !state.isAuthenticated;
   const ws = useWebSocket(state.currentUser?.id || '');
   const [thread, setThread] = useState<Thread | null>(null);
   const [expandedAnswers, setExpandedAnswers] = useState<{ [questionId: string]: boolean }>({});
@@ -1092,14 +1093,23 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                 <div className="text-xs text-gray-500">{state.currentUser?.handle}</div>
               </div>
             </div>
-            <Button
-              onClick={onLogout}
-              variant="ghost"
-              size="sm"
-              className="text-gray-500 hover:text-gray-700"
-            >
-              Sign Out
-            </Button>
+            {isGuest ? (
+              <Button
+                onClick={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
+                size="sm"
+              >
+                Sign In
+              </Button>
+            ) : (
+              <Button
+                onClick={onLogout}
+                variant="ghost"
+                size="sm"
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Sign Out
+              </Button>
+            )}
           </div>
 
           {/* Thread Stats */}

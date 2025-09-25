@@ -620,14 +620,21 @@ exports.createThread = async (event) => {
 // Get individual thread by ID
 exports.getThread = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     const { threadId } = event.pathParameters || {};
     
     if (!threadId) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Thread ID is required' })
-      };
+      });
     }
 
     // Get thread with creator info
@@ -637,11 +644,10 @@ exports.getThread = async (event) => {
     }).promise();
 
     if (!threadResult.Item) {
-      return {
+      return addCorsHeaders({
         statusCode: 404,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Thread not found' })
-      };
+      });
     }
 
     const thread = threadResult.Item;
@@ -725,36 +731,41 @@ exports.getThread = async (event) => {
       category: thread.category
     };
 
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify(transformedThread)
-    };
+    });
 
   } catch (error) {
     console.error('Get thread error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to fetch thread',
         message: error.message 
       })
-    };
+    });
   }
 };
 
 // Get answers for a specific thread
 exports.getThreadAnswers = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     const { threadId } = event.pathParameters || {};
     
     if (!threadId) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Thread ID is required' })
-      };
+      });
     }
 
     // Get all questions for this thread first
@@ -770,11 +781,10 @@ exports.getThreadAnswers = async (event) => {
     const questionIds = (questionsResult.Items || []).map(q => q.id);
 
     if (questionIds.length === 0) {
-      return {
+      return addCorsHeaders({
         statusCode: 200,
-        headers: corsHeaders,
         body: JSON.stringify({})
-      };
+      });
     }
 
     // Get answers for all questions
@@ -821,22 +831,20 @@ exports.getThreadAnswers = async (event) => {
       }
     }
 
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify(answersByQuestion)
-    };
+    });
 
   } catch (error) {
     console.error('Get thread answers error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to fetch thread answers',
         message: error.message 
       })
-    };
+    });
   }
 };
 
@@ -845,11 +853,10 @@ exports.getUserConversations = async (event) => {
     const { userId } = event.pathParameters || {};
     
     if (!userId) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'User ID is required' })
-      };
+      });
     }
 
     const params = {
@@ -865,39 +872,44 @@ exports.getUserConversations = async (event) => {
 
     const result = await dynamodb.query(params).promise();
 
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify({
         conversations: result.Items || [],
         count: result.Count || 0
       })
-    };
+    });
 
   } catch (error) {
     console.error('Get conversations error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to fetch conversations',
         message: error.message 
       })
-    };
+    });
   }
 };
 
 // Get messages for a specific conversation
 exports.getMessages = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     const { conversationId } = event.pathParameters || {};
     
     if (!conversationId) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Conversation ID is required' })
-      };
+      });
     }
 
     const params = {
@@ -942,47 +954,51 @@ exports.getMessages = async (event) => {
     console.log(`🧠 Messages with thinking: ${messages.filter(m => m.thinking).length}`);
     console.log(`📋 Message order: ${messages.map(m => `${m.sender}(${m.id.slice(-4)})`).join(' -> ')}`);
 
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify(messages)
-    };
+    });
 
   } catch (error) {
     console.error('Get conversation messages error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to fetch messages',
         message: error.message 
       })
-    };
+    });
   }
 };
 
 // Create new conversation
 exports.createNewConversation = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
     } catch (parseError) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
+      });
     }
     
     const { userId, title } = requestBody;
     
     if (!userId) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'User ID is required' })
-      };
+      });
     }
 
     const conversationId = crypto.randomUUID();
@@ -1004,47 +1020,51 @@ exports.createNewConversation = async (event) => {
 
     console.log('✅ Created new conversation:', conversationId);
 
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify(conversation)
-    };
+    });
 
   } catch (error) {
     console.error('Create conversation error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to create conversation',
         message: error.message 
       })
-    };
+    });
   }
 };
 
 // Save messages to conversation
 exports.saveMessages = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
     } catch (parseError) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
+      });
     }
     
     const { conversationId, messages } = requestBody;
     
     if (!conversationId || !messages || !Array.isArray(messages)) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Conversation ID and messages array are required' })
-      };
+      });
     }
 
     console.log('💾 Saving', messages.length, 'messages to conversation:', conversationId);
@@ -1056,11 +1076,10 @@ exports.saveMessages = async (event) => {
     }).promise();
 
     if (!conversation.Item) {
-      return {
+      return addCorsHeaders({
         statusCode: 404,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Conversation not found' })
-      };
+      });
     }
 
     // Save messages sequentially
@@ -1101,14 +1120,13 @@ exports.saveMessages = async (event) => {
           savedCount++;
         } else {
           console.error(`❌ Failed to save message ${message.id}:`, messageError);
-          return {
+          return addCorsHeaders({
             statusCode: 500,
-            headers: corsHeaders,
             body: JSON.stringify({ 
               error: `Failed to save message: ${messageError.message}`,
               savedCount 
             })
-          };
+          });
         }
       }
     }
@@ -1125,61 +1143,64 @@ exports.saveMessages = async (event) => {
 
     console.log(`✅ Successfully saved ${savedCount} messages to conversation ${conversationId}`);
 
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         success: true, 
         savedCount,
         conversationId 
       })
-    };
+    });
 
   } catch (error) {
     console.error('Save messages error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to save messages',
         message: error.message 
       })
-    };
+    });
   }
 };
 
 // Update conversation title
 exports.updateConversationTitle = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     const { conversationId } = event.pathParameters || {};
     
     if (!conversationId) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Conversation ID is required' })
-      };
+      });
     }
 
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
     } catch (parseError) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
+      });
     }
     
     const { title } = requestBody;
     
     if (!title) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Title is required' })
-      };
+      });
     }
 
     // Update conversation title
@@ -1196,37 +1217,42 @@ exports.updateConversationTitle = async (event) => {
 
     console.log('✅ Updated conversation title:', conversationId, title);
 
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify({ success: true, title })
-    };
+    });
 
   } catch (error) {
     console.error('Update conversation title error:', error);
     
     if (error.code === 'ConditionalCheckFailedException') {
-      return {
+      return addCorsHeaders({
         statusCode: 404,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Conversation not found' })
-      };
+      });
     }
     
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to update conversation title',
         message: error.message 
       })
-    };
+    });
   }
 };
 
 // Delete conversation
 exports.deleteConversation = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     console.log('🗑️ AWS: Delete conversation handler called');
     console.log('📋 Full event:', JSON.stringify(event, null, 2));
     
@@ -1237,11 +1263,10 @@ exports.deleteConversation = async (event) => {
     
     if (!conversationId) {
       console.log('❌ No conversationId provided');
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Conversation ID is required' })
-      };
+      });
     }
 
     console.log('🗑️ Deleting conversation:', conversationId);
@@ -1288,80 +1313,81 @@ exports.deleteConversation = async (event) => {
 
     console.log('✅ Successfully deleted conversation:', conversationId);
 
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         success: true, 
         message: 'Conversation deleted successfully',
         conversationId: conversationId
       })
-    };
+    });
 
   } catch (error) {
     console.error('Delete conversation error:', error);
     console.error('Error stack:', error.stack);
     
     if (error.code === 'ConditionalCheckFailedException') {
-      return {
+      return addCorsHeaders({
         statusCode: 404,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Conversation not found' })
-      };
+      });
     }
     
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to delete conversation',
         message: error.message,
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       })
-    };
+    });
   }
 };
 
 // Add question to thread
 exports.addQuestion = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     const { threadId } = event.pathParameters || {};
     
     if (!threadId) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Thread ID is required' })
-      };
+      });
     }
 
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
     } catch (parseError) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
+      });
     }
     
     const { content, userId } = requestBody;
     
     if (!content || !content.trim()) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Question content is required' })
-      };
+      });
     }
 
     if (!userId) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'User ID is required' })
-      };
+      });
     }
 
     // Verify thread exists
@@ -1371,11 +1397,10 @@ exports.addQuestion = async (event) => {
     }).promise();
 
     if (!threadResult.Item) {
-      return {
+      return addCorsHeaders({
         statusCode: 404,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Thread not found' })
-      };
+      });
     }
 
     // Create new question
@@ -1421,57 +1446,60 @@ exports.addQuestion = async (event) => {
       threadId: threadId
     };
 
-    return {
+    return addCorsHeaders({
       statusCode: 201,
-      headers: corsHeaders,
       body: JSON.stringify(responseQuestion)
-    };
+    });
 
   } catch (error) {
     console.error('Add question error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to add question',
         message: error.message 
       })
-    };
+    });
   }
 };
 
 // Add answer to a question (REST API for public users)
 exports.addAnswer = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     const { questionId } = event.pathParameters || {};
     
     if (!questionId) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Question ID is required' })
-      };
+      });
     }
 
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
     } catch (parseError) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
+      });
     }
     
     const { content, userId, isAI = false, isPinned = false, thinking } = requestBody;
     
     if (!content || !content.trim()) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Answer content is required' })
-      };
+      });
     }
 
     console.log('💾 AWS: Saving answer with AI data and thinking:', {
@@ -1488,11 +1516,10 @@ exports.addAnswer = async (event) => {
     }).promise();
 
     if (!questionResult.Item) {
-      return {
+      return addCorsHeaders({
         statusCode: 404,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Question not found' })
-      };
+      });
     }
 
     const question = questionResult.Item;
@@ -1557,40 +1584,46 @@ exports.addAnswer = async (event) => {
       interactionCount: 0
     };
 
-    return {
+    return addCorsHeaders({
       statusCode: 201,
-      headers: corsHeaders,
       body: JSON.stringify({
         success: true,
         answer: responseAnswer,
         threadId: threadId
       })
-    };
+    });
 
   } catch (error) {
     console.error('Add answer error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to add answer',
         message: error.message 
       })
-    };
+    });
   }
 };
 
 // Get comments for a specific answer
 exports.getAnswerComments = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
+    // No authentication required - allow guest access
     const { answerId } = event.pathParameters || {};
     
     if (!answerId) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Answer ID is required' })
-      };
+      });
     }
 
     const params = {
@@ -1640,22 +1673,20 @@ exports.getAnswerComments = async (event) => {
         }))
       }));
 
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify(commentsWithReplies)
-    };
+    });
 
   } catch (error) {
     console.error('Get answer comments error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to fetch comments',
         message: error.message 
       })
-    };
+    });
   }
 };
 

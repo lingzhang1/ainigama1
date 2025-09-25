@@ -1007,6 +1007,7 @@ app.get('/api/threads/:threadId/answers', (req, res) => {
 
 // Get comments for a specific answer
 app.get('/api/answers/:answerId/comments', (req, res) => {
+  // Allow guest access - no authentication required
   const { answerId } = req.params;
   
   db.all(

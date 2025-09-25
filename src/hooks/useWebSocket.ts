@@ -4,7 +4,8 @@ import { Message, Answer, Comment, Thread } from '../types';
 
 export const useWebSocket = (userId: string) => {
   useEffect(() => {
-    if (userId && userId.trim() !== '') {
+    // Only connect WebSocket for authenticated users, not guests
+    if (userId && userId.trim() !== '' && userId !== 'guest') {
       console.log('🔌 Connecting WebSocket for user:', userId);
       wsService.connect(userId);
     }
