@@ -137,6 +137,19 @@ functions:
               - X-Amz-Security-Token
             allowCredentials: false
             maxAge: 86400
+      - http:
+          path: /threads
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
 
   createThread:
     handler: src/handlers/api.createThread
@@ -144,6 +157,19 @@ functions:
       - http:
           path: /threads
           method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /threads
+          method: options
           cors:
             origin: '*'
             headers:
@@ -171,6 +197,19 @@ functions:
               - X-Amz-Security-Token
             allowCredentials: false
             maxAge: 86400
+      - http:
+          path: /threads/{threadId}
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
 
   getThreadAnswers:
     handler: src/handlers/api.getThreadAnswers
@@ -178,6 +217,19 @@ functions:
       - http:
           path: /threads/{threadId}/answers
           method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /threads/{threadId}/answers
+          method: options
           cors:
             origin: '*'
             headers:
@@ -205,6 +257,19 @@ functions:
               - X-Amz-Security-Token
             allowCredentials: false
             maxAge: 86400
+      - http:
+          path: /user-conversations/{userId}
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
 
   saveMessages:
     handler: src/handlers/api.saveMessages
@@ -212,6 +277,19 @@ functions:
       - http:
           path: /save-messages
           method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /save-messages
+          method: options
           cors:
             origin: '*'
             headers:
@@ -239,6 +317,19 @@ functions:
               - X-Amz-Security-Token
             allowCredentials: false
             maxAge: 86400
+      - http:
+          path: /messages/{conversationId}
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
 
   createNewConversation:
     handler: src/handlers/api.createNewConversation
@@ -246,6 +337,19 @@ functions:
       - http:
           path: /new-conversation
           method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /new-conversation
+          method: options
           cors:
             origin: '*'
             headers:
@@ -273,6 +377,19 @@ functions:
               - X-Amz-Security-Token
             allowCredentials: false
             maxAge: 86400
+      - http:
+          path: /conversations/{conversationId}/title
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
 
   deleteConversation:
     handler: src/handlers/api.deleteConversation
@@ -289,6 +406,19 @@ functions:
               - Authorization
               - X-Api-Key
               - X-Amz-Security-Token
+      - http:
+          path: /conversations/{conversationId}
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
 
   addQuestion:
     handler: src/handlers/api.addQuestion
@@ -296,6 +426,19 @@ functions:
       - http:
           path: /threads/{threadId}/questions
           method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /threads/{threadId}/questions
+          method: options
           cors:
             origin: '*'
             headers:
@@ -323,6 +466,19 @@ functions:
               - X-Amz-Security-Token
             allowCredentials: false
             maxAge: 86400
+      - http:
+          path: /questions/{questionId}/answers
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
 
   getAnswerComments:
     handler: src/handlers/api.getAnswerComments
@@ -330,6 +486,19 @@ functions:
       - http:
           path: /answers/{answerId}/comments
           method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /answers/{answerId}/comments
+          method: options
           cors:
             origin: '*'
             headers:
@@ -357,6 +526,19 @@ functions:
               - X-Amz-Security-Token
             allowCredentials: false
             maxAge: 86400
+      - http:
+          path: /answers/{answerId}/comments
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
 
   checkUserExists:
     handler: src/handlers/api.checkUserExists
@@ -364,6 +546,19 @@ functions:
       - http:
           path: /check-user-exists
           method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /check-user-exists
+          method: options
           cors:
             origin: '*'
             headers:
@@ -391,6 +586,19 @@ functions:
               - X-Amz-Security-Token
             allowCredentials: false
             maxAge: 86400
+      - http:
+          path: /register
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
 
   loginUser:
     handler: src/handlers/api.loginUser
@@ -408,6 +616,19 @@ functions:
               - X-Amz-Security-Token
             allowCredentials: false
             maxAge: 86400
+      - http:
+          path: /login
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
 
   checkAlias:
     handler: src/handlers/api.checkAlias
@@ -415,6 +636,19 @@ functions:
       - http:
           path: /check-alias/{alias}
           method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /check-alias/{alias}
+          method: options
           cors:
             origin: '*'
             headers:

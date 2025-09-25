@@ -5,6 +5,7 @@ import { awsService } from '../services/aws';
 interface AppState {
   currentUser: User | null;
   isAuthenticated: boolean;
+  isGuestMode: boolean;
   viewMode: ViewMode;
   feedFilter: FeedFilter;
   threads: Thread[];
@@ -18,6 +19,7 @@ interface AppState {
 type AppAction =
   | { type: 'SET_USER'; payload: User }
   | { type: 'LOGOUT' }
+  | { type: 'SET_GUEST_MODE'; payload: boolean }
   | { type: 'SET_VIEW_MODE'; payload: ViewMode }
   | { type: 'SET_FEED_FILTER'; payload: FeedFilter }
   | { type: 'SET_THREADS'; payload: Thread[] }
@@ -34,6 +36,7 @@ type AppAction =
 const initialState: AppState = {
   currentUser: null,
   isAuthenticated: false,
+  isGuestMode: false,
   viewMode: 'forum',
   feedFilter: 'recent',
   threads: [],
@@ -47,9 +50,11 @@ const initialState: AppState = {
 const appReducer = (state: AppState, action: AppAction): AppState => {
   switch (action.type) {
     case 'SET_USER':
-      return { ...state, currentUser: action.payload, isAuthenticated: true };
+      return { ...state, currentUser: action.payload, isAuthenticated: true, isGuestMode: false };
     case 'LOGOUT':
-      return { ...state, currentUser: null, isAuthenticated: false };
+      return { ...state, currentUser: null, isAuthenticated: false, isGuestMode: false };
+    case 'SET_GUEST_MODE':
+      return { ...state, isGuestMode: action.payload, isAuthenticated: false, currentUser: null };
     case 'SET_VIEW_MODE':
       return { ...state, viewMode: action.payload };
     case 'SET_FEED_FILTER':

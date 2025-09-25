@@ -41,6 +41,7 @@ const popularQuestions = [
 
 export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
+  const isGuest = state.isGuestMode && !state.isAuthenticated;
   const [searchQuery, setSearchQuery] = useState('');
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -143,6 +144,18 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
 
         {/* User Profile */}
         <div className="border-t p-4">
+          {isGuest ? (
+            <div className="text-center">
+              <div className="text-sm text-gray-600 mb-2">Guest Mode</div>
+              <Button
+                onClick={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
+                size="sm"
+                className="w-full"
+              >
+                Sign In
+              </Button>
+            </div>
+          ) : (
           <div className="flex items-center">
             <Avatar className="w-8 h-8">
               <AvatarImage src={state.currentUser?.avatar} alt={state.currentUser?.name} />
@@ -160,6 +173,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
               </button>
             </div>
           </div>
+          )}
         </div>
       </aside>
 

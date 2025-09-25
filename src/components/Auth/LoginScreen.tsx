@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { MessageSquare, Users, Brain, Sparkles } from 'lucide-react';
 import { Button } from '../ui/button';
 import { AuthModal } from './AuthModal';
+import { useAppContext } from '../../context/AppContext';
 import { User } from '../../types';
 
 interface LoginScreenProps {
@@ -9,6 +10,7 @@ interface LoginScreenProps {
 }
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
+  const { dispatch } = useAppContext();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
   const features = [
@@ -33,6 +35,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
       description: 'Engage with answers through comments and see live updates as discussions evolve.'
     }
   ];
+
+  const handleContinueAsGuest = () => {
+    dispatch({ type: 'SET_GUEST_MODE', payload: true });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -72,14 +78,15 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               size="lg"
               className="bg-gray-800 hover:bg-gray-700 text-white px-8 py-3"
             >
-              Get Started
+              Sign In / Sign Up
             </Button>
             <Button 
-              variant="outline" 
+              onClick={handleContinueAsGuest}
+              variant="outline"
               size="lg"
               className="px-8 py-3"
             >
-              Learn More
+              Continue as Guest
             </Button>
           </div>
 

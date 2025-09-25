@@ -54,6 +54,8 @@ const AppContent: React.FC = () => {
 
   const handleAllowlistApproved = () => {
     setIsAllowlistApproved(true);
+    // Enable guest mode by default after allowlist approval
+    dispatch({ type: 'SET_GUEST_MODE', payload: true });
   };
 
   const renderCurrentView = () => {
@@ -113,7 +115,7 @@ const AppContent: React.FC = () => {
   }
 
   // Show login screen if not authenticated
-  if (!state.isAuthenticated) {
+  if (!state.isAuthenticated && !state.isGuestMode) {
     return <LoginScreen onLogin={handleLogin} />;
   }
 

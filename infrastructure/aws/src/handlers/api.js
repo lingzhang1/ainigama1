@@ -1227,14 +1227,6 @@ exports.updateConversationTitle = async (event) => {
 // Delete conversation
 exports.deleteConversation = async (event) => {
   try {
-    // Handle preflight OPTIONS request
-    if (event.httpMethod === 'OPTIONS') {
-      return addCorsHeaders({
-        statusCode: 200,
-        body: ''
-      });
-    }
-
     console.log('🗑️ AWS: Delete conversation handler called');
     console.log('📋 Full event:', JSON.stringify(event, null, 2));
     
@@ -1245,10 +1237,11 @@ exports.deleteConversation = async (event) => {
     
     if (!conversationId) {
       console.log('❌ No conversationId provided');
-      return addCorsHeaders({
+      return {
         statusCode: 400,
+        headers: corsHeaders,
         body: JSON.stringify({ error: 'Conversation ID is required' })
-      });
+      };
     }
 
     console.log('🗑️ Deleting conversation:', conversationId);
@@ -1295,34 +1288,37 @@ exports.deleteConversation = async (event) => {
 
     console.log('✅ Successfully deleted conversation:', conversationId);
 
-    return addCorsHeaders({
+    return {
       statusCode: 200,
+      headers: corsHeaders,
       body: JSON.stringify({ 
         success: true, 
         message: 'Conversation deleted successfully',
         conversationId: conversationId
       })
-    });
+    };
 
   } catch (error) {
     console.error('Delete conversation error:', error);
     console.error('Error stack:', error.stack);
     
     if (error.code === 'ConditionalCheckFailedException') {
-      return addCorsHeaders({
+      return {
         statusCode: 404,
+        headers: corsHeaders,
         body: JSON.stringify({ error: 'Conversation not found' })
-      });
+      };
     }
     
-    return addCorsHeaders({
+    return {
       statusCode: 500,
+      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to delete conversation',
         message: error.message,
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       })
-    });
+    };
   }
 };
 
@@ -1666,43 +1662,47 @@ exports.getAnswerComments = async (event) => {
 // Add comment to answer
 exports.addAnswerComment = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     const { answerId } = event.pathParameters || {};
     
     if (!answerId) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Answer ID is required' })
-      };
+      });
     }
 
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
     } catch (parseError) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
+      });
     }
     
     const { content, userId, parentId } = requestBody;
     
     if (!content || !content.trim()) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Comment content is required' })
-      };
+      });
     }
 
     if (!userId) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'User ID is required' })
-      };
+      });
     }
 
     // Verify answer exists
@@ -1712,11 +1712,10 @@ exports.addAnswerComment = async (event) => {
     }).promise();
 
     if (!answerResult.Item) {
-      return {
+      return addCorsHeaders({
         statusCode: 404,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Answer not found' })
-      };
+      });
     }
 
     // Create new comment
@@ -1764,21 +1763,19 @@ exports.addAnswerComment = async (event) => {
 
     console.log('✅ Created comment:', commentId, 'for answer:', answerId);
 
-    return {
+    return addCorsHeaders({
       statusCode: 201,
-      headers: corsHeaders,
       body: JSON.stringify(responseComment)
-    };
+    });
 
   } catch (error) {
     console.error('Add answer comment error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to add comment',
         message: error.message 
       })
-    };
+    });
   }
 };

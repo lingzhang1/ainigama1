@@ -17,6 +17,7 @@ interface PrivateChatProps {
 
 export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
+  const isGuest = state.isGuestMode && !state.isAuthenticated;
   const [conversations, setConversations] = useState<PrivateConversation[]>([]);
   const [currentConversation, setCurrentConversation] = useState<PrivateConversation | null>(
     null
@@ -52,6 +53,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
   // Load conversations from backend on component mount
   useEffect(() => {
+    // Skip loading conversations for guest users
+    if (isGuest) {
+      return;
+    }
+    
     const loadConversations = async () => {
       if (!state.currentUser?.id) return;
       
@@ -83,7 +89,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     };
 
     loadConversations();
-  }, [state.currentUser?.id]);
+  }, [state.currentUser?.id, isGuest]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -94,6 +100,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
   // Load messages for current conversation
   useEffect(() => {
+    // Skip loading messages for guest users
+    if (isGuest) {
+      return;
+    }
+    
     const loadMessages = async () => {
       if (!currentConversation?.id) {
         console.log('❌ No current conversation ID, skipping message load');
@@ -134,7 +145,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     };
 
     loadMessages();
-  }, [currentConversation?.id]); // Keep dependency on ID only
+  }, [currentConversation?.id, isGuest]); // Keep dependency on ID only
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -142,6 +153,20 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !currentConversation) return;
+
+    // For guest users, create a temporary conversation if none exists
+    let workingConversation = currentConversation;
+    if (isGuest && !workingConversation) {
+      workingConversation = {
+        id: `guest-${Date.now()}`,
+        userId: 'guest',
+        messages: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        title: 'Guest Conversation'
+      };
+      setCurrentConversation(workingConversation);
+    }
 
     const userMessage: Message = {
       id: uuidv4(),
@@ -152,8 +177,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
     // Add user message to conversation immediately
     const updatedConversation = {
-      ...currentConversation,
-      messages: [...currentConversation.messages, userMessage],
+      ...workingConversation,
+      messages: [...workingConversation.messages, userMessage],
       updatedAt: new Date()
     };
     setCurrentConversation(updatedConversation);
@@ -163,7 +188,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
     // Generate title for new conversations (first message)
     let shouldGenerateTitle = false;
-    if (!currentConversation.title && currentConversation.messages.length === 0) {
+    if (!workingConversation.title && workingConversation.messages.length === 0) {
       shouldGenerateTitle = true;
     }
     setNewMessage('');
@@ -288,7 +313,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           
           setCurrentConversation(finalConversation);
           setConversations(prev => 
-            prev.map(c => c.id === finalConversation.id ? finalConversation : c)
+            isGuest ? [finalConversation] : prev.map(c => c.id === finalConversation.id ? finalConversation : c)
               .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
           );
 
@@ -309,7 +334,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             }
           }
           // Send both messages to backend for persistence in correct order
-          if (ws.socket?.connected) {
+          if (ws.socket?.connected && !isGuest) {
             console.log('Sending messages to backend in order:', [userMessage, aiMessage]);
             ws.socket.emit('save_conversation', {
               conversationId: currentConversation.id,
@@ -317,7 +342,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             });
           } else {
             console.warn('WebSocket not connected, attempting to save via API');
-            // Fallback: save via REST API if WebSocket is not available
+            // Fallback: save via REST API if WebSocket is not available (skip for guests)
+            if (!isGuest) {
             try {
               const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
               await fetch(`${apiUrl}/save-messages`, {
@@ -333,6 +359,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               console.log('Messages saved via REST API fallback');
             } catch (apiError) {
               console.error('Failed to save messages via API:', apiError);
+            }
             }
           }
         },
@@ -373,6 +400,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   };
 
   const handleNewConversation = async () => {
+    // For guest users, create a temporary conversation
+    if (isGuest) {
+      setCurrentConversation(null);
+      return;
+    }
+    
     if (!state.currentUser?.id) return;
     
     try {
@@ -401,6 +434,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   };
 
   const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
+    // Guest users can't delete conversations (they're not persisted anyway)
+    if (isGuest) {
+      return;
+    }
+    
     e.stopPropagation(); // Prevent conversation selection when clicking delete
     
     if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
@@ -437,6 +475,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   };
 
   const handleMakePublic = () => {
+    // Redirect guest users to login
+    if (isGuest) {
+      dispatch({ type: 'SET_GUEST_MODE', payload: false });
+      return;
+    }
+    
     setShowPublishModal(true);
   };
 
@@ -447,6 +491,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   };
 
   const handlePublishConversation = async () => {
+    // This should not be called for guest users, but add safety check
+    if (isGuest) {
+      return;
+    }
+    
     if (!currentConversation || !state.currentUser) return;
     
     try {
@@ -525,6 +574,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             <h2 className="text-lg font-semibold text-gray-800 flex items-center">
               <Lock className="w-5 h-5 mr-2" />
               Private Chat
+              {isGuest && (
+                <span className="ml-2 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                  Guest Mode
+                </span>
+              )}
             </h2>
             <Button
               onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
@@ -534,6 +588,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             >
               <Globe className="w-4 h-4" />
             </Button>
+            {!isGuest && (
             <Button
               onClick={onLogout}
               variant="ghost"
@@ -543,6 +598,18 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             >
               Sign Out
             </Button>
+            )}
+            {isGuest && (
+              <Button
+                onClick={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
+                variant="ghost"
+                size="sm"
+                title="Sign In"
+                className="text-gray-500 hover:text-gray-700"
+              >
+                Sign In
+              </Button>
+            )}
           </div>
           <Button onClick={handleNewConversation} className="w-full">
             <MessageSquare className="w-4 h-4 mr-2" />
@@ -551,6 +618,13 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         </div>
 
         <div className="flex-1 overflow-y-auto">
+          {isGuest && (
+            <div className="p-4 bg-yellow-50 border-b border-yellow-200">
+              <p className="text-sm text-yellow-800">
+                <strong>Guest Mode:</strong> Your conversations won't be saved. Sign in to keep your chat history.
+              </p>
+            </div>
+          )}
           {conversations.map((conversation) => (
             <div
               key={conversation.id}
@@ -578,6 +652,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                     {formatDistanceToNow(conversation.updatedAt)} ago
                   </div>
                 </div>
+                {!isGuest && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -587,6 +662,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
+                )}
               </div>
             </div>
           ))}
@@ -620,10 +696,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                   onClick={handleMakePublic}
                   variant="outline"
                   className="flex items-center gap-2"
-                  disabled={currentConversation.messages.length === 0}
+                  disabled={currentConversation.messages.length === 0 || isGuest}
                 >
                   <Globe className="w-4 h-4" />
-                  Make Public
+                  {isGuest ? 'Sign In to Publish' : 'Make Public'}
                 </Button>
               </div>
             </header>
