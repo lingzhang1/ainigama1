@@ -10,37 +10,53 @@ const questionsTable = process.env.DYNAMODB_TABLE_QUESTIONS || 'ainigama-dev-que
 const answersTable = process.env.DYNAMODB_TABLE_ANSWERS;
 const commentsTable = process.env.DYNAMODB_TABLE_COMMENTS;
 
-// Simple CORS headers - let API Gateway handle CORS
+// Comprehensive CORS headers for all origins
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': '*', // Allow all origins for development
   'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
   'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-  'Access-Control-Max-Age': '86400',
-  'Content-Type': 'application/json'
+  'Access-Control-Max-Age': '86400'
+};
+
+// Helper function to add CORS headers to all responses
+const addCorsHeaders = (response) => {
+  return {
+    ...response,
+    headers: {
+      ...corsHeaders,
+      ...response.headers
+    }
+  };
 };
 
 // Check if user exists
 exports.checkUserExists = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
     } catch (parseError) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
+      });
     }
     
     const { email } = requestBody;
     
     if (!email) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Email is required' })
-      };
+      });
     }
 
     const result = await dynamodb.scan({
@@ -51,54 +67,57 @@ exports.checkUserExists = async (event) => {
       }
     }).promise();
 
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify({ exists: result.Items.length > 0 })
-    };
+    });
   } catch (error) {
     console.error('Check user exists error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to check user existence',
         message: error.message 
       })
-    };
+    });
   }
 };
 
 // User registration
 exports.registerUser = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
     } catch (parseError) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
+      });
     }
     
     const { name, email, alias, password } = requestBody;
     
     if (!name || !email || !alias || !password) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'All fields are required' })
-      };
+      });
     }
     
     if (password.length < 6) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Password must be at least 6 characters' })
-      };
+      });
     }
 
     // Check if user already exists
@@ -112,11 +131,10 @@ exports.registerUser = async (event) => {
     }).promise();
     
     if (existingUser.Items.length > 0) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'User with this email or username already exists' })
-      };
+      });
     }
     
     // Hash password
@@ -156,46 +174,50 @@ exports.registerUser = async (event) => {
     
     console.log('✅ User registered successfully:', email);
     
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify({ user: userData })
-    };
+    });
   } catch (error) {
     console.error('Registration error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Registration failed',
         message: error.message 
       })
-    };
+    });
   }
 };
 
 // User login
 exports.loginUser = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
     } catch (parseError) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
+      });
     }
     
     const { email, password } = requestBody;
     
     if (!email || !password) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Email and password are required' })
-      };
+      });
     }
 
     // Find user by email
@@ -208,11 +230,10 @@ exports.loginUser = async (event) => {
     }).promise();
     
     if (result.Items.length === 0) {
-      return {
+      return addCorsHeaders({
         statusCode: 401,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid email or password' })
-      };
+      });
     }
     
     const user = result.Items[0];
@@ -220,11 +241,10 @@ exports.loginUser = async (event) => {
     // Verify password
     const passwordValid = await bcrypt.compare(password, user.password_hash);
     if (!passwordValid) {
-      return {
+      return addCorsHeaders({
         statusCode: 401,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid email or password' })
-      };
+      });
     }
     
     // Return user data (without password hash)
@@ -239,43 +259,47 @@ exports.loginUser = async (event) => {
     
     console.log('✅ User logged in successfully:', email);
     
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify({ user: userData })
-    };
+    });
   } catch (error) {
     console.error('Login error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Login failed',
         message: error.message 
       })
-    };
+    });
   }
 };
 
 // Check alias availability
 exports.checkAlias = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     const { alias } = event.pathParameters || {};
     
     if (!alias || alias.length < 3) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Alias must be at least 3 characters' })
-      };
+      });
     }
     
     if (!/^[a-z0-9_]+$/.test(alias)) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Alias can only contain lowercase letters, numbers, and underscores' })
-      };
+      });
     }
 
     const result = await dynamodb.scan({
@@ -286,26 +310,32 @@ exports.checkAlias = async (event) => {
       }
     }).promise();
 
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify({ available: result.Items.length === 0 })
-    };
+    });
   } catch (error) {
     console.error('Check alias error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to check alias availability',
         message: error.message 
       })
-    };
+    });
   }
 };
 
 exports.getThreads = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     const { filter = 'recent' } = event.queryStringParameters || {};
     
     // Use GSI for efficient public thread queries
@@ -400,50 +430,54 @@ exports.getThreads = async (event) => {
       };
     }));
 
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify({
         threads: transformedThreads,
         count: transformedThreads.length
       })
-    };
+    });
 
   } catch (error) {
     console.error('Get threads error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to fetch threads',
         message: error.message 
       })
-    };
+    });
   }
 };
 
 // Create new thread (Make Public functionality)
 exports.createThread = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     let requestBody;
     try {
       requestBody = JSON.parse(event.body || '{}');
     } catch (parseError) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid JSON in request body' })
-      };
+      });
     }
     
     const { title, creatorId, category, questions, initialAnswers } = requestBody;
     
     if (!title || !creatorId || !questions || questions.length === 0) {
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Missing required fields: title, creatorId, questions' })
-      };
+      });
     }
     
     const threadId = crypto.randomUUID();
@@ -566,22 +600,20 @@ exports.createThread = async (event) => {
     
     console.log('🎉 Successfully created public thread:', threadId);
     
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify(newThread)
-    };
+    });
 
   } catch (error) {
     console.error('Create thread error:', error);
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to create thread',
         message: error.message 
       })
-    };
+    });
   }
 };
 
@@ -1195,6 +1227,14 @@ exports.updateConversationTitle = async (event) => {
 // Delete conversation
 exports.deleteConversation = async (event) => {
   try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
     console.log('🗑️ AWS: Delete conversation handler called');
     console.log('📋 Full event:', JSON.stringify(event, null, 2));
     
@@ -1205,11 +1245,10 @@ exports.deleteConversation = async (event) => {
     
     if (!conversationId) {
       console.log('❌ No conversationId provided');
-      return {
+      return addCorsHeaders({
         statusCode: 400,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Conversation ID is required' })
-      };
+      });
     }
 
     console.log('🗑️ Deleting conversation:', conversationId);
@@ -1256,37 +1295,34 @@ exports.deleteConversation = async (event) => {
 
     console.log('✅ Successfully deleted conversation:', conversationId);
 
-    return {
+    return addCorsHeaders({
       statusCode: 200,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         success: true, 
         message: 'Conversation deleted successfully',
         conversationId: conversationId
       })
-    };
+    });
 
   } catch (error) {
     console.error('Delete conversation error:', error);
     console.error('Error stack:', error.stack);
     
     if (error.code === 'ConditionalCheckFailedException') {
-      return {
+      return addCorsHeaders({
         statusCode: 404,
-        headers: corsHeaders,
         body: JSON.stringify({ error: 'Conversation not found' })
-      };
+      });
     }
     
-    return {
+    return addCorsHeaders({
       statusCode: 500,
-      headers: corsHeaders,
       body: JSON.stringify({ 
         error: 'Failed to delete conversation',
         message: error.message,
         details: process.env.NODE_ENV === 'development' ? error.stack : undefined
       })
-    };
+    });
   }
 };
 
