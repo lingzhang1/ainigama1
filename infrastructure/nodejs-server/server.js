@@ -4,6 +4,7 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const sqlite3 = require('sqlite3').verbose();
+const bcrypt = require('bcryptjs');
 const { deepseek } = require('@ai-sdk/deepseek');
 const { streamText } = require('ai');
 const { v4: uuidv4 } = require('uuid');
@@ -51,6 +52,7 @@ db.serialize(() => {
     name TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     alias TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
     avatar TEXT,
     handle TEXT UNIQUE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -419,6 +421,132 @@ io.on('connection', (socket) => {
 // REST API endpoints
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// Check if user exists
+app.post('/api/check-user-exists', (req, res) => {
+  const { email } = req.body;
+  
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+  
+  db.get('SELECT id FROM users WHERE email = ?', [email.toLowerCase()], (err, row) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).json({ error: 'Failed to check user existence' });
+    }
+    
+    res.json({ exists: !!row });
+  });
+});
+
+// User registration
+app.post('/api/register', async (req, res) => {
+  const { name, email, alias, password } = req.body;
+  
+  if (!name || !email || !alias || !password) {
+    return res.status(400).json({ error: 'All fields are required' });
+  }
+  
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+  
+  try {
+    // Check if user already exists
+    const existingUser = await new Promise((resolve, reject) => {
+      db.get('SELECT id FROM users WHERE email = ? OR alias = ?', [email.toLowerCase(), alias.toLowerCase()], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+    
+    if (existingUser) {
+      return res.status(400).json({ error: 'User with this email or username already exists' });
+    }
+    
+    // Hash password
+    const passwordHash = await bcrypt.hash(password, 10);
+    
+    // Create user
+    const userId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const handle = `@${alias}`;
+    
+    db.run(
+      'INSERT INTO users (id, name, email, alias, password_hash, avatar, handle, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [userId, name, email.toLowerCase(), alias.toLowerCase(), passwordHash, '/img-5.svg', handle, new Date().toISOString()],
+      function(err) {
+        if (err) {
+          console.error('Failed to create user:', err);
+          return res.status(500).json({ error: 'Failed to create user account' });
+        }
+        
+        const user = {
+          id: userId,
+          name,
+          email: email.toLowerCase(),
+          alias: alias.toLowerCase(),
+          avatar: '/img-5.svg',
+          handle
+        };
+        
+        console.log('✅ User registered successfully:', email);
+        res.json({ user });
+      }
+    );
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+// User login
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body;
+  
+  if (!email || !password) {
+    return res.status(400).json({ error: 'Email and password are required' });
+  }
+  
+  try {
+    db.get(
+      'SELECT id, name, email, alias, password_hash, avatar, handle FROM users WHERE email = ?',
+      [email.toLowerCase()],
+      async (err, user) => {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Login failed' });
+        }
+        
+        if (!user) {
+          return res.status(401).json({ error: 'Invalid email or password' });
+        }
+        
+        // Verify password
+        const passwordValid = await bcrypt.compare(password, user.password_hash);
+        if (!passwordValid) {
+          return res.status(401).json({ error: 'Invalid email or password' });
+        }
+        
+        // Return user data (without password hash)
+        const userData = {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          alias: user.alias,
+          avatar: user.avatar,
+          handle: user.handle
+        };
+        
+        console.log('✅ User logged in successfully:', email);
+        res.json({ user: userData });
+      }
+    );
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
 });
 
 // Check alias availability

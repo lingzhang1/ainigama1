@@ -1,5 +1,6 @@
 const AWS = require('aws-sdk');
 const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 
 const threadsTable = process.env.DYNAMODB_TABLE_THREADS;

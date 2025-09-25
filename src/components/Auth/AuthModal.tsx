@@ -26,6 +26,69 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
   const [isCheckingAlias, setIsCheckingAlias] = useState(false);
   const [aliasAvailable, setAliasAvailable] = useState<boolean | null>(null);
 
+  // Check if user exists for login
+  const checkUserExists = async (email: string) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/check-user-exists`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const result = await response.json();
+      return result.exists;
+    } catch (error) {
+      console.error('Failed to check user existence:', error);
+      return false;
+    }
+  };
+
+  // Validate login credentials
+  const validateLogin = async (email: string, password: string) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        return { success: true, user: result.user };
+      } else {
+        const error = await response.json();
+        return { success: false, error: error.message };
+      }
+    } catch (error) {
+      console.error('Login validation failed:', error);
+      return { success: false, error: 'Login failed. Please try again.' };
+    }
+  };
+
+  // Register new user
+  const registerUser = async (userData: any) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData)
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        return { success: true, user: result.user };
+      } else {
+        const error = await response.json();
+        return { success: false, error: error.message };
+      }
+    } catch (error) {
+      console.error('Registration failed:', error);
+      return { success: false, error: 'Registration failed. Please try again.' };
+    }
+  };
+
   // Generate suggested alias from name
   const generateSuggestedAlias = (name: string) => {
     return name
@@ -115,22 +178,49 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
     if (!validateForm()) return;
 
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      const user = {
-        id: `user-${Date.now()}`,
-        name: mode === 'signup' ? formData.name : (formData.name || formData.email.split('@')[0]),
-        email: formData.email,
-        alias: mode === 'signup' ? formData.alias : generateSuggestedAlias(formData.email.split('@')[0]),
-        avatar: '/img-5.svg',
-        handle: `@${mode === 'signup' ? formData.alias : generateSuggestedAlias(formData.email.split('@')[0])}`
-      };
-      
-      onLogin(user);
+    setErrors({});
+
+    try {
+      if (mode === 'login') {
+        // Check if user exists first
+        const userExists = await checkUserExists(formData.email);
+        if (!userExists) {
+          setErrors({ email: 'No account found with this email. Please sign up first.' });
+          setIsLoading(false);
+          return;
+        }
+
+        // Validate login credentials
+        const loginResult = await validateLogin(formData.email, formData.password);
+        if (loginResult.success) {
+          onLogin(loginResult.user);
+          onClose();
+        } else {
+          setErrors({ password: loginResult.error || 'Invalid email or password' });
+        }
+      } else {
+        // Sign up mode
+        const userData = {
+          name: formData.name,
+          email: formData.email,
+          alias: formData.alias,
+          password: formData.password
+        };
+
+        const registerResult = await registerUser(userData);
+        if (registerResult.success) {
+          onLogin(registerResult.user);
+          onClose();
+        } else {
+          setErrors({ email: registerResult.error || 'Registration failed' });
+        }
+      }
+    } catch (error) {
+      console.error('Authentication error:', error);
+      setErrors({ email: 'An error occurred. Please try again.' });
+    } finally {
       setIsLoading(false);
-      onClose();
-    }, 1000);
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
