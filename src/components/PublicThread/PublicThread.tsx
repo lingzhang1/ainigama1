@@ -242,6 +242,12 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   };
 
   const handleAddComment = async () => {
+    // Redirect guests to login
+    if (isGuest) {
+      dispatch({ type: 'SET_GUEST_MODE', payload: false });
+      return;
+    }
+
     if (!newCommentContent.trim() || !selectedAnswer) return;
 
     try {
@@ -315,6 +321,12 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   };
 
   const handleAddQuestion = () => {
+    // Redirect guests to login
+    if (isGuest) {
+      dispatch({ type: 'SET_GUEST_MODE', payload: false });
+      return;
+    }
+
     if (!newQuestionContent.trim()) return;
 
     // Send to backend via API
@@ -366,6 +378,12 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   };
 
   const handleAddAnswer = async (questionId: string) => {
+    // Redirect guests to login
+    if (isGuest) {
+      dispatch({ type: 'SET_GUEST_MODE', payload: false });
+      return;
+    }
+
     const content = newAnswerContent[questionId];
     if (!content?.trim()) return;
 
@@ -715,12 +733,12 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                 />
                 <Button
                   onClick={handleAddQuestion}
-                  disabled={!newQuestionContent.trim()}
+                  disabled={!newQuestionContent.trim() || isGuest}
                   size="sm"
                   className="bg-indigo-600 hover:bg-indigo-700 text-white"
                 >
                   <Plus className="w-4 h-4 mr-1" />
-                  Add Question
+                  {isGuest ? 'Sign In to Add Question' : 'Add Question'}
                 </Button>
               </CardContent>
             </Card>
@@ -982,9 +1000,10 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                       variant="outline"
                       onClick={() => toggleAnswerInput(question.id)}
                       className="w-full border-dashed border-2 border-gray-300 bg-gray-50 hover:bg-gray-100 text-gray-700 h-12 transition-colors"
+                      disabled={isGuest}
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      {isOriginalUser ? 'Add your own answer' : 'Add your answer'}
+                      {isGuest ? 'Sign In to Answer' : (isOriginalUser ? 'Add your own answer' : 'Add your answer')}
                     </Button>
                   ) : (
                     // Expanded state - full input form
@@ -1019,12 +1038,12 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                         <div className="flex gap-2">
                           <Button
                             onClick={() => handleAddAnswer(question.id)}
-                            disabled={!newAnswerContent[question.id]?.trim()}
+                            disabled={!newAnswerContent[question.id]?.trim() || isGuest}
                             size="sm"
                             className="bg-indigo-600 hover:bg-indigo-700 text-white"
                           >
                             <Plus className="w-4 h-4 mr-1" />
-                            Post Answer
+                            {isGuest ? 'Sign In to Answer' : 'Post Answer'}
                           </Button>
                           <Button
                             onClick={() => toggleAnswerInput(question.id)}
@@ -1066,12 +1085,12 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                 />
                 <Button
                   onClick={handleAddQuestion}
-                  disabled={!newQuestionContent.trim()}
+                  disabled={!newQuestionContent.trim() || isGuest}
                   size="sm"
                   className="bg-indigo-600 hover:bg-indigo-700 text-white"
                 >
                   <Plus className="w-4 h-4 mr-1" />
-                  Add Question
+                  {isGuest ? 'Sign In to Add Question' : 'Add Question'}
                 </Button>
               </CardContent>
             </Card>
@@ -1235,9 +1254,10 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                             size="sm"
                             onClick={() => handleReplyToComment(comment)}
                             className="text-xs text-gray-500 hover:text-gray-700 h-6 px-2"
+                            disabled={isGuest}
                           >
                             <Reply className="w-3 h-3 mr-1" />
-                            Reply
+                            {isGuest ? 'Sign In to Reply' : 'Reply'}
                           </Button>
                         </div>
                       </div>
@@ -1314,6 +1334,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                     onChange={(e) => setNewCommentContent(e.target.value)}
                     rows={3}
                     className="bg-white resize-none"
+                    disabled={isGuest}
                   />
                   <div className="flex justify-end space-x-2">
                     {replyingTo && (
@@ -1330,12 +1351,12 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                     )}
                     <Button
                       onClick={handleAddComment}
-                      disabled={!newCommentContent.trim()}
+                      disabled={!newCommentContent.trim() || isGuest}
                       size="sm"
                       className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
                       <Send className="w-4 h-4 mr-1" />
-                      {replyingTo ? 'Reply' : 'Comment'}
+                      {isGuest ? 'Sign In to Comment' : (replyingTo ? 'Reply' : 'Comment')}
                     </Button>
                   </div>
                 </div>

@@ -402,7 +402,16 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const handleNewConversation = async () => {
     // For guest users, create a temporary conversation
     if (isGuest) {
-      setCurrentConversation(null);
+      const guestConversation: PrivateConversation = {
+        id: `guest-${Date.now()}`,
+        userId: 'guest',
+        messages: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        title: 'Guest Conversation'
+      };
+      setCurrentConversation(guestConversation);
+      setConversations([guestConversation]);
       return;
     }
     
@@ -893,9 +902,14 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             <div className="text-center">
               <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-800 mb-2">No conversation selected</h3>
-              <p className="text-gray-500 mb-4">Start a new conversation to begin chatting with AI</p>
+              <p className="text-gray-500 mb-4">
+                {isGuest 
+                  ? 'Start chatting with DeepSeek AI (conversations won\'t be saved in guest mode)'
+                  : 'Start a new conversation to begin chatting with AI'
+                }
+              </p>
               <Button onClick={handleNewConversation}>
-                Start Chatting with DeepSeek
+                {isGuest ? 'Start Guest Chat' : 'Start Chatting with DeepSeek'}
               </Button>
             </div>
           </div>

@@ -1502,6 +1502,13 @@ exports.addAnswer = async (event) => {
       });
     }
 
+    // Require authentication for non-AI answers
+    if (!isAI && !userId) {
+      return addCorsHeaders({
+        statusCode: 401,
+        body: JSON.stringify({ error: 'Authentication required to add answers' })
+      });
+    }
     console.log('💾 AWS: Saving answer with AI data and thinking:', {
       questionId,
       isAI: Boolean(isAI),
@@ -1729,10 +1736,11 @@ exports.addAnswerComment = async (event) => {
       });
     }
 
+    // Require authentication for all comments
     if (!userId) {
       return addCorsHeaders({
         statusCode: 400,
-        body: JSON.stringify({ error: 'User ID is required' })
+        body: JSON.stringify({ error: 'Authentication required to add comments' })
       });
     }
 

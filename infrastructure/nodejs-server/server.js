@@ -1070,6 +1070,7 @@ app.post('/api/answers/:answerId/comments', (req, res) => {
     return res.status(400).json({ error: 'Comment content is required' });
   }
   
+  // Require authentication for all comments
   if (!userId) {
     return res.status(400).json({ error: 'User ID is required' });
   }
@@ -1389,6 +1390,11 @@ app.post('/api/questions/:questionId/answers', (req, res) => {
   
   if (!content || !content.trim()) {
     return res.status(400).json({ error: 'Answer content is required' });
+  }
+  
+  // Require authentication for non-AI answers
+  if (!isAI && !userId) {
+    return res.status(401).json({ error: 'Authentication required to add answers' });
   }
   
   // Verify question exists and get thread info
