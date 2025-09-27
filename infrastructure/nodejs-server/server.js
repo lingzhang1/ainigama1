@@ -1336,173 +1336,6 @@ app.post('/api/threads/:threadId/questions', (req, res) => {
   
   // Verify thread exists
   db.get('SELECT id FROM threads WHERE id = ?', [threadId], (err, thread) => {
-    if (err) {
-      console.error('Database error:', err);
-      return res.status(500).json({ error: 'Failed to verify thread' });
-    }
-    
-    if (!thread) {
-      return res.status(404).json({ error: 'Thread not found' });
-    }
-    
-    const questionId = uuidv4();
-    const now = new Date().toISOString();
-    
-    db.run(
-      'INSERT INTO questions (id, thread_id, content, user_id, created_at) VALUES (?, ?, ?, ?, ?)',
-      [questionId, threadId, content.trim(), userId, now],
-      function(err) {
-        if (err) {
-          console.error('Database error:', err);
-          return res.status(500).json({ error: 'Failed to add question' });
-        }
-        
-        // Update thread timestamp and question count
-        db.run(
-          'UPDATE threads SET updated_at = ?, question_count = COALESCE(question_count, 0) + 1 WHERE id = ?',
-          [now, threadId],
-          (updateErr) => {
-            if (updateErr) {
-              console.error('Failed to update thread:', updateErr);
-            }
-            
-            const newQuestion = {
-              id: questionId,
-              content: content.trim(),
-              timestamp: now,
-              userId: userId,
-              threadId: threadId
-            };
-            
-            console.log('✅ Created question:', questionId, 'for thread:', threadId);
-            res.json(newQuestion);
-          }
-        );
-      }
-    );
-  });
-});
-
-// Add answer to question
-app.post('/api/questions/:questionId/answers', (req, res) => {
-  const { questionId } = req.params;
-  const { content, userId, isAI, isPinned, thinking } = req.body;
-  
-  if (!content || !content.trim()) {
-    return res.status(400).json({ error: 'Answer content is required' });
-  }
-  
-  // Require authentication for non-AI answers
-  if (!isAI && !userId) {
-    return res.status(401).json({ error: 'Authentication required to add answers' });
-  }
-  
-  // Verify question exists and get thread info
-  db.get(
-    'SELECT q.*, t.id as thread_id FROM questions q JOIN threads t ON q.thread_id = t.id WHERE q.id = ?',
-    [questionId],
-    (err, question) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Failed to verify question' });
-      }
-      
-      if (!question) {
-        return res.status(404).json({ error: 'Question not found' });
-      }
-      
-      // If this is an AI answer, get full thread context
-      let aiContent = content;
-      let aiThinking = thinking;
-      
-      if (isAI) {
-        try {
-          // Get all questions and answers in this thread for context
-          const threadContext = await new Promise((resolve, reject) => {
-            db.all(`
-              SELECT 
-                q.id as question_id,
-                q.content as question_content,
-                q.created_at as question_created_at,
-                a.id as answer_id,
-                a.content as answer_content,
-                a.is_ai as answer_is_ai,
-                a.created_at as answer_created_at
-              FROM questions q
-              LEFT JOIN answers a ON q.id = a.question_id
-              WHERE q.thread_id = ?
-              ORDER BY q.created_at ASC, a.created_at ASC
-            `, [question.thread_id], (err, rows) => {
-              if (err) reject(err);
-              else resolve(rows);
-            });
-          });
-          
-          // Build conversation context
-          const contextMessages = [];
-          const processedQuestions = new Set();
-          
-          for (const row of threadContext) {
-            // Add question if not already processed
-            if (!processedQuestions.has(row.question_id)) {
-              contextMessages.push({
-                role: 'user',
-                content: row.question_content
-              });
-              processedQuestions.add(row.question_id);
-            }
-            
-            // Add answer if exists
-            if (row.answer_id && row.answer_content) {
-              contextMessages.push({
-                role: 'assistant',
-                content: row.answer_content
-              });
-            }
-          }
-          
-          // Add the current question if not already in context
-          if (!processedQuestions.has(questionId)) {
-            contextMessages.push({
-              role: 'user',
-              content: question.content
-            });
-          }
-          
-          console.log('🧠 AI answering with thread context:', contextMessages.length, 'messages');
-          
-          // Generate AI response with full context
-          const { deepSeekService } = require('../../../src/services/deepseek');
-          
-          // Use streaming to get both content and thinking
-          let fullContent = '';
-          let fullThinking = '';
-          
-          await new Promise((resolve, reject) => {
-            deepSeekService.streamChat(contextMessages, {
-              onThinking: (thinkingDelta) => {
-                fullThinking += thinkingDelta;
-              },
-              onContent: (contentDelta) => {
-                fullContent += contentDelta;
-              },
-              onComplete: (finalContent) => {
-                aiContent = finalContent;
-                aiThinking = fullThinking;
-                resolve();
-              },
-              onError: (error) => {
-                console.error('AI generation error:', error);
-                aiContent = `I apologize, but I encountered an error while generating a response: ${error.message}`;
-                aiThinking = null;
-                resolve();
-              }
-            });
-          });
-          
-        } catch (contextError) {
-          console.error('Failed to get thread context for AI:', contextError);
-          // Continue with original content if context retrieval fails
         }
       }
       const answerId = uuidv4();
@@ -1510,7 +1343,7 @@ app.post('/api/questions/:questionId/answers', (req, res) => {
       
       console.log('💾 Saving answer with AI data:', {
         answerId,
-        isAI: Boolean(isAI),
+      `, [answerId, questionId, content, userId, isAI, false, 0, thinking, timestamp, timestamp], function(err) {
         isPinned: Boolean(isPinned),
         hasThinking: !!aiThinking
       });
@@ -1567,7 +1400,7 @@ app.post('/api/questions/:questionId/answers', (req, res) => {
 });
 
 // Error handling middleware
-app.use((err, req, res, next) => {
+      content: content,
   console.error('Server error:', err);
   res.status(500).json({ error: 'Internal server error' });
 });

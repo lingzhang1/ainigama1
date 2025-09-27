@@ -802,9 +802,6 @@ exports.getThreadAnswers = async (event) => {
         ScanIndexForward: false // Get newest first, then we'll sort by pinned
       }).promise();
 
-      // Sort answers: pinned first, then by creation time (newest first)
-      const sortedAnswers = (answersResult.Items || []).sort((a, b) => {
-        // Pinned answers first
         if (a.is_pinned && !b.is_pinned) return -1;
         if (!a.is_pinned && b.is_pinned) return 1;
         
@@ -1463,7 +1460,7 @@ exports.addQuestion = async (event) => {
   }
 };
 
-// Add answer to a question (REST API for public users)
+// Add answer to a question
 exports.addAnswer = async (event) => {
   try {
     // Handle preflight OPTIONS request
@@ -1528,228 +1525,14 @@ exports.addAnswer = async (event) => {
         body: JSON.stringify({ error: 'Question not found' })
       });
     }
-
+  const { content, userId, isAI = false, thinking } = JSON.parse(event.body);
     const question = questionResult.Item;
     
-    // If this is an AI answer, get full thread context
-    let aiContent = content;
-    let aiThinking = thinking;
-    
-    if (isAI) {
-      try {
-        // Get all questions in this thread
-        const questionsResult = await dynamodb.query({
-          TableName: process.env.DYNAMODB_TABLE_QUESTIONS,
-          IndexName: 'ThreadIdIndex',
-          KeyConditionExpression: 'thread_id = :threadId',
-          ExpressionAttributeValues: {
-            ':threadId': question.thread_id
-          },
-          ScanIndexForward: true
-        }).promise();
-        
-        // Get all answers for these questions
-        const contextMessages = [];
-        
-        for (const q of questionsResult.Items) {
-          // Add question
-          contextMessages.push({
-            role: 'user',
-            content: q.content
-          });
-          
-          // Get answers for this question
-          const answersResult = await dynamodb.query({
-            TableName: process.env.DYNAMODB_TABLE_ANSWERS,
-            IndexName: 'QuestionIdIndexV2',
-            KeyConditionExpression: 'question_id = :questionId',
-            ExpressionAttributeValues: {
-              ':questionId': q.id
-            },
-            ScanIndexForward: true
-          }).promise();
-          
-          // Add existing answers
-          for (const answer of answersResult.Items) {
-            contextMessages.push({
-              role: 'assistant',
-              content: answer.content
-            });
-          }
-        }
-        
-        // Add current question if not already included
-        const currentQuestionExists = questionsResult.Items.some(q => q.id === questionId);
-        if (!currentQuestionExists) {
-          contextMessages.push({
-            role: 'user',
-            content: question.content
-          });
-        }
-        
-        console.log('🧠 AI answering with thread context:', contextMessages.length, 'messages');
-        
-        // Generate AI response with full context using DeepSeek
-        const { createDeepSeek } = require('@ai-sdk/deepseek');
-        const { streamText } = require('ai');
-        
-        const deepseekClient = createDeepSeek({
-          apiKey: process.env.DEEPSEEK_API_KEY
-        });
-        
-        const result = await streamText({
-          model: deepseekClient('deepseek-reasoner'),
-          system: "You are a helpful assistant providing thoughtful answers in a community discussion. Consider the full context of the conversation.",
-          messages: contextMessages,
-        });
-        
-        let fullContent = '';
-        let fullThinking = '';
-        
-        // Process the stream
-        for await (const delta of result.fullStream) {
-          switch (delta.type) {
-            case 'text-delta':
-              if (delta.textDelta) {
-                fullContent += delta.textDelta;
-              }
-              break;
-            case 'reasoning-delta':
-              if (delta.text) {
-                fullThinking += delta.text;
-              }
-              break;
-            case 'step-delta':
-              if (delta.stepDelta) {
-                if (delta.stepDelta.type === 'reasoning-delta' && delta.stepDelta.reasoningDelta) {
-                  fullThinking += delta.stepDelta.reasoningDelta;
-                } else if (delta.stepDelta.type === 'reasoning' && delta.stepDelta.reasoning) {
-                  fullThinking += delta.stepDelta.reasoning;
-                }
-              }
-              break;
-          }
-        }
-        
-        aiContent = fullContent || content;
-        aiThinking = fullThinking || thinking;
-        
-        console.log('🧠 AI context response generated:', {
-          contentLength: aiContent.length,
-          thinkingLength: aiThinking ? aiThinking.length : 0
-        });
-        
-      } catch (contextError) {
-        console.error('Failed to get thread context for AI:', contextError);
-        // Continue with original content if context retrieval fails
-      }
-    }
-    const threadId = question.thread_id;
-
-    // Create new answer
-    const answerId = crypto.randomUUID();
-    const now = new Date().toISOString();
-
-    const answer = {
-      id: answerId,
-      question_id: questionId,
-      questionId: questionId, // Dual compatibility
-      content: aiContent.trim(),
-      user_id: userId || null,
-      userId: userId || null, // Dual compatibility
-      is_ai: Boolean(isAI),
-      isAI: Boolean(isAI), // Dual compatibility
-      is_pinned: Boolean(isPinned),
-      thinking: aiThinking || null,
-      interaction_count: 0,
-      interactionCount: 0, // Dual compatibility
-      thinking: thinking || null,
-      created_at: now,
-      timestamp: now // Dual compatibility
-    };
-
-    await dynamodb.put({
-      TableName: answersTable,
-      Item: answer
-    }).promise();
-
-    console.log('✅ AWS: Answer saved successfully with thinking:', {
-      answerId,
-      isAI: Boolean(isAI),
-      isPinned: Boolean(isPinned),
-      thinkingLength: thinking ? thinking.length : 0
-    });
-
-    // Update thread timestamp to reflect activity
-    await dynamodb.update({
-      TableName: threadsTable,
-      Key: { id: threadId },
-      UpdateExpression: 'SET updated_at = :updatedAt, answer_count = if_not_exists(answer_count, :zero) + :inc',
-      ExpressionAttributeValues: {
-        ':updatedAt': now,
-        ':zero': 0,
-        ':inc': 1
-      }
-    }).promise();
-
-    // Return the created answer in frontend format
-    const responseAnswer = {
-      id: answerId,
-      content: content.trim(),
-      timestamp: now,
-      userId: userId || null,
-      questionId: questionId,
-      isPinned: Boolean(isPinned),
-      isAI: Boolean(isAI),
-      thinking: thinking || null,
-      interactionCount: 0
-    };
-
-    return addCorsHeaders({
-      statusCode: 201,
-      body: JSON.stringify({
-        success: true,
-        answer: responseAnswer,
-        threadId: threadId
-      })
-    });
-
-  } catch (error) {
-    console.error('Add answer error:', error);
-    return addCorsHeaders({
-      statusCode: 500,
-      body: JSON.stringify({ 
-        error: 'Failed to add answer',
-        message: error.message 
-      })
-    });
-  }
-};
-
-// Get comments for a specific answer
-exports.getAnswerComments = async (event) => {
-  try {
-    // Handle preflight OPTIONS request
-    if (event.httpMethod === 'OPTIONS') {
-      return addCorsHeaders({
-        statusCode: 200,
-        body: ''
-      });
-    }
-
-    // No authentication required - allow guest access
-    const { answerId } = event.pathParameters || {};
-    
-    if (!answerId) {
-      return addCorsHeaders({
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Answer ID is required' })
-      });
     }
 
     const params = {
       TableName: commentsTable,
-      IndexName: 'AnswerIdIndex',
+      content: content,
       KeyConditionExpression: 'answerId = :answerId',
       ExpressionAttributeValues: {
         ':answerId': answerId
