@@ -24,8 +24,8 @@ import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
 import { Thread, Question, Answer, Comment } from '../../types';
 import { useAppContext } from '../../context/AppContext';
-import { usePublicThread, useWebSocket } from '../../hooks/useWebSocket';
 import { deepSeekService, ChatMessage } from '../../services/deepseek';
+import { usePublicThread, useWebSocket } from '../../hooks/useWebSocket';
 import { formatDistanceToNow } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -45,6 +45,8 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const isGuest = state.isGuestMode && !state.isAuthenticated;
   const ws = useWebSocket(state.currentUser?.id || '');
   const [thread, setThread] = useState<Thread | null>(null);
+  const [isAIAnswering, setIsAIAnswering] = useState<{ [questionId: string]: boolean }>({});
+  const [aiStreamingContent, setAIStreamingContent] = useState<{ [questionId: string]: { thinking: string; content: string } }>({});
   const [expandedAnswers, setExpandedAnswers] = useState<{ [questionId: string]: boolean }>({});
   const [selectedAnswer, setSelectedAnswer] = useState<Answer | null>(null);
   const [showInteractionPanel, setShowInteractionPanel] = useState(false);
@@ -113,6 +115,174 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     loadThread();
   }, [state.currentThreadId]);
 
+  // Build context for AI with proper multi-user thread structure
+  const buildThreadContextForAI = (targetQuestionId: string): ChatMessage[] => {
+    if (!thread) return [];
+
+    const contextMessages: ChatMessage[] = [];
+    
+    // Add system message explaining the multi-user thread structure
+    contextMessages.push({
+      role: 'system',
+      content: `You are participating in a public discussion thread where multiple users can ask questions and provide answers. This is a community discussion, not a 1:1 conversation.
+
+Thread Structure:
+- The original user asks questions
+- Multiple community members (including you as AI) can provide answers to each question
+- Each question can have multiple answers from different contributors
+- You should acknowledge the community context and build upon previous answers when relevant
+
+Please provide thoughtful, helpful responses that contribute to the community discussion.`
+    });
+
+    // Find the target question
+    const targetQuestion = thread.questions.find(q => q.id === targetQuestionId);
+    if (!targetQuestion) return contextMessages;
+
+    // Build context showing the conversation structure
+    let questionNumber = 1;
+    
+    for (const question of thread.questions) {
+      // Add the question
+      const questionUser = question.userId === thread.creator.id ? thread.creator.name : 'User';
+      contextMessages.push({
+        role: 'user',
+        content: `[Question ${questionNumber} from ${questionUser}]: ${question.content}`
+      });
+
+      // Add all answers for this question
+      const questionAnswers = answers[question.id] || [];
+      const sortedAnswers = questionAnswers.sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+
+      for (const answer of sortedAnswers) {
+        if (answer.isAI) {
+          contextMessages.push({
+            role: 'assistant',
+            content: answer.content
+          });
+        } else {
+          const answerUser = answer.userId ? `User ${answer.userId.slice(-4)}` : 'Anonymous';
+          contextMessages.push({
+            role: 'user',
+            content: `[Answer from ${answerUser}]: ${answer.content}`
+          });
+        }
+      }
+
+      questionNumber++;
+    }
+
+    // Add final instruction specifying which question to answer
+    const targetQuestionNumber = thread.questions.findIndex(q => q.id === targetQuestionId) + 1;
+    contextMessages.push({
+      role: 'user',
+      content: `Now please provide your answer to Question ${targetQuestionNumber}: "${targetQuestion.content}"`
+    });
+
+    return contextMessages;
+  };
+
+  // Handle AI answer generation
+  const handleAIAnswer = async (questionId: string) => {
+    if (!state.currentUser && !isGuest) return;
+    
+    try {
+      setIsAIAnswering(prev => ({ ...prev, [questionId]: true }));
+      setAIStreamingContent(prev => ({ ...prev, [questionId]: { thinking: '', content: '' } }));
+
+      // Build context for this specific question
+      const contextMessages = buildThreadContextForAI(questionId);
+      
+      console.log('🤖 Sending context to AI for question:', questionId);
+      console.log('📋 Context structure:', contextMessages.map(m => `${m.role}: ${m.content.substring(0, 50)}...`));
+
+      let fullContent = '';
+      let fullThinking = '';
+
+      // Stream AI response
+      await deepSeekService.streamChat(contextMessages, {
+        onThinking: (thinking) => {
+          fullThinking += thinking;
+          setAIStreamingContent(prev => ({
+            ...prev,
+            [questionId]: { ...prev[questionId], thinking: fullThinking }
+          }));
+        },
+        onContent: (content) => {
+          fullContent += content;
+          setAIStreamingContent(prev => ({
+            ...prev,
+            [questionId]: { ...prev[questionId], content: fullContent }
+          }));
+        },
+        onComplete: async (finalContent) => {
+          console.log('🧠 AI thinking captured:', fullThinking.length, 'characters');
+          console.log('💬 AI response captured:', finalContent.length, 'characters');
+
+          // Create AI answer
+          const aiAnswer: Answer = {
+            id: uuidv4(),
+            content: finalContent,
+            timestamp: new Date(),
+            userId: null, // AI answers don't have userId
+            questionId: questionId,
+            isPinned: true, // AI answers are typically pinned
+            isAI: true,
+            interactionCount: 0
+          };
+
+          // Add to local state immediately
+          setAnswers(prev => ({
+            ...prev,
+            [questionId]: [...(prev[questionId] || []), aiAnswer]
+          }));
+
+          // Save to backend
+          try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+            const response = await fetch(`${apiUrl}/questions/${questionId}/answers`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                content: finalContent,
+                userId: null,
+                isAI: true,
+                isPinned: true,
+                thinking: fullThinking || null
+              })
+            });
+
+            if (!response.ok) {
+              console.error('Failed to save AI answer to backend');
+            } else {
+              console.log('✅ AI answer saved to backend');
+            }
+          } catch (saveError) {
+            console.error('Error saving AI answer:', saveError);
+          }
+
+          // Clear streaming state
+          setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
+          setAIStreamingContent(prev => {
+            const newState = { ...prev };
+            delete newState[questionId];
+            return newState;
+          });
+        },
+        onError: (error) => {
+          console.error('AI answer error:', error);
+          setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
+          setAIStreamingContent(prev => {
+            const newState = { ...prev };
+            delete newState[questionId];
+            return newState;
+          });
+        }
+      });
   const { addAnswer, addComment } = usePublicThread(
     thread?.id || '',
     (answer: Answer) => {
