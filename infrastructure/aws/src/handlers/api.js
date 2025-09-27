@@ -802,14 +802,14 @@ exports.getThreadAnswers = async (event) => {
         ScanIndexForward: false // Get newest first, then we'll sort by pinned
       }).promise();
 
-        if (a.is_pinned && !b.is_pinned) return -1;
-        if (!a.is_pinned && b.is_pinned) return 1;
-        
-        // Then by creation time (newest first)
-        const timeA = new Date(a.created_at || 0).getTime();
-        const timeB = new Date(b.created_at || 0).getTime();
-        return timeB - timeA;
-      });
+      if (a.is_pinned && !b.is_pinned) return -1;
+      if (!a.is_pinned && b.is_pinned) return 1;
+      
+      // Then by creation time (newest first)
+      const timeA = new Date(a.created_at || 0).getTime();
+      const timeB = new Date(b.created_at || 0).getTime();
+      return timeB - timeA;
+    });
 
       const answers = sortedAnswers.map(answer => ({
         id: answer.id,
