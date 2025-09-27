@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, MessageSquare, Users, Clock, Brain, Loader2, Plus } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Users, Clock, Brain, Loader2, Plus, ArrowUpDown, MessageCircle, X, Send } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -30,6 +30,9 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [isAIAnswering, setIsAIAnswering] = useState<{ [questionId: string]: boolean }>({});
   const [aiStreamingContent, setAIStreamingContent] = useState<{ [questionId: string]: { thinking: string; content: string } }>({});
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [expandedAnswerInputs, setExpandedAnswerInputs] = useState<{ [questionId: string]: boolean }>({});
+  const [commentPanelOpen, setCommentPanelOpen] = useState<string | null>(null);
 
   // Get current thread ID from state
   const currentThreadId = state.currentThreadId;
@@ -371,6 +374,15 @@ Structure:
     }
   };
 
+  // Sort questions based on timestamp
+  const getSortedQuestions = () => {
+    if (!thread) return [];
+    return [...thread.questions].sort((a, b) => {
+      const timeA = new Date(a.timestamp).getTime();
+      const timeB = new Date(b.timestamp).getTime();
+      return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+    });
+  };
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -397,8 +409,9 @@ Structure:
     );
   }
 
+  const sortedQuestions = getSortedQuestions();
   return (
-    <div className="flex w-full h-screen bg-gray-50">
+    <div className="flex w-full h-screen bg-gray-50 relative">
       {/* Main Content */}
       <main className="flex-1 flex flex-col">
         {/* Header */}
@@ -432,6 +445,15 @@ Structure:
               </div>
             </div>
             <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
+                className="flex items-center gap-2"
+              >
+                <ArrowUpDown className="w-4 h-4" />
+                {sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}
+              </Button>
               {isGuest ? (
                 <Button
                   onClick={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
@@ -451,8 +473,43 @@ Structure:
         {/* Thread Content */}
         <div className="flex-1 overflow-y-auto p-6">
           <div className="max-w-4xl mx-auto space-y-8">
+            {/* Add New Question (Only for thread creator) - Show at top if newest first */}
+            {state.currentUser && state.currentUser.id === thread.creator.id && sortOrder === 'newest' && (
+              <Card className="border border-gray-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Plus className="w-5 h-5 text-gray-500" />
+                    <h4 className="font-medium text-gray-700">Add Another Question</h4>
+                  </div>
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="What else would you like to ask the community?"
+                      value={newQuestion}
+                      onChange={(e) => setNewQuestion(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={handleAddQuestion}
+                        disabled={!newQuestion.trim() || isAddingQuestion}
+                      >
+                        {isAddingQuestion ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Adding...
+                          </>
+                        ) : (
+                          'Add Question'
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             {/* Questions and Answers */}
-            {thread.questions.map((question, questionIndex) => (
+            {sortedQuestions.map((question, questionIndex) => (
               <Card key={question.id} className="border border-gray-200">
                 <CardContent className="p-6">
                   {/* Question */}
@@ -465,7 +522,9 @@ Structure:
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 mb-2">
                           <span className="font-medium text-gray-800">{thread.creator.name}</span>
-                          <Badge variant="outline" className="text-xs">Question {questionIndex + 1}</Badge>
+                          <Badge variant="outline" className="text-xs">
+                            Question {sortOrder === 'newest' ? sortedQuestions.length - questionIndex : questionIndex + 1}
+                          </Badge>
                           <span className="text-xs text-gray-500">
                             {formatDistanceToNow(question.timestamp)} ago
                           </span>
@@ -541,44 +600,19 @@ Structure:
                             </div>
                             <p className="text-gray-700 leading-relaxed mb-3">{answer.content}</p>
                             
-                            {/* Comments */}
-                            <div className="space-y-2">
-                              {(comments[answer.id] || []).map((comment) => (
-                                <div key={comment.id} className="bg-gray-50 p-3 rounded-lg">
-                                  <div className="flex items-center space-x-2 mb-1">
-                                    <span className="font-medium text-gray-600 text-sm">
-                                      User{comment.userId?.slice(-4) || 'Unknown'}
-                                    </span>
-                                    <span className="text-xs text-gray-500">
-                                      {formatDistanceToNow(comment.timestamp)} ago
-                                    </span>
-                                  </div>
-                                  <p className="text-gray-700 text-sm">{comment.content}</p>
-                                </div>
-                              ))}
-                              
-                              {/* Add Comment */}
-                              {!isGuest && (
-                                <div className="flex space-x-2">
-                                  <Input
-                                    placeholder="Add a comment..."
-                                    value={newComment[answer.id] || ''}
-                                    onChange={(e) => setNewComment(prev => ({
-                                      ...prev,
-                                      [answer.id]: e.target.value
-                                    }))}
-                                    className="text-sm"
-                                    onKeyPress={(e) => e.key === 'Enter' && handleAddComment(answer.id)}
-                                  />
-                                  <Button
-                                    size="sm"
-                                    onClick={() => handleAddComment(answer.id)}
-                                    disabled={!newComment[answer.id]?.trim()}
-                                  >
-                                    Comment
-                                  </Button>
-                                </div>
-                              )}
+                            {/* Comment Icon */}
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setCommentPanelOpen(answer.id)}
+                                className="flex items-center space-x-1 text-gray-500 hover:text-gray-700"
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                                <span className="text-xs">
+                                  {(comments[answer.id] || []).length} comments
+                                </span>
+                              </Button>
                             </div>
                           </div>
                         </div>
@@ -608,23 +642,46 @@ Structure:
                     
                     {!isGuest && (
                       <div className="space-y-3">
-                        <Textarea
-                          placeholder="Share your thoughts and insights..."
-                          value={newAnswer[question.id] || ''}
-                          onChange={(e) => setNewAnswer(prev => ({
-                            ...prev,
-                            [question.id]: e.target.value
-                          }))}
-                          className="min-h-[100px]"
-                        />
-                        <div className="flex justify-end">
+                        {!expandedAnswerInputs[question.id] ? (
                           <Button
-                            onClick={() => handleAddAnswer(question.id)}
-                            disabled={!newAnswer[question.id]?.trim()}
+                            variant="outline"
+                            onClick={() => setExpandedAnswerInputs(prev => ({ ...prev, [question.id]: true }))}
+                            className="w-full justify-start text-gray-500"
                           >
-                            Post Answer
+                            <Plus className="w-4 h-4 mr-2" />
+                            Write an answer...
                           </Button>
-                        </div>
+                        ) : (
+                          <>
+                            <Textarea
+                              placeholder="Share your thoughts and insights..."
+                              value={newAnswer[question.id] || ''}
+                              onChange={(e) => setNewAnswer(prev => ({
+                                ...prev,
+                                [question.id]: e.target.value
+                              }))}
+                              className="min-h-[100px]"
+                              autoFocus
+                            />
+                            <div className="flex justify-end space-x-2">
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setExpandedAnswerInputs(prev => ({ ...prev, [question.id]: false }));
+                                  setNewAnswer(prev => ({ ...prev, [question.id]: '' }));
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={() => handleAddAnswer(question.id)}
+                                disabled={!newAnswer[question.id]?.trim()}
+                              >
+                                Post Answer
+                              </Button>
+                            </div>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
@@ -632,8 +689,8 @@ Structure:
               </Card>
             ))}
 
-            {/* Add New Question (Only for thread creator) */}
-            {state.currentUser && state.currentUser.id === thread.creator.id && (
+            {/* Add New Question (Only for thread creator) - Show at bottom if oldest first */}
+            {state.currentUser && state.currentUser.id === thread.creator.id && sortOrder === 'oldest' && (
               <Card className="border border-gray-200">
                 <CardContent className="p-6">
                   <div className="flex items-center space-x-2 mb-4">
@@ -669,6 +726,96 @@ Structure:
           </div>
         </div>
       </main>
+
+      {/* Comment Side Panel */}
+      {commentPanelOpen && (
+        <div className="fixed inset-y-0 right-0 w-96 bg-white border-l shadow-lg z-50 flex flex-col">
+          {/* Panel Header */}
+          <div className="flex items-center justify-between p-4 border-b">
+            <h3 className="font-medium text-gray-800">Comments</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCommentPanelOpen(null)}
+              className="h-8 w-8 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Comments List */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {(comments[commentPanelOpen] || []).map((comment) => (
+              <div key={comment.id} className="bg-gray-50 p-3 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Avatar className="w-5 h-5">
+                    <AvatarImage src="/img-5.svg" />
+                    <AvatarFallback>U</AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium text-gray-700 text-sm">
+                    User{comment.userId?.slice(-4) || 'Unknown'}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {formatDistanceToNow(comment.timestamp)} ago
+                  </span>
+                </div>
+                <p className="text-gray-700 text-sm leading-relaxed">{comment.content}</p>
+              </div>
+            ))}
+            
+            {(comments[commentPanelOpen] || []).length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No comments yet</p>
+                <p className="text-xs">Be the first to comment!</p>
+              </div>
+            )}
+          </div>
+
+          {/* Add Comment Input */}
+          {!isGuest && commentPanelOpen && (
+            <div className="border-t p-4">
+              <div className="flex space-x-2">
+                <Input
+                  placeholder="Add a comment..."
+                  value={newComment[commentPanelOpen] || ''}
+                  onChange={(e) => setNewComment(prev => ({
+                    ...prev,
+                    [commentPanelOpen]: e.target.value
+                  }))}
+                  className="flex-1"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleAddComment(commentPanelOpen);
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => handleAddComment(commentPanelOpen)}
+                  disabled={!newComment[commentPanelOpen]?.trim()}
+                  className="px-3"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {isGuest && (
+            <div className="border-t p-4 text-center">
+              <p className="text-sm text-gray-500 mb-2">Sign in to add comments</p>
+              <Button
+                size="sm"
+                onClick={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
+              >
+                Sign In
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
