@@ -1518,6 +1518,7 @@ exports.addAnswer = async (event) => {
         body: JSON.stringify({ error: 'Authentication required to add answers' })
       });
     }
+
     console.log('💾 AWS: Saving answer with AI data and thinking:', {
       questionId,
       isAI: Boolean(isAI),
@@ -1525,6 +1526,7 @@ exports.addAnswer = async (event) => {
       hasThinking: !!thinking,
       thinkingLength: thinking ? thinking.length : 0
     });
+
     // Verify question exists and get thread info
     const questionResult = await dynamodb.get({
       TableName: questionsTable,
@@ -1537,14 +1539,108 @@ exports.addAnswer = async (event) => {
         body: JSON.stringify({ error: 'Question not found' })
       });
     }
-  const { content, userId, isAI = false, thinking } = JSON.parse(event.body);
+
     const question = questionResult.Item;
     
+    // Create new answer
+    const answerId = crypto.randomUUID();
+    const now = new Date().toISOString();
+    
+    const answer = {
+      id: answerId,
+      question_id: questionId,
+      content: content.trim(),
+      user_id: userId || null,
+      is_ai: Boolean(isAI),
+      is_pinned: Boolean(isPinned),
+      interaction_count: 0,
+      thinking: thinking || null,
+      created_at: now
+    };
+
+    await dynamodb.put({
+      TableName: answersTable,
+      Item: answer
+    }).promise();
+
+    console.log('✅ Answer saved successfully:', {
+      answerId,
+      isAI: Boolean(isAI),
+      isPinned: Boolean(isPinned),
+      thinkingLength: thinking ? thinking.length : 0
+    });
+
+    // Update thread timestamp and answer count
+    await dynamodb.update({
+      TableName: threadsTable,
+      Key: { id: question.thread_id },
+      UpdateExpression: 'SET updated_at = :updatedAt, answer_count = if_not_exists(answer_count, :zero) + :inc',
+      ExpressionAttributeValues: {
+        ':updatedAt': now,
+        ':zero': 0,
+        ':inc': 1
+      }
+    }).promise();
+
+    // Return the created answer in frontend format
+    const responseAnswer = {
+      id: answerId,
+      content: content.trim(),
+      timestamp: now,
+      userId: userId || null,
+      questionId: questionId,
+      isPinned: Boolean(isPinned),
+      isAI: Boolean(isAI),
+      thinking: thinking || null,
+      interactionCount: 0
+    };
+
+    console.log('✅ Created answer:', answerId, 'for question:', questionId);
+
+    return addCorsHeaders({
+      statusCode: 201,
+      body: JSON.stringify({
+        success: true,
+        answer: responseAnswer,
+        threadId: question.thread_id
+      })
+    });
+
+  } catch (error) {
+    console.error('Add answer error:', error);
+    return addCorsHeaders({
+      statusCode: 500,
+      body: JSON.stringify({ 
+        error: 'Failed to add answer',
+        message: error.message 
+      })
+    });
+  }
+};
+
+// Get comments for a specific answer
+exports.getAnswerComments = async (event) => {
+  try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return addCorsHeaders({
+        statusCode: 200,
+        body: ''
+      });
+    }
+
+    const { answerId } = event.pathParameters || {};
+    
+    if (!answerId) {
+      return addCorsHeaders({
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Answer ID is required' })
+      });
     }
 
     const params = {
       TableName: commentsTable,
-      content: content,
+      IndexName: 'AnswerIdIndex',
       KeyConditionExpression: 'answerId = :answerId',
       ExpressionAttributeValues: {
         ':answerId': answerId
@@ -1570,23 +1666,23 @@ exports.addAnswer = async (event) => {
     const commentsWithReplies = topLevelComments
       .sort(sortByTimestamp)
       .map(comment => ({
-      id: comment.id,
-      content: comment.content,
-      timestamp: comment.created_at || comment.timestamp,
-      userId: comment.user_id || comment.userId,
-      answerId: comment.answerId,
-      parentId: comment.parentId,
-      replies: replies
-        .filter(reply => reply.parentId === comment.id)
-        .sort(sortByTimestamp)
-        .map(reply => ({
-          id: reply.id,
-          content: reply.content,
-          timestamp: reply.created_at || reply.timestamp,
-          userId: reply.user_id || reply.userId,
-          answerId: reply.answerId,
-          parentId: reply.parentId
-        }))
+        id: comment.id,
+        content: comment.content,
+        timestamp: comment.created_at || comment.timestamp,
+        userId: comment.user_id || comment.userId,
+        answerId: comment.answerId,
+        parentId: comment.parentId,
+        replies: replies
+          .filter(reply => reply.parentId === comment.id)
+          .sort(sortByTimestamp)
+          .map(reply => ({
+            id: reply.id,
+            content: reply.content,
+            timestamp: reply.created_at || reply.timestamp,
+            userId: reply.user_id || reply.userId,
+            answerId: reply.answerId,
+            parentId: reply.parentId
+          }))
       }));
 
     return addCorsHeaders({
@@ -1596,13 +1692,13 @@ exports.addAnswer = async (event) => {
 
   } catch (error) {
     console.error('Get answer comments error:', error);
-          content: aiContent.trim(),
+    return addCorsHeaders({
       statusCode: 500,
       body: JSON.stringify({ 
         error: 'Failed to fetch comments',
         message: error.message 
       })
-          thinking: aiThinking || null,
+    });
   }
 };
 
