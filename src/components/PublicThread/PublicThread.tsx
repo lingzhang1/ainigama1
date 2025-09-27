@@ -75,8 +75,9 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
 
         // Load answers for the thread
         const answersResponse = await fetch(`${apiUrl}/threads/${currentThreadId}/answers`);
+        let answersData = {};
         if (answersResponse.ok) {
-          const answersData = await answersResponse.json();
+          answersData = await answersResponse.json();
           setAnswers(answersData);
         }
 
