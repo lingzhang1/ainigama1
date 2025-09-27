@@ -181,6 +181,8 @@ Structure:
       });
     }
 
+    console.log("AI Input Context:", messages);
+
     return messages;
   };
 

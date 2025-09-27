@@ -63,7 +63,7 @@ exports.addQuestion = async (event) => {
     await dbOperations.update(
       tables.threads,
       { id: threadId },
-      'SET updated_at = :updatedAt, question_count = COALESCE(question_count, :zero) + :one',
+      'SET updated_at = :updatedAt, question_count = if_not_exists(question_count, :zero) + :one',
       {
         ':updatedAt': now,
         ':zero': 0,
@@ -157,7 +157,7 @@ exports.addAnswer = async (event) => {
     await dbOperations.update(
       tables.threads,
       { id: question.thread_id },
-      'SET updated_at = :updatedAt, answer_count = COALESCE(answer_count, :zero) + :one',
+      'SET updated_at = :updatedAt, answer_count = if_not_exists(answer_count, :zero) + :one',
       {
         ':updatedAt': now,
         ':zero': 0,
@@ -334,7 +334,7 @@ exports.addAnswerComment = async (event) => {
     await dbOperations.update(
       tables.answers,
       { id: answerId },
-      'SET interaction_count = COALESCE(interaction_count, :zero) + :one',
+      'SET interaction_count = if_not_exists(interaction_count, :zero) + :one',
       {
         ':zero': 0,
         ':one': 1
