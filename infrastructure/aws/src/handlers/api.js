@@ -12,10 +12,11 @@ const commentsTable = process.env.DYNAMODB_TABLE_COMMENTS;
 
 // Comprehensive CORS headers for all origins
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // Allow all origins for development
+  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
   'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
-  'Access-Control-Max-Age': '86400'
+  'Access-Control-Max-Age': '86400',
+  'Access-Control-Allow-Credentials': 'false'
 };
 
 // Helper function to add CORS headers to all responses
@@ -24,7 +25,8 @@ const addCorsHeaders = (response) => {
     ...response,
     headers: {
       ...corsHeaders,
-      ...response.headers
+      ...(response.headers || {}),
+      'Content-Type': 'application/json'
     }
   };
 };
@@ -332,11 +334,13 @@ exports.getThreads = async (event) => {
     if (event.httpMethod === 'OPTIONS') {
       return addCorsHeaders({
         statusCode: 200,
-        body: ''
+        body: JSON.stringify({ message: 'CORS preflight' })
       });
     }
 
     const { filter = 'recent' } = event.queryStringParameters || {};
+    
+    console.log('Getting threads with filter:', filter);
     
     // Use GSI for efficient public thread queries
     const params = {
@@ -353,6 +357,7 @@ exports.getThreads = async (event) => {
     let result;
     try {
       result = await dynamodb.query(params).promise();
+      console.log('GSI query successful, found', result.Items?.length || 0, 'threads');
     } catch (gsiError) {
       console.log('GSI query failed, falling back to scan:', gsiError.message);
       // Fallback to scan if GSI query fails
@@ -364,9 +369,11 @@ exports.getThreads = async (event) => {
         },
         Limit: 50
       }).promise();
+      console.log('Scan fallback successful, found', result.Items?.length || 0, 'threads');
     }
     
     let sortedItems = result.Items || [];
+    console.log('Processing', sortedItems.length, 'threads');
     
     // If we used scan (fallback), sort in memory
     if (!params.IndexName || result.Items.length > 20) {
@@ -429,6 +436,8 @@ exports.getThreads = async (event) => {
         category: thread.category
       };
     }));
+
+    console.log('Returning', transformedThreads.length, 'transformed threads');
 
     return addCorsHeaders({
       statusCode: 200,
