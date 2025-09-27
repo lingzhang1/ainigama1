@@ -1411,6 +1411,100 @@ app.post('/api/questions/:questionId/answers', (req, res) => {
         return res.status(404).json({ error: 'Question not found' });
       }
       
+      // If this is an AI answer, get full thread context
+      let aiContent = content;
+      let aiThinking = thinking;
+      
+      if (isAI) {
+        try {
+          // Get all questions and answers in this thread for context
+          const threadContext = await new Promise((resolve, reject) => {
+            db.all(`
+              SELECT 
+                q.id as question_id,
+                q.content as question_content,
+                q.created_at as question_created_at,
+                a.id as answer_id,
+                a.content as answer_content,
+                a.is_ai as answer_is_ai,
+                a.created_at as answer_created_at
+              FROM questions q
+              LEFT JOIN answers a ON q.id = a.question_id
+              WHERE q.thread_id = ?
+              ORDER BY q.created_at ASC, a.created_at ASC
+            `, [question.thread_id], (err, rows) => {
+              if (err) reject(err);
+              else resolve(rows);
+            });
+          });
+          
+          // Build conversation context
+          const contextMessages = [];
+          const processedQuestions = new Set();
+          
+          for (const row of threadContext) {
+            // Add question if not already processed
+            if (!processedQuestions.has(row.question_id)) {
+              contextMessages.push({
+                role: 'user',
+                content: row.question_content
+              });
+              processedQuestions.add(row.question_id);
+            }
+            
+            // Add answer if exists
+            if (row.answer_id && row.answer_content) {
+              contextMessages.push({
+                role: 'assistant',
+                content: row.answer_content
+              });
+            }
+          }
+          
+          // Add the current question if not already in context
+          if (!processedQuestions.has(questionId)) {
+            contextMessages.push({
+              role: 'user',
+              content: question.content
+            });
+          }
+          
+          console.log('🧠 AI answering with thread context:', contextMessages.length, 'messages');
+          
+          // Generate AI response with full context
+          const { deepSeekService } = require('../../../src/services/deepseek');
+          
+          // Use streaming to get both content and thinking
+          let fullContent = '';
+          let fullThinking = '';
+          
+          await new Promise((resolve, reject) => {
+            deepSeekService.streamChat(contextMessages, {
+              onThinking: (thinkingDelta) => {
+                fullThinking += thinkingDelta;
+              },
+              onContent: (contentDelta) => {
+                fullContent += contentDelta;
+              },
+              onComplete: (finalContent) => {
+                aiContent = finalContent;
+                aiThinking = fullThinking;
+                resolve();
+              },
+              onError: (error) => {
+                console.error('AI generation error:', error);
+                aiContent = `I apologize, but I encountered an error while generating a response: ${error.message}`;
+                aiThinking = null;
+                resolve();
+              }
+            });
+          });
+          
+        } catch (contextError) {
+          console.error('Failed to get thread context for AI:', contextError);
+          // Continue with original content if context retrieval fails
+        }
+      }
       const answerId = uuidv4();
       const now = new Date().toISOString();
       
@@ -1418,12 +1512,12 @@ app.post('/api/questions/:questionId/answers', (req, res) => {
         answerId,
         isAI: Boolean(isAI),
         isPinned: Boolean(isPinned),
-        hasThinking: !!thinking
+        hasThinking: !!aiThinking
       });
       
       db.run(
         'INSERT INTO answers (id, question_id, content, user_id, is_ai, is_pinned, interaction_count, thinking, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [answerId, questionId, content.trim(), userId || null, Boolean(isAI) ? 1 : 0, Boolean(isPinned) ? 1 : 0, 0, thinking || null, now],
+        [answerId, questionId, aiContent.trim(), userId || null, Boolean(isAI) ? 1 : 0, Boolean(isPinned) ? 1 : 0, 0, aiThinking || null, now],
         function(err) {
           if (err) {
             console.error('Database error:', err);
@@ -1434,7 +1528,7 @@ app.post('/api/questions/:questionId/answers', (req, res) => {
             answerId,
             isAI: Boolean(isAI),
             isPinned: Boolean(isPinned),
-            thinkingLength: thinking ? thinking.length : 0
+            thinkingLength: aiThinking ? aiThinking.length : 0
           });
           
           // Update thread timestamp and answer count
@@ -1448,13 +1542,13 @@ app.post('/api/questions/:questionId/answers', (req, res) => {
               
               const newAnswer = {
                 id: answerId,
-                content: content.trim(),
+                content: aiContent.trim(),
                 timestamp: now,
                 userId: userId || null,
                 questionId: questionId,
                 isPinned: Boolean(isPinned),
                 isAI: Boolean(isAI),
-                thinking: thinking || null,
+                thinking: aiThinking || null,
                 interactionCount: 0
               };
               
@@ -1468,7 +1562,7 @@ app.post('/api/questions/:questionId/answers', (req, res) => {
           );
         }
       );
-    }
+    });
   );
 });
 
