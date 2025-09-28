@@ -217,6 +217,9 @@ Structure:
           }));
         },
         onComplete: async (finalContent) => {
+          // Capture the thinking process before clearing streaming state
+          const finalThinking = aiStreamingContent[questionId]?.thinking || '';
+          
           // Create AI answer
           const aiAnswer: Answer = {
             id: uuidv4(),
@@ -226,7 +229,8 @@ Structure:
             questionId: questionId,
             isPinned: true,
             isAI: true,
-            interactionCount: 0
+            interactionCount: 0,
+            thinking: finalThinking // Include thinking in the answer object
           };
 
           // Add to local state immediately
@@ -246,7 +250,7 @@ Structure:
                 userId: null,
                 isAI: true,
                 isPinned: true,
-                thinking: fullThinking || ''
+                thinking: finalThinking || ''
               })
             });
           } catch (error) {
