@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
+import ReactMarkdown from 'react-markdown';
 import { ArrowLeft, MessageSquare, Users, Clock, Brain, Loader2, Plus, ArrowUpDown, MessageCircle, X, Send } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -569,7 +570,29 @@ Structure:
                       {/* Content */}
                       {aiStreamingContent[question.id]?.content && (
                         <div className="text-sm text-gray-800 whitespace-pre-wrap">
-                          {aiStreamingContent[question.id].content}
+                          <div className="prose prose-sm max-w-none">
+                            <ReactMarkdown
+                              components={{
+                                // Simplified styling for streaming content
+                                h1: ({node, ...props}) => <h1 className="text-base font-semibold mb-1" {...props} />,
+                                h2: ({node, ...props}) => <h2 className="text-sm font-semibold mb-1" {...props} />,
+                                h3: ({node, ...props}) => <h3 className="text-sm font-medium mb-1" {...props} />,
+                                p: ({node, ...props}) => <p className="mb-1 last:mb-0" {...props} />,
+                                ul: ({node, ...props}) => <ul className="list-disc list-inside mb-1" {...props} />,
+                                ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-1" {...props} />,
+                                code: ({node, inline, ...props}) => 
+                                  inline ? (
+                                    <code className="bg-gray-200 px-1 rounded text-xs font-mono" {...props} />
+                                  ) : (
+                                    <code className="block bg-gray-200 p-2 rounded text-xs font-mono" {...props} />
+                                  ),
+                                strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                                em: ({node, ...props}) => <em className="italic" {...props} />
+                              }}
+                            >
+                              {aiStreamingContent[question.id].content}
+                            </ReactMarkdown>
+                          </div>
                           <span className="animate-pulse">|</span>
                         </div>
                       )}
@@ -621,37 +644,39 @@ Structure:
                               </div>
                             )}
                             
-                            <div className="text-gray-700 leading-relaxed mb-3 prose prose-sm max-w-none">
-                              {answer.isAI ? (
+                            <p className="text-gray-700 leading-relaxed mb-3">{answer.content}</p>
+                            
+                            {/* Render AI responses with markdown formatting */}
+                            {answer.isAI ? (
+                              <div className="text-gray-700 leading-relaxed mb-3 prose prose-sm max-w-none">
                                 <ReactMarkdown
                                   components={{
-                                    // Custom styling for markdown elements
-                                    h1: ({node, ...props}) => <h1 className="text-lg font-semibold text-gray-800 mb-2" {...props} />,
-                                    h2: ({node, ...props}) => <h2 className="text-base font-semibold text-gray-800 mb-2" {...props} />,
-                                    h3: ({node, ...props}) => <h3 className="text-sm font-semibold text-gray-800 mb-1" {...props} />,
-                                    p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
-                                    ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
-                                    ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
-                                    li: ({node, ...props}) => <li className="text-gray-700" {...props} />,
+                                    h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0" {...props} />,
+                                    h2: ({node, ...props}) => <h2 className="text-base font-semibold mb-2 mt-3 first:mt-0" {...props} />,
+                                    h3: ({node, ...props}) => <h3 className="text-sm font-medium mb-2 mt-3 first:mt-0" {...props} />,
+                                    p: ({node, ...props}) => <p className="mb-3 last:mb-0" {...props} />,
+                                    ul: ({node, ...props}) => <ul className="list-disc list-inside mb-3 space-y-1" {...props} />,
+                                    ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-3 space-y-1" {...props} />,
+                                    li: ({node, ...props}) => <li className="ml-2" {...props} />,
                                     code: ({node, inline, ...props}) => 
                                       inline ? (
-                                        <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono text-gray-800" {...props} />
+                                        <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-gray-800" {...props} />
                                       ) : (
-                                        <code className="block bg-gray-100 p-2 rounded text-sm font-mono text-gray-800 overflow-x-auto" {...props} />
+                                        <code className="block bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />
                                       ),
-                                    pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded mb-2 overflow-x-auto" {...props} />,
-                                    blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-2" {...props} />,
-                                    strong: ({node, ...props}) => <strong className="font-semibold text-gray-800" {...props} />,
+                                    pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />,
+                                    blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-3" {...props} />,
+                                    strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
                                     em: ({node, ...props}) => <em className="italic" {...props} />,
                                     a: ({node, ...props}) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />
                                   }}
                                 >
                                   {answer.content}
                                 </ReactMarkdown>
-                              ) : (
-                                <p>{answer.content}</p>
-                              )}
-                            </div>
+                              </div>
+                            ) : (
+                              <p className="text-gray-700 leading-relaxed mb-3">{answer.content}</p>
+                            )}
                             
                             {/* Comment Icon */}
                             <div className="flex items-center space-x-2">
