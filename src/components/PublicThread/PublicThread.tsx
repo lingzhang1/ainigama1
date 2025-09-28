@@ -39,6 +39,29 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   // Get current thread ID from state
   const currentThreadId = state.currentThreadId;
 
+  // Helper function to get user display name
+  const getUserDisplayName = (userId: string | null): string => {
+    if (!userId) return 'Unknown User';
+    
+    // Check if it's the current user
+    if (state.currentUser && userId === state.currentUser.id) {
+      return state.currentUser.name;
+    }
+    
+    // Check if it's the thread creator
+    if (thread && userId === thread.creator.id) {
+      return thread.creator.name;
+    }
+    
+    // Check cached users
+    if (users[userId]) {
+      return users[userId].name;
+    }
+    
+    // Fallback to generic name
+    return `User${userId.slice(-4)}`;
+  };
+
   // WebSocket hooks for real-time updates
   const { addAnswer, addComment } = usePublicThread(
     currentThreadId || '',
@@ -829,7 +852,7 @@ Structure:
                     <AvatarFallback>U</AvatarFallback>
                   </Avatar>
                   <span className="font-medium text-gray-700 text-sm">
-                    User{comment.userId?.slice(-4) || 'Unknown'}
+                    {getUserDisplayName(comment.userId)}
                   </span>
                   <span className="text-xs text-gray-500">
                     {formatDistanceToNow(comment.timestamp)} ago
