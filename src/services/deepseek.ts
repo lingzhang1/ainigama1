@@ -110,7 +110,6 @@ export class DeepSeekService {
           case 'reasoning-delta':
             if (delta.text) {
               fullThinking += delta.text;
-              console.log('🧠 Thinking delta:', delta.text.length, 'chars');
               callbacks.onThinking?.(delta.text);
             }
             break;
@@ -118,12 +117,10 @@ export class DeepSeekService {
           case 'text-delta':
             if (delta.text) {
               fullContent += delta.text;
-              console.log('📝 Content delta:', delta.text.length, 'chars');
               callbacks.onContent?.(delta.text);
             }
             if (delta.textDelta) {
               fullContent += delta.textDelta;
-              console.log('📝 Content delta:', delta.textDelta.length, 'chars');
               callbacks.onContent?.(delta.textDelta);
             }
             break;
@@ -132,11 +129,9 @@ export class DeepSeekService {
             if (delta.stepDelta) {
               if (delta.stepDelta.type === 'reasoning-delta' && delta.stepDelta.reasoningDelta) {
                 fullThinking += delta.stepDelta.reasoningDelta;
-                console.log('🧠 Step thinking delta:', delta.stepDelta.reasoningDelta.length, 'chars');
                 callbacks.onThinking?.(delta.stepDelta.reasoningDelta);
               } else if (delta.stepDelta.type === 'text-delta' && delta.stepDelta.textDelta) {
                 fullContent += delta.stepDelta.text;
-                console.log('📝 Step content delta:', delta.stepDelta.text.length, 'chars');
                 callbacks.onContent?.(delta.stepDelta.text);
               }
             }
