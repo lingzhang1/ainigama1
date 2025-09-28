@@ -181,7 +181,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
         
         // Fetch user info for all unique user IDs
         const userPromises = Array.from(userIds).map(async (userId) => {
-          if (!users[userId] && userId !== state.currentUser?.id && userId !== threadData?.creator?.id) {
+          if (!users[userId] && userId !== state.currentUser?.id && userId !== threadResponse?.creator?.id) {
             const userInfo = await fetchUserInfo(userId);
             return { userId, userInfo };
           }
