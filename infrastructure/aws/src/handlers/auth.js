@@ -251,3 +251,56 @@ exports.checkAlias = async (event) => {
     });
   }
 };
+
+// Get user by ID
+exports.getUserById = async (event) => {
+  try {
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return handleOptionsRequest();
+    }
+
+    const { userId } = event.pathParameters || {};
+    
+    if (!userId) {
+      return addCorsHeaders({
+        statusCode: 400,
+        body: JSON.stringify({ error: 'User ID is required' })
+      });
+    }
+
+    const result = await dbOperations.get(tables.users, { id: userId });
+
+    if (!result.Item) {
+      return addCorsHeaders({
+        statusCode: 404,
+        body: JSON.stringify({ error: 'User not found' })
+      });
+    }
+
+    // Return user data (without password hash)
+    const userData = {
+      id: result.Item.id,
+      name: result.Item.name,
+      email: result.Item.email,
+      alias: result.Item.alias,
+      avatar: result.Item.avatar,
+      handle: result.Item.handle
+    };
+
+    return addCorsHeaders({
+      statusCode: 200,
+      body: JSON.stringify(userData)
+    });
+
+  } catch (error) {
+    console.error('Get user by ID error:', error);
+    return addCorsHeaders({
+      statusCode: 500,
+      body: JSON.stringify({ 
+        error: 'Failed to fetch user',
+        message: error.message 
+      })
+    });
+  }
+};

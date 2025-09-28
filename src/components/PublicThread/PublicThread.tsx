@@ -36,11 +36,26 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [expandedAnswerInputs, setExpandedAnswerInputs] = useState<{ [questionId: string]: boolean }>({});
   const [commentPanelOpen, setCommentPanelOpen] = useState<string | null>(null);
 
+  // Function to fetch user info by ID
+  const fetchUserInfo = async (userId: string): Promise<User | null> => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/users/${userId}`);
+      if (response.ok) {
+        const userData = await response.json();
+        return userData;
+      }
+    } catch (error) {
+      console.error('Failed to fetch user info:', error);
+    }
+    return null;
+  };
+
   // Get current thread ID from state
   const currentThreadId = state.currentThreadId;
 
   // Helper function to get user display name
-  const getUserDisplayName = (userId: string | null): string => {
+  const getUserDisplayName = async (userId: string | null): Promise<string> => {
     if (!userId) return 'Unknown User';
     
     // Check if it's the current user
@@ -56,6 +71,17 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     // Check cached users
     if (users[userId]) {
       return users[userId].name;
+    }
+    
+    // Fetch user info if not cached
+    const userInfo = await fetchUserInfo(userId);
+    if (userInfo) {
+      // Cache the user info
+      setUsers(prev => ({
+        ...prev,
+        [userId]: userInfo
+      }));
+      return userInfo.name;
     }
     
     // Fallback to generic name
@@ -126,6 +152,54 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
           }
         }
 
+        // Collect all unique user IDs from answers and comments
+        const userIds = new Set<string>();
+        
+        // Add user IDs from answers
+        Object.values(answersData).flat().forEach((answer: any) => {
+          if (answer.userId && !answer.isAI) {
+            userIds.add(answer.userId);
+          }
+        });
+        
+        // Add user IDs from comments
+        Object.values(answersData).flat().forEach(async (answer: any) => {
+          try {
+            const commentsResponse = await fetch(`${apiUrl}/answers/${answer.id}/comments`);
+            if (commentsResponse.ok) {
+              const commentsData = await commentsResponse.json();
+              commentsData.forEach((comment: any) => {
+                if (comment.userId) {
+                  userIds.add(comment.userId);
+                }
+              });
+            }
+          } catch (error) {
+            console.error('Failed to load comments for user collection:', error);
+          }
+        });
+        
+        // Fetch user info for all unique user IDs
+        const userPromises = Array.from(userIds).map(async (userId) => {
+          if (!users[userId] && userId !== state.currentUser?.id && userId !== threadData?.creator?.id) {
+            const userInfo = await fetchUserInfo(userId);
+            return { userId, userInfo };
+          }
+          return null;
+        });
+        
+        const userResults = await Promise.all(userPromises);
+        const newUsers: { [key: string]: User } = {};
+        
+        userResults.forEach((result) => {
+          if (result && result.userInfo) {
+            newUsers[result.userId] = result.userInfo;
+          }
+        });
+        
+        if (Object.keys(newUsers).length > 0) {
+          setUsers(prev => ({ ...prev, ...newUsers }));
+        }
       } catch (error) {
         console.error('Failed to load thread:', error);
       } finally {
@@ -642,7 +716,7 @@ Structure:
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
                               <span className="font-medium text-gray-700">
-                                {answer.isAI ? 'AI Assistant' : getUserDisplayName(answer.userId)}
+                                {answer.isAI ? 'AI Assistant' : users[answer.userId] ? users[answer.userId].name : (state.currentUser && answer.userId === state.currentUser.id) ? state.currentUser.name : (thread && answer.userId === thread.creator.id) ? thread.creator.name : `User${answer.userId?.slice(-4) || 'Unknown'}`}
                               </span>
                               {answer.isPinned && (
                                 <Badge variant="secondary" className="text-xs">Pinned</Badge>
@@ -852,7 +926,7 @@ Structure:
                     <AvatarFallback>U</AvatarFallback>
                   </Avatar>
                   <span className="font-medium text-gray-700 text-sm">
-                    {getUserDisplayName(comment.userId)}
+                    {users[comment.userId] ? users[comment.userId].name : (state.currentUser && comment.userId === state.currentUser.id) ? state.currentUser.name : (thread && comment.userId === thread.creator.id) ? thread.creator.name : `User${comment.userId?.slice(-4) || 'Unknown'}`}
                   </span>
                   <span className="text-xs text-gray-500">
                     {formatDistanceToNow(comment.timestamp)} ago

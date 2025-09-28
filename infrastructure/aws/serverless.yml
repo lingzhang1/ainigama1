@@ -661,6 +661,36 @@ functions:
             allowCredentials: false
             maxAge: 86400
 
+  getUserById:
+    handler: src/handlers/api.getUserById
+    events:
+      - http:
+          path: /users/{userId}
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /users/{userId}
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
 resources:
   Resources:
     # WebSocket Connections Table

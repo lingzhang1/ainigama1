@@ -11,6 +11,7 @@ module.exports = {
   registerUser: auth.registerUser,
   loginUser: auth.loginUser,
   checkAlias: auth.checkAlias,
+  getUserById: auth.getUserById,
 
   // Thread handlers
   getThreads: threads.getThreads,
