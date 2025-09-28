@@ -6,7 +6,6 @@ import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Message, PrivateConversation } from '../../types';
 import { useAppContext } from '../../context/AppContext';
-import { usePrivateChat, useWebSocket } from '../../hooks/useWebSocket';
 import { deepSeekService, ChatMessage } from '../../services/deepseek';
 import { formatDistanceToNow } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
@@ -25,9 +24,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showThinking, setShowThinking] = useState(true);
   const [newMessage, setNewMessage] = useState('');
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const isProcessingRef = useRef(false);
-  
   // Use refs for streaming to completely avoid state updates
   const streamingRef = useRef<{
     thinking: string;
@@ -372,17 +368,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               console.error('Failed to save title to backend:', titleSaveError);
             }
           }
-          // Send both messages to backend for persistence in correct order
-          if (ws.socket?.connected && !isGuest) {
-            console.log('Sending messages to backend in order:', [userMessage, aiMessage]);
-            ws.socket.emit('save_conversation', {
-              conversationId: currentConversation.id,
-              messages: [userMessage, aiMessage] // Ensure correct order: user first, then AI
-            });
-          } else {
-            console.warn('WebSocket not connected, attempting to save via API');
-            // Fallback: save via REST API if WebSocket is not available (skip for guests)
-            if (!isGuest) {
+          
+          // Save messages to backend via REST API (skip for guests)
+          if (!isGuest) {
             try {
               const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
               await fetch(`${apiUrl}/save-messages`, {
@@ -395,10 +383,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                   messages: [userMessage, aiMessage] // Ensure correct order: user first, then AI
                 })
               });
-              console.log('Messages saved via REST API fallback');
+              console.log('Messages saved via REST API');
             } catch (apiError) {
               console.error('Failed to save messages via API:', apiError);
-            }
             }
           }
         },
