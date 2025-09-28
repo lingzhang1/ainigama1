@@ -89,12 +89,6 @@ functions:
           route: authenticate
 
   # Private Chat API
-  sendPrivateMessage:
-    handler: src/handlers/privateChat.sendMessage
-    events:
-      - websocket:
-          route: private_message
-
   # Save conversation handler
   saveConversation:
     handler: src/handlers/privateChat.saveConversation

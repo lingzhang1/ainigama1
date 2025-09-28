@@ -5,8 +5,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const sqlite3 = require('sqlite3').verbose();
 const bcrypt = require('bcryptjs');
-const { deepseek } = require('@ai-sdk/deepseek');
-const { streamText } = require('ai');
 const { v4: uuidv4 } = require('uuid');
 require('dotenv').config();
 
