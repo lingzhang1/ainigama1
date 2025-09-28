@@ -642,7 +642,7 @@ Structure:
                           <div className="flex-1">
                             <div className="flex items-center space-x-2 mb-2">
                               <span className="font-medium text-gray-700">
-                                {answer.isAI ? 'AI Assistant' : `User${answer.userId?.slice(-4) || 'Unknown'}`}
+                                {answer.isAI ? 'AI Assistant' : getUserDisplayName(answer.userId)}
                               </span>
                               {answer.isPinned && (
                                 <Badge variant="secondary" className="text-xs">Pinned</Badge>
