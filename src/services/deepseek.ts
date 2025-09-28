@@ -63,8 +63,9 @@ export class DeepSeekService {
             console.log('🎯 Content streaming started via textStream');
           }
           
-          fullContent += textDelta;
-          console.log('📝 Content delta via textStream:', textDelta.length, 'chars');
+          default:
+            console.log('❓ Unhandled delta type:', delta.type, delta);
+            break;
           callbacks.onContent?.(textDelta);
         }
         
