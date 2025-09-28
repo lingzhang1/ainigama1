@@ -26,6 +26,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const [showThinking, setShowThinking] = useState(true);
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isProcessingRef = useRef(false);
   
   // Use refs for streaming to completely avoid state updates
   const streamingRef = useRef<{
@@ -154,6 +155,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !currentConversation) return;
 
+    // Prevent multiple simultaneous requests
+    if (isProcessingRef.current) {
+      console.log('⚠️ Already processing a message, ignoring new request');
+      return;
+    }
+
     // For guest users, create a temporary conversation if none exists
     let workingConversation = currentConversation;
     if (isGuest && !workingConversation) {
@@ -192,6 +199,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       shouldGenerateTitle = true;
     }
     setNewMessage('');
+    
+    // Mark as processing
+    isProcessingRef.current = true;
     
     // Reset streaming refs and show streaming UI
     streamingRef.current = {
@@ -259,6 +269,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         },
         onComplete: async (fullContent) => {
           // Mark streaming as inactive
+          isProcessingRef.current = false;
           streamingRef.current.isActive = false;
           streamingRef.current.isTyping = false;
           
@@ -370,6 +381,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         },
         onError: (error) => {
           console.error('AI streaming error:', error);
+          isProcessingRef.current = false;
           streamingRef.current.isActive = false;
           streamingRef.current.isTyping = false;
           
@@ -399,6 +411,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
     } catch (error) {
       console.error('Failed to send message:', error);
+      isProcessingRef.current = false;
       streamingRef.current.isTyping = false;
       hideStreamingUI();
     }

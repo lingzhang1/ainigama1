@@ -50,6 +50,7 @@ export class DeepSeekService {
       let fullThinking = '';
       let hasStartedContent = false;
       let hasStartedThinking = false;
+      let streamCompleted = false;
       let isThinkingPhase = false;
       let isContentPhase = false;
       let hasContent = false;
@@ -93,6 +94,14 @@ export class DeepSeekService {
             console.log('🎯 Text phase ended');
             isContentPhase = false;
             break;
+          case 'text-delta':
+            if (delta.textDelta) {
+              fullContent += delta.textDelta;
+              console.log('📝 Content delta:', delta.textDelta.length, 'chars');
+              callbacks.onContent?.(delta.textDelta);
+            }
+            break;
+            
             
           case 'text-delta':
             if (delta.textDelta) {
@@ -164,6 +173,8 @@ export class DeepSeekService {
         }
       }
 
+      // Mark stream as completed
+      streamCompleted = true;
       console.log('🎉 Stream completed - Content:', fullContent.length, 'chars, Thinking:', fullThinking.length, 'chars');
       
       // Call onComplete with the accumulated content
@@ -190,6 +201,15 @@ export class DeepSeekService {
 
     } catch (error) {
       console.error('DeepSeek streaming error:', error);
+      
+      // Prevent multiple error callbacks
+      if (!streamCompleted) {
+        callbacks.onError?.(error as Error);
+      }
+    }
+  }
+
+  // Fallback method for non-streaming requests
       callbacks.onError?.(error as Error);
     }
   }
