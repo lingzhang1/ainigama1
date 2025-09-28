@@ -49,6 +49,13 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const isProcessingRef = useRef(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [currentConversation?.messages]);
+
   // Load conversations from backend on component mount
   useEffect(() => {
     // Skip loading conversations for guest users
@@ -252,7 +259,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           streamingRef.current.contentElement.textContent = streamingRef.current.content;
         }
         // Auto-scroll
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
       };
 
       console.log('🤖 Starting AI stream...');
@@ -864,6 +873,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
               <div ref={messagesEndRef} />
             </div>
+
+            {/* Scroll anchor for auto-scroll */}
+            <div ref={messagesEndRef} />
 
             {/* Streaming AI Response - Always present, controlled via DOM */}
             <div 
