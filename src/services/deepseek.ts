@@ -59,8 +59,20 @@ export class DeepSeekService {
         console.log('📦 Received delta:', delta.type);
 
         switch (delta.type) {
+          case 'start':
+            console.log('🎬 Stream start');
+            break;
+
           case 'start-step':
             console.log('📝 Step started:', delta);
+            break;
+
+          case 'reasoning-start':
+            console.log('🧠 Reasoning phase started');
+            if (!hasStartedThinking) {
+              hasStartedThinking = true;
+              console.log('🧠 First thinking content incoming');
+            }
             break;
 
           case 'reasoning':
@@ -73,6 +85,14 @@ export class DeepSeekService {
 
           case 'reasoning-end':
             console.log('🧠 Reasoning phase ended');
+            break;
+
+          case 'text-start':
+            console.log('🎯 Text phase started');
+            if (!hasStartedContent) {
+              hasStartedContent = true;
+              console.log('🎯 First content incoming');
+            }
             break;
 
           case 'text':
@@ -127,9 +147,7 @@ export class DeepSeekService {
 
           default:
             // Only log unhandled types that might be important
-            if (!['tool-call', 'tool-result', 'error'].includes(delta.type)) {
-              console.log('❓ Unhandled delta type:', delta.type);
-            }
+            console.log('❓ Unhandled delta type:', delta.type);
             break;
         }
       }

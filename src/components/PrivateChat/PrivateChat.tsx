@@ -155,6 +155,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !currentConversation) return;
 
+    // CRITICAL: Check if already processing to prevent double execution
+    if (isProcessingRef.current) {
+      console.log('⚠️ Already processing a message, ignoring new request');
+      return;
+    }
+
     // Prevent multiple simultaneous requests - ENHANCED CHECK
     if (isProcessingRef.current) {
       console.log('⚠️ Already processing a message, ignoring new request. Current state:', isProcessingRef.current);
