@@ -47,6 +47,9 @@ export class DeepSeekService {
       });
 
       let fullContent = '';
+      let fullThinking = '';
+      let hasStartedContent = false;
+      let hasStartedThinking = false;
       let hasContent = false;
 
       // Use fullStream to get both reasoning and content
