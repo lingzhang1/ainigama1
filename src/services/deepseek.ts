@@ -52,111 +52,81 @@ export class DeepSeekService {
       let hasStartedThinking = false;
       let streamCompleted = false;
       let isThinkingPhase = false;
-      let isContentPhase = false;
-      let hasContent = false;
-
-      // Use fullStream to get both reasoning and content
-      for await (const delta of result.fullStream) {
+      // Try different streaming approaches
+      console.log('🔄 Attempting textStream approach...');
+      
+      try {
+        // First try: Use textStream for content
+        for await (const textDelta of result.textStream) {
+          if (!hasStartedContent) {
+            hasStartedContent = true;
+            console.log('🎯 Content streaming started via textStream');
+          }
+          
+          fullContent += textDelta;
+          console.log('📝 Content delta via textStream:', textDelta.length, 'chars');
+          callbacks.onContent?.(textDelta);
+        }
         
-        switch (delta.type) {
-          case 'start':
-            console.log('🚀 Stream started');
-            break;
-            
-          case 'start-step':
-            console.log('📝 Step started:', delta);
-            break;
-            
-          case 'reasoning-start':
-            console.log('🧠 Reasoning phase started');
-            isThinkingPhase = true;
-            if (!hasStartedThinking) {
-              hasStartedThinking = true;
-              console.log('🧠 First thinking content incoming');
-            }
-            break;
-            
-          case 'reasoning-end':
-            console.log('🧠 Reasoning phase ended');
-            isThinkingPhase = false;
-            break;
-            
-          case 'text-start':
-            console.log('🎯 Text phase started');
-            isContentPhase = true;
-            if (!hasStartedContent) {
-              hasStartedContent = true;
-              console.log('🎯 First content incoming');
-            }
-            break;
-            
-          case 'text-end':
-            console.log('🎯 Text phase ended');
-            isContentPhase = false;
-
-          case 'text-delta':
-            if (delta.textDelta) {
-              if (!hasStartedContent) {
-                hasStartedContent = true;
-                console.log('🎯 Content streaming started');
-              }
-              
-              fullContent += delta.textDelta;
-              console.log('📝 Content delta:', delta.textDelta.length, 'chars');
-              callbacks.onContent?.(delta.textDelta);
-            }
-            break;
-            
-          case 'reasoning-delta':
-            if (delta.text) {
-              if (!hasStartedThinking) {
-                hasStartedThinking = true;
-                console.log('🧠 Thinking streaming started');
-              }
-              
-              fullThinking += delta.text;
-              console.log('🧠 Thinking delta:', delta.text.length, 'chars');
-              callbacks.onThinking?.(delta.text);
-            }
-            break;
-            
-          case 'step-delta':
-            if (delta.stepDelta) {
-              // Handle different step types
-              if (delta.stepDelta.type === 'reasoning-delta' && delta.stepDelta.reasoningDelta) {
+        console.log('✅ TextStream completed with content:', fullContent.length, 'chars');
+      } catch (textStreamError) {
+        console.log('⚠️ TextStream failed, trying fullStream:', textStreamError.message);
+        
+        // Fallback: Use fullStream
+        for await (const delta of result.fullStream) {
+          switch (delta.type) {
+            case 'reasoning-delta':
+              if (delta.text) {
                 if (!hasStartedThinking) {
                   hasStartedThinking = true;
-                  console.log('🧠 Thinking streaming started (step-delta)');
+                  console.log('🧠 Thinking streaming started');
                 }
-                fullThinking += delta.stepDelta.reasoningDelta;
-                console.log('🧠 Step thinking delta:', delta.stepDelta.reasoningDelta.length, 'chars');
-                callbacks.onThinking?.(delta.stepDelta.reasoningDelta);
-              } else if (delta.stepDelta.type === 'reasoning' && delta.stepDelta.reasoning) {
-                if (!hasStartedThinking) {
-                  hasStartedThinking = true;
-                  console.log('🧠 Thinking streaming started (step reasoning)');
-                }
-                fullThinking += delta.stepDelta.reasoning;
-                console.log('🧠 Step reasoning:', delta.stepDelta.reasoning.length, 'chars');
-                callbacks.onThinking?.(delta.stepDelta.reasoning);
-              } else if (delta.stepDelta.type === 'text-delta' && delta.stepDelta.textDelta) {
+                fullThinking += delta.text;
+                console.log('🧠 Thinking delta:', delta.text.length, 'chars');
+                callbacks.onThinking?.(delta.text);
+              }
+              break;
+              
+            case 'text-delta':
+              if (delta.textDelta) {
                 if (!hasStartedContent) {
                   hasStartedContent = true;
-                  console.log('🎯 Content streaming started (step-delta)');
+                  console.log('🎯 Content streaming started via fullStream');
                 }
-                fullContent += delta.stepDelta.textDelta;
-                console.log('📝 Step content delta:', delta.stepDelta.textDelta.length, 'chars');
-                callbacks.onContent?.(delta.stepDelta.textDelta);
+                fullContent += delta.textDelta;
+                console.log('📝 Content delta via fullStream:', delta.textDelta.length, 'chars');
+                callbacks.onContent?.(delta.textDelta);
               }
-            }
-            break;
-            
-          case 'finish-step':
-            console.log('✅ Step finished:', delta.finishReason);
-            break;
-            
-          case 'finish':
-            console.log('🏁 Stream finished:', delta.finishReason);
+              break;
+              
+            case 'step-delta':
+              if (delta.stepDelta) {
+                if (delta.stepDelta.type === 'reasoning-delta' && delta.stepDelta.reasoningDelta) {
+                  if (!hasStartedThinking) {
+                    hasStartedThinking = true;
+                    console.log('🧠 Thinking streaming started (step-delta)');
+                  }
+                  fullThinking += delta.stepDelta.reasoningDelta;
+                  console.log('🧠 Step thinking delta:', delta.stepDelta.reasoningDelta.length, 'chars');
+                  callbacks.onThinking?.(delta.stepDelta.reasoningDelta);
+                } else if (delta.stepDelta.type === 'text-delta' && delta.stepDelta.textDelta) {
+                  if (!hasStartedContent) {
+                    hasStartedContent = true;
+                    console.log('🎯 Content streaming started (step-delta)');
+                  }
+                  fullContent += delta.stepDelta.textDelta;
+                  console.log('📝 Step content delta:', delta.stepDelta.textDelta.length, 'chars');
+                  callbacks.onContent?.(delta.stepDelta.textDelta);
+                }
+              }
+              break;
+              
+            default:
+              // Ignore other delta types for cleaner logs
+              break;
+          }
+        }
+      }
             break;
             
           default:

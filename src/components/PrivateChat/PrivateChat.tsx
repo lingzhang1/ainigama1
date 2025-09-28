@@ -161,6 +161,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       return;
     }
 
+    console.log('🚀 Starting message processing...');
+    
     // For guest users, create a temporary conversation if none exists
     let workingConversation = currentConversation;
     if (isGuest && !workingConversation) {
@@ -202,6 +204,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     
     // Mark as processing
     isProcessingRef.current = true;
+    console.log('🔒 Processing locked');
     
     // Reset streaming refs and show streaming UI
     streamingRef.current = {
@@ -248,15 +251,19 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       };
 
+      console.log('🤖 Starting AI stream...');
+      
       // Stream AI response using DeepSeek service
       await deepSeekService.streamChat(chatMessages, {
         onThinking: (thinking) => {
+          console.log('🧠 Received thinking chunk:', thinking.length, 'chars');
           if (streamingRef.current.isActive) {
             streamingRef.current.thinking += thinking;
             updateStreamingDisplay();
           }
         },
         onContent: (content) => {
+          console.log('📝 Received content chunk:', content.length, 'chars');
           if (streamingRef.current.isActive) {
             // Mark as typing when content starts streaming
             if (!streamingRef.current.isTyping) {
@@ -268,8 +275,17 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           }
         },
         onComplete: async (fullContent) => {
+          console.log('✅ AI stream completed');
+          
+          // Check if we're still the active request
+          if (!isProcessingRef.current) {
+            console.log('⚠️ Request was cancelled, ignoring completion');
+            return;
+          }
+          
           // Mark streaming as inactive
           isProcessingRef.current = false;
+          console.log('🔓 Processing unlocked');
           streamingRef.current.isActive = false;
           streamingRef.current.isTyping = false;
           
