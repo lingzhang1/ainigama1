@@ -801,7 +801,7 @@ Structure:
                         variant="outline"
                         size="sm"
                         onClick={() => handleAskAI(question.id)}
-                        disabled={isAIAnswering[question.id]}
+                        disabled={isAIAnswering[question.id] || isGuest}
                         className="flex items-center space-x-2"
                       >
                         {isAIAnswering[question.id] ? (
@@ -809,7 +809,7 @@ Structure:
                         ) : (
                           <Brain className="w-4 h-4" />
                         )}
-                        <span>{isAIAnswering[question.id] ? 'AI Thinking...' : 'Ask AI'}</span>
+                        <span>{isAIAnswering[question.id] ? 'AI Thinking...' : isGuest ? 'Sign In to Ask AI' : 'Ask AI'}</span>
                       </Button>
                     </div>
                     
