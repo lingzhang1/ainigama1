@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
-import ReactMarkdown from 'react-markdown';
 import { ArrowLeft, MessageSquare, Users, Clock, Brain, Loader2, Plus, ArrowUpDown, MessageCircle, X, Send } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -643,8 +642,6 @@ Structure:
                                 </div>
                               </div>
                             )}
-                            
-                            <p className="text-gray-700 leading-relaxed mb-3">{answer.content}</p>
                             
                             {/* Render AI responses with markdown formatting */}
                             {answer.isAI ? (
