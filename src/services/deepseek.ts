@@ -50,34 +50,72 @@ export class DeepSeekService {
       let fullThinking = '';
       let hasStartedContent = false;
       let hasStartedThinking = false;
+      let isThinkingPhase = false;
+      let isContentPhase = false;
       let hasContent = false;
 
       // Use fullStream to get both reasoning and content
       for await (const delta of result.fullStream) {
         
         switch (delta.type) {
+          case 'start':
+            console.log('🚀 Stream started');
+            break;
+            
+          case 'start-step':
+            console.log('📝 Step started:', delta);
+            break;
+            
+          case 'reasoning-start':
+            console.log('🧠 Reasoning phase started');
+            isThinkingPhase = true;
+            if (!hasStartedThinking) {
+              hasStartedThinking = true;
+              console.log('🧠 First thinking content incoming');
+            }
+            break;
+            
+          case 'reasoning-end':
+            console.log('🧠 Reasoning phase ended');
+            isThinkingPhase = false;
+            break;
+            
+          case 'text-start':
+            console.log('🎯 Text phase started');
+            isContentPhase = true;
+            if (!hasStartedContent) {
+              hasStartedContent = true;
+              console.log('🎯 First content incoming');
+            }
+            break;
+            
+          case 'text-end':
+            console.log('🎯 Text phase ended');
+            isContentPhase = false;
+            break;
+            
           case 'text-delta':
             if (delta.textDelta) {
-              // Mark that content has started streaming
               if (!hasStartedContent) {
                 hasStartedContent = true;
                 console.log('🎯 Content streaming started');
               }
               
               fullContent += delta.textDelta;
+              console.log('📝 Content delta:', delta.textDelta.length, 'chars');
               callbacks.onContent?.(delta.textDelta);
             }
             break;
             
           case 'reasoning-delta':
             if (delta.text) {
-              // Mark that thinking has started
               if (!hasStartedThinking) {
                 hasStartedThinking = true;
                 console.log('🧠 Thinking streaming started');
               }
               
               fullThinking += delta.text;
+              console.log('🧠 Thinking delta:', delta.text.length, 'chars');
               callbacks.onThinking?.(delta.text);
             }
             break;
@@ -91,6 +129,7 @@ export class DeepSeekService {
                   console.log('🧠 Thinking streaming started (step-delta)');
                 }
                 fullThinking += delta.stepDelta.reasoningDelta;
+                console.log('🧠 Step thinking delta:', delta.stepDelta.reasoningDelta.length, 'chars');
                 callbacks.onThinking?.(delta.stepDelta.reasoningDelta);
               } else if (delta.stepDelta.type === 'reasoning' && delta.stepDelta.reasoning) {
                 if (!hasStartedThinking) {
@@ -98,33 +137,43 @@ export class DeepSeekService {
                   console.log('🧠 Thinking streaming started (step reasoning)');
                 }
                 fullThinking += delta.stepDelta.reasoning;
+                console.log('🧠 Step reasoning:', delta.stepDelta.reasoning.length, 'chars');
                 callbacks.onThinking?.(delta.stepDelta.reasoning);
+              } else if (delta.stepDelta.type === 'text-delta' && delta.stepDelta.textDelta) {
+                if (!hasStartedContent) {
+                  hasStartedContent = true;
+                  console.log('🎯 Content streaming started (step-delta)');
+                }
+                fullContent += delta.stepDelta.textDelta;
+                console.log('📝 Step content delta:', delta.stepDelta.textDelta.length, 'chars');
+                callbacks.onContent?.(delta.stepDelta.textDelta);
               }
             }
             break;
             
-          case 'step-start':
-            console.log('📝 Step started:', delta.stepType);
+          case 'finish-step':
+            console.log('✅ Step finished:', delta.finishReason);
             break;
             
-          case 'step-finish':
-            console.log('✅ Step finished:', delta.stepType);
+          case 'finish':
+            console.log('🏁 Stream finished:', delta.finishReason);
             break;
             
           default:
-            console.log('🔍 Unknown delta type:', delta.type, delta);
+            console.log('❓ Unhandled delta type:', delta.type, delta);
         }
       }
 
       console.log('🎉 Stream completed - Content:', fullContent.length, 'chars, Thinking:', fullThinking.length, 'chars');
       
-      // Always call onComplete with the final content, even if empty
+      // Call onComplete with the accumulated content
       if (fullContent.trim()) {
+        console.log('✅ Completing with streamed content');
         callbacks.onComplete?.(fullContent);
-      } else if (hasStartedThinking) {
-        // If we had thinking but no content, try to get final text
+      } else {
+        // If no content was streamed, try to get final text
+        console.log('⚠️ No content streamed, trying to get final text...');
         try {
-          console.log('⚠️ No content received, trying to get final text...');
           const finalText = await result.text;
           if (finalText && finalText.trim()) {
             console.log('✅ Got final text:', finalText.length, 'chars');
@@ -137,10 +186,6 @@ export class DeepSeekService {
           console.error('❌ Error getting final text:', textError);
           callbacks.onComplete?.('I apologize, but I encountered an error while generating the response. Please try again.');
         }
-      } else {
-        // No thinking or content received
-        console.log('❌ No thinking or content received');
-        callbacks.onComplete?.('I apologize, but I was unable to generate a response. Please try again.');
       }
 
     } catch (error) {
