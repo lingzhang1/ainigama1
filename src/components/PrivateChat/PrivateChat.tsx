@@ -155,13 +155,16 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !currentConversation) return;
 
-    // Prevent multiple simultaneous requests
+    // Prevent multiple simultaneous requests - ENHANCED CHECK
     if (isProcessingRef.current) {
-      console.log('⚠️ Already processing a message, ignoring new request');
+      console.log('⚠️ Already processing a message, ignoring new request. Current state:', isProcessingRef.current);
       return;
     }
 
-    console.log('🚀 Starting message processing...');
+    console.log('🚀 Starting message processing... Setting processing lock.');
+    
+    // Mark as processing IMMEDIATELY to prevent race conditions
+    isProcessingRef.current = true;
     
     // For guest users, create a temporary conversation if none exists
     let workingConversation = currentConversation;
@@ -202,9 +205,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     }
     setNewMessage('');
     
-    // Mark as processing
-    isProcessingRef.current = true;
-    console.log('🔒 Processing locked');
+    console.log('🔒 Processing locked, starting AI stream...');
     
     // Reset streaming refs and show streaming UI
     streamingRef.current = {
@@ -277,15 +278,15 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         onComplete: async (fullContent) => {
           console.log('✅ AI stream completed');
           
-          // Check if we're still the active request
+          // Check if we're still the active request - CRITICAL CHECK
           if (!isProcessingRef.current) {
-            console.log('⚠️ Request was cancelled, ignoring completion');
+            console.log('⚠️ Request was cancelled or already completed, ignoring completion');
             return;
           }
           
-          // Mark streaming as inactive
+          // Mark streaming as inactive FIRST
           isProcessingRef.current = false;
-          console.log('🔓 Processing unlocked');
+          console.log('🔓 Processing unlocked in onComplete');
           streamingRef.current.isActive = false;
           streamingRef.current.isTyping = false;
           
@@ -397,7 +398,13 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         },
         onError: (error) => {
           console.error('AI streaming error:', error);
-          isProcessingRef.current = false;
+          
+          // Only unlock if we're still the active request
+          if (isProcessingRef.current) {
+            isProcessingRef.current = false;
+            console.log('🔓 Processing unlocked in onError');
+          }
+          
           streamingRef.current.isActive = false;
           streamingRef.current.isTyping = false;
           
@@ -427,7 +434,13 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
     } catch (error) {
       console.error('Failed to send message:', error);
-      isProcessingRef.current = false;
+      
+      // Only unlock if we're still the active request
+      if (isProcessingRef.current) {
+        isProcessingRef.current = false;
+        console.log('🔓 Processing unlocked in catch block');
+      }
+      
       streamingRef.current.isTyping = false;
       hideStreamingUI();
     }

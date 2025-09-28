@@ -51,87 +51,86 @@ export class DeepSeekService {
       let hasStartedContent = false;
       let hasStartedThinking = false;
       let streamCompleted = false;
-      let isThinkingPhase = false;
-      // Try different streaming approaches
-      console.log('🔄 Attempting textStream approach...');
-      
-      try {
-        // First try: Use textStream for content
-        for await (const textDelta of result.textStream) {
-          if (!hasStartedContent) {
-            hasStartedContent = true;
-            console.log('🎯 Content streaming started via textStream');
-          }
-          
-          default:
-            console.log('❓ Unhandled delta type:', delta.type, delta);
+
+      console.log('🚀 Stream started');
+
+      // Use fullStream to handle all delta types
+      for await (const delta of result.fullStream) {
+        console.log('📦 Received delta:', delta.type);
+
+        switch (delta.type) {
+          case 'start-step':
+            console.log('📝 Step started:', delta);
             break;
-          callbacks.onContent?.(textDelta);
-        }
-        
-        console.log('✅ TextStream completed with content:', fullContent.length, 'chars');
-      } catch (textStreamError) {
-        console.log('⚠️ TextStream failed, trying fullStream:', textStreamError.message);
-        
-        // Fallback: Use fullStream
-        for await (const delta of result.fullStream) {
-          switch (delta.type) {
-            case 'reasoning-delta':
-              if (delta.text) {
-                if (!hasStartedThinking) {
-                  hasStartedThinking = true;
-                  console.log('🧠 Thinking streaming started');
-                }
-                fullThinking += delta.text;
-                console.log('🧠 Thinking delta:', delta.text.length, 'chars');
-                callbacks.onThinking?.(delta.text);
-              }
-              break;
-              
-            case 'text-delta':
-              if (delta.textDelta) {
-                if (!hasStartedContent) {
-                  hasStartedContent = true;
-                  console.log('🎯 Content streaming started via fullStream');
-                }
-                fullContent += delta.textDelta;
-                console.log('📝 Content delta via fullStream:', delta.textDelta.length, 'chars');
-                callbacks.onContent?.(delta.textDelta);
-              }
-              break;
-              
-            case 'step-delta':
-              if (delta.stepDelta) {
-                if (delta.stepDelta.type === 'reasoning-delta' && delta.stepDelta.reasoningDelta) {
-                  if (!hasStartedThinking) {
-                    hasStartedThinking = true;
-                    console.log('🧠 Thinking streaming started (step-delta)');
-                  }
-                  fullThinking += delta.stepDelta.reasoningDelta;
-                  console.log('🧠 Step thinking delta:', delta.stepDelta.reasoningDelta.length, 'chars');
-                  callbacks.onThinking?.(delta.stepDelta.reasoningDelta);
-                } else if (delta.stepDelta.type === 'text-delta' && delta.stepDelta.textDelta) {
-                  if (!hasStartedContent) {
-                    hasStartedContent = true;
-                    console.log('🎯 Content streaming started (step-delta)');
-                  }
-                  fullContent += delta.stepDelta.textDelta;
-                  console.log('📝 Step content delta:', delta.stepDelta.textDelta.length, 'chars');
-                  callbacks.onContent?.(delta.stepDelta.textDelta);
-                }
-              }
-              break;
-              
-            default:
-              // Ignore other delta types for cleaner logs
-              break;
-          }
-        }
-      }
+
+          case 'reasoning':
+            console.log('🧠 Reasoning phase started');
+            if (!hasStartedThinking) {
+              hasStartedThinking = true;
+              console.log('🧠 First thinking content incoming');
+            }
             break;
-            
+
+          case 'reasoning-end':
+            console.log('🧠 Reasoning phase ended');
+            break;
+
+          case 'text':
+            console.log('🎯 Text phase started');
+            if (!hasStartedContent) {
+              hasStartedContent = true;
+              console.log('🎯 First content incoming');
+            }
+            break;
+
+          case 'text-end':
+            console.log('🎯 Text phase ended');
+            break;
+
+          case 'reasoning-delta':
+            if (delta.text) {
+              fullThinking += delta.text;
+              console.log('🧠 Thinking delta:', delta.text.length, 'chars');
+              callbacks.onThinking?.(delta.text);
+            }
+            break;
+
+          case 'text-delta':
+            if (delta.textDelta) {
+              fullContent += delta.textDelta;
+              console.log('📝 Content delta:', delta.textDelta.length, 'chars');
+              callbacks.onContent?.(delta.textDelta);
+            }
+            break;
+
+          case 'step-delta':
+            if (delta.stepDelta) {
+              if (delta.stepDelta.type === 'reasoning-delta' && delta.stepDelta.reasoningDelta) {
+                fullThinking += delta.stepDelta.reasoningDelta;
+                console.log('🧠 Step thinking delta:', delta.stepDelta.reasoningDelta.length, 'chars');
+                callbacks.onThinking?.(delta.stepDelta.reasoningDelta);
+              } else if (delta.stepDelta.type === 'text-delta' && delta.stepDelta.textDelta) {
+                fullContent += delta.stepDelta.textDelta;
+                console.log('📝 Step content delta:', delta.stepDelta.textDelta.length, 'chars');
+                callbacks.onContent?.(delta.stepDelta.textDelta);
+              }
+            }
+            break;
+
+          case 'finish-step':
+            console.log('✅ Step finished:', delta.finishReason);
+            break;
+
+          case 'finish':
+            console.log('🏁 Stream finished:', delta.finishReason);
+            break;
+
           default:
-            console.log('❓ Unhandled delta type:', delta.type, delta);
+            // Only log unhandled types that might be important
+            if (!['tool-call', 'tool-result', 'error'].includes(delta.type)) {
+              console.log('❓ Unhandled delta type:', delta.type);
+            }
+            break;
         }
       }
 
