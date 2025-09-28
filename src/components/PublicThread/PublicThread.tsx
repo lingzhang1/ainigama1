@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { ArrowLeft, MessageSquare, Users, Clock, Brain, Loader2, Plus, ArrowUpDown, MessageCircle, X, Send } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -620,7 +621,37 @@ Structure:
                               </div>
                             )}
                             
-                            <p className="text-gray-700 leading-relaxed mb-3">{answer.content}</p>
+                            <div className="text-gray-700 leading-relaxed mb-3 prose prose-sm max-w-none">
+                              {answer.isAI ? (
+                                <ReactMarkdown
+                                  components={{
+                                    // Custom styling for markdown elements
+                                    h1: ({node, ...props}) => <h1 className="text-lg font-semibold text-gray-800 mb-2" {...props} />,
+                                    h2: ({node, ...props}) => <h2 className="text-base font-semibold text-gray-800 mb-2" {...props} />,
+                                    h3: ({node, ...props}) => <h3 className="text-sm font-semibold text-gray-800 mb-1" {...props} />,
+                                    p: ({node, ...props}) => <p className="mb-2 last:mb-0" {...props} />,
+                                    ul: ({node, ...props}) => <ul className="list-disc list-inside mb-2 space-y-1" {...props} />,
+                                    ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-2 space-y-1" {...props} />,
+                                    li: ({node, ...props}) => <li className="text-gray-700" {...props} />,
+                                    code: ({node, inline, ...props}) => 
+                                      inline ? (
+                                        <code className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono text-gray-800" {...props} />
+                                      ) : (
+                                        <code className="block bg-gray-100 p-2 rounded text-sm font-mono text-gray-800 overflow-x-auto" {...props} />
+                                      ),
+                                    pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded mb-2 overflow-x-auto" {...props} />,
+                                    blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-2" {...props} />,
+                                    strong: ({node, ...props}) => <strong className="font-semibold text-gray-800" {...props} />,
+                                    em: ({node, ...props}) => <em className="italic" {...props} />,
+                                    a: ({node, ...props}) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />
+                                  }}
+                                >
+                                  {answer.content}
+                                </ReactMarkdown>
+                              ) : (
+                                <p>{answer.content}</p>
+                              )}
+                            </div>
                             
                             {/* Comment Icon */}
                             <div className="flex items-center space-x-2">
