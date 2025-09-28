@@ -246,7 +246,7 @@ Structure:
                 userId: null,
                 isAI: true,
                 isPinned: true,
-                thinking: fullThinking
+                thinking: fullThinking || ''
               })
             });
           } catch (error) {
@@ -600,6 +600,22 @@ Structure:
                                 {formatDistanceToNow(answer.timestamp)} ago
                               </span>
                             </div>
+                            
+                            {/* Show AI thinking process if available */}
+                            {answer.isAI && answer.thinking && (
+                              <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                <div className="flex items-center mb-2">
+                                  <Brain className="w-4 h-4 text-gray-500 mr-2" />
+                                  <span className="text-xs font-medium text-gray-600">
+                                    AI Thought Process
+                                  </span>
+                                </div>
+                                <div className="text-xs text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded">
+                                  {answer.thinking}
+                                </div>
+                              </div>
+                            )}
+                            
                             <p className="text-gray-700 leading-relaxed mb-3">{answer.content}</p>
                             
                             {/* Comment Icon */}

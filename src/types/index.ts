@@ -32,6 +32,7 @@ export interface Answer {
   isPinned: boolean;
   isAI: boolean;
   interactionCount: number;
+  thinking?: string; // AI thinking process
 }
 
 export interface Comment {
