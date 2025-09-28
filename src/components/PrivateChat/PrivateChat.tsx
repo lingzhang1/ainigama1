@@ -44,9 +44,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   });
   
   const [isStreaming, setIsStreaming] = useState(false);
-
-  // Initialize WebSocket connection for persistence only
-  const ws = useWebSocket(state.currentUser?.id || '');
+  
+  // Processing lock to prevent multiple simultaneous AI requests
+  const isProcessingRef = useRef(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Load conversations from backend on component mount
   useEffect(() => {
