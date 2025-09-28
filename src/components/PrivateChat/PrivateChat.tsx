@@ -260,14 +260,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       // Stream AI response using DeepSeek service
       await deepSeekService.streamChat(chatMessages, {
         onThinking: (thinking) => {
-          console.log('🧠 Received thinking chunk:', thinking.length, 'chars');
           if (streamingRef.current.isActive) {
             streamingRef.current.thinking += thinking;
             updateStreamingDisplay();
           }
         },
         onContent: (content) => {
-          console.log('📝 Received content chunk:', content.length, 'chars');
           if (streamingRef.current.isActive) {
             // Mark as typing when content starts streaming
             if (!streamingRef.current.isTyping) {
