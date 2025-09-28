@@ -93,16 +93,7 @@ export class DeepSeekService {
           case 'text-end':
             console.log('🎯 Text phase ended');
             isContentPhase = false;
-            break;
-          case 'text-delta':
-            if (delta.textDelta) {
-              fullContent += delta.textDelta;
-              console.log('📝 Content delta:', delta.textDelta.length, 'chars');
-              callbacks.onContent?.(delta.textDelta);
-            }
-            break;
-            
-            
+
           case 'text-delta':
             if (delta.textDelta) {
               if (!hasStartedContent) {
