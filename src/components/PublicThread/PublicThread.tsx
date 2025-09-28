@@ -24,6 +24,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [thread, setThread] = useState<Thread | null>(null);
   const [answers, setAnswers] = useState<{ [questionId: string]: Answer[] }>({});
   const [comments, setComments] = useState<{ [answerId: string]: Comment[] }>({});
+  const [users, setUsers] = useState<{ [userId: string]: User }>({});
   const [newAnswer, setNewAnswer] = useState<{ [questionId: string]: string }>({});
   const [newComment, setNewComment] = useState<{ [answerId: string]: string }>({});
   const [newQuestion, setNewQuestion] = useState('');
