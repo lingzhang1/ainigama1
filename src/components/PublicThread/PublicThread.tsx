@@ -33,6 +33,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [expandedAnswerInputs, setExpandedAnswerInputs] = useState<{ [questionId: string]: boolean }>({});
   const [commentPanelOpen, setCommentPanelOpen] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // AI streaming state management using refs (like PrivateChat)
   const [isAIAnswering, setIsAIAnswering] = useState<{ [questionId: string]: boolean }>({});
@@ -346,8 +347,10 @@ Structure:
         if (refs.contentElement) {
           refs.contentElement.textContent = refs.content;
         }
-        // Auto-scroll
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        // Auto-scroll to bottom
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
       };
 
       // Stream AI response
@@ -987,6 +990,9 @@ Structure:
             )}
           </div>
         </div>
+
+        {/* Scroll anchor */}
+        <div ref={messagesEndRef} />
       </main>
 
       {/* Comment Side Panel */}
