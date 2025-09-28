@@ -198,7 +198,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       thinking: '',
       content: '',
       isActive: true,
-      isTyping: true,
+      isTyping: false, // Start as false, will be set to true when content starts
       thinkingElement: null,
       contentElement: null,
       streamingContainer: null,
@@ -248,6 +248,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         },
         onContent: (content) => {
           if (streamingRef.current.isActive) {
+            // Mark as typing when content starts streaming
+            if (!streamingRef.current.isTyping) {
+              streamingRef.current.isTyping = true;
+              console.log('🎯 Content streaming started, showing typing indicator');
+            }
             streamingRef.current.content += content;
             updateStreamingDisplay();
           }
@@ -849,14 +854,20 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                           <span className="text-xs font-medium text-gray-600">
                             Thought Process
                           </span>
-                          <Loader2 className="w-3 h-3 text-gray-400 ml-2 animate-spin" />
+                          <div className="ml-2">
+                            <div className="flex space-x-1">
+                              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                            </div>
+                          </div>
                         </div>
                         <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
                           <div 
                             ref={(el) => { streamingRef.current.thinkingElement = el; }}
                             className="min-h-[1em]"
                           />
-                          <span className="animate-pulse">|</span>
+                          <span className="animate-pulse text-blue-500">▋</span>
                         </div>
                       </CardContent>
                     </Card>
@@ -865,12 +876,22 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                   {/* Main Response */}
                   <Card className="bg-white border-gray-200">
                     <CardContent className="p-3">
+                      <div className="flex items-center mb-2">
+                        <span className="text-xs font-medium text-gray-600">Response</span>
+                        <div className="ml-2">
+                          <div className="flex space-x-1">
+                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                          </div>
+                        </div>
+                      </div>
                       <div className="text-sm whitespace-pre-wrap">
                         <div 
                           ref={(el) => { streamingRef.current.contentElement = el; }}
-                          className="min-h-[1em]"
+                          className="min-h-[1em] text-gray-800"
                         />
-                        <span className="animate-pulse">|</span>
+                        <span className="animate-pulse text-blue-500">▋</span>
                       </div>
                     </CardContent>
                   </Card>
