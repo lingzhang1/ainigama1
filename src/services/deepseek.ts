@@ -121,6 +121,11 @@ export class DeepSeekService {
               console.log('📝 Content delta:', delta.textDelta.length, 'chars');
               callbacks.onContent?.(delta.textDelta);
             }
+            if (delta.textDelta) {
+              fullContent += delta.textDelta;
+              console.log('📝 Content delta:', delta.textDelta.length, 'chars');
+              callbacks.onContent?.(delta.textDelta);
+            }
             break;
 
           case 'step-delta':
