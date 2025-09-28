@@ -210,11 +210,6 @@ export class DeepSeekService {
   }
 
   // Fallback method for non-streaming requests
-      callbacks.onError?.(error as Error);
-    }
-  }
-
-  // Fallback method for non-streaming requests
   async generateResponse(messages: ChatMessage[]): Promise<string> {
     return new Promise((resolve, reject) => {
       let fullResponse = '';
