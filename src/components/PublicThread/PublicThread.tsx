@@ -287,7 +287,13 @@ Structure:
 
   // Handle AI answer generation
   const handleAskAI = async (questionId: string) => {
-    if (!state.currentUser && !isGuest) return;
+    if (isGuest) return; // Guests can't use AI
+    
+    // Prevent multiple simultaneous AI requests for the same question
+    if (isAIAnswering[questionId]) {
+      console.log('⚠️ AI already answering question:', questionId);
+      return;
+    }
     
     try {
       setIsAIAnswering(prev => ({ ...prev, [questionId]: true }));
@@ -302,22 +308,38 @@ Structure:
       // Stream AI response
       await deepSeekService.streamChat(contextMessages, {
         onThinking: (thinking) => {
-          fullThinking += thinking;
-          setAIStreamingContent(prev => ({
-            ...prev,
-            [questionId]: { ...prev[questionId], thinking: fullThinking }
-          }));
+          if (isAIAnswering[questionId]) { // Only update if still active
+            fullThinking += thinking;
+            setAIStreamingContent(prev => ({
+              ...prev,
+              [questionId]: { 
+                thinking: fullThinking,
+                content: prev[questionId]?.content || ''
+              }
+            }));
+          }
         },
         onContent: (content) => {
-          fullContent += content;
-          setAIStreamingContent(prev => ({
-            ...prev,
-            [questionId]: { ...prev[questionId], content: fullContent }
-          }));
+          if (isAIAnswering[questionId]) { // Only update if still active
+            fullContent += content;
+            setAIStreamingContent(prev => ({
+              ...prev,
+              [questionId]: { 
+                thinking: prev[questionId]?.thinking || '',
+                content: fullContent
+              }
+            }));
+          }
         },
         onComplete: async (finalContent) => {
+          // Only process completion if still active
+          if (!isAIAnswering[questionId]) {
+            console.log('⚠️ AI completion ignored - request was cancelled');
+            return;
+          }
+          
           // Capture the thinking process before clearing streaming state
-          const finalThinking = aiStreamingContent[questionId]?.thinking || '';
+          const finalThinking = fullThinking;
           
           // Create AI answer
           const aiAnswer: Answer = {
@@ -331,6 +353,10 @@ Structure:
             interactionCount: 0,
             thinking: finalThinking // Include thinking in the answer object
           };
+
+          console.log('🎉 AI answer completed for question:', questionId);
+          console.log('🧠 Final thinking length:', finalThinking.length);
+          console.log('💬 Final content length:', finalContent.length);
 
           // Add to local state immediately
           setAnswers(prev => ({
