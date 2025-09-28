@@ -118,8 +118,8 @@ export class DeepSeekService {
           case 'text-delta':
             if (delta.text) {
               fullContent += delta.text;
-              console.log('📝 Content delta:', delta.textDelta.length, 'chars');
-              callbacks.onContent?.(delta.textDelta);
+              console.log('📝 Content delta:', delta.text.length, 'chars');
+              callbacks.onContent?.(delta.text);
             }
             if (delta.textDelta) {
               fullContent += delta.textDelta;

@@ -30,11 +30,20 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [newQuestion, setNewQuestion] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
-  const [isAIAnswering, setIsAIAnswering] = useState<{ [questionId: string]: boolean }>({});
-  const [aiStreamingContent, setAIStreamingContent] = useState<{ [questionId: string]: { thinking: string; content: string } }>({});
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [expandedAnswerInputs, setExpandedAnswerInputs] = useState<{ [questionId: string]: boolean }>({});
   const [commentPanelOpen, setCommentPanelOpen] = useState<string | null>(null);
+  
+  // AI streaming state management using refs (like PrivateChat)
+  const [isAIAnswering, setIsAIAnswering] = useState<{ [questionId: string]: boolean }>({});
+  const streamingRefs = React.useRef<{ [questionId: string]: {
+    thinking: string;
+    content: string;
+    isActive: boolean;
+    thinkingElement: HTMLDivElement | null;
+    contentElement: HTMLDivElement | null;
+    streamingContainer: HTMLDivElement | null;
+  } }>({});
 
   // Function to fetch user info by ID
   const fetchUserInfo = async (userId: string): Promise<User | null> => {
@@ -297,49 +306,85 @@ Structure:
     
     try {
       setIsAIAnswering(prev => ({ ...prev, [questionId]: true }));
-      setAIStreamingContent(prev => ({ ...prev, [questionId]: { thinking: '', content: '' } }));
+      
+      // Initialize streaming refs for this question
+      streamingRefs.current[questionId] = {
+        thinking: '',
+        content: '',
+        isActive: true,
+        thinkingElement: null,
+        contentElement: null,
+        streamingContainer: null,
+      };
 
       // Build context for this specific question
       const contextMessages = buildThreadContextForAI(questionId);
 
-      let fullThinking = '';
-      let fullContent = '';
+      // Show streaming UI via DOM manipulation
+      const showStreamingUI = (questionId: string) => {
+        const container = streamingRefs.current[questionId]?.streamingContainer;
+        if (container) {
+          container.style.display = 'block';
+        }
+      };
+
+      const hideStreamingUI = (questionId: string) => {
+        const container = streamingRefs.current[questionId]?.streamingContainer;
+        if (container) {
+          container.style.display = 'none';
+        }
+      };
+
+      const updateStreamingDisplay = (questionId: string) => {
+        const refs = streamingRefs.current[questionId];
+        if (!refs) return;
+        
+        showStreamingUI(questionId);
+        if (refs.thinkingElement) {
+          refs.thinkingElement.textContent = refs.thinking;
+        }
+        if (refs.contentElement) {
+          refs.contentElement.textContent = refs.content;
+        }
+        // Auto-scroll
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      };
 
       // Stream AI response
       await deepSeekService.streamChat(contextMessages, {
         onThinking: (thinking) => {
-          if (isAIAnswering[questionId]) { // Only update if still active
-            fullThinking += thinking;
-            setAIStreamingContent(prev => ({
-              ...prev,
-              [questionId]: { 
-                thinking: fullThinking,
-                content: prev[questionId]?.content || ''
-              }
-            }));
+          console.log('🧠 PublicThread: Received thinking chunk:', thinking.length, 'chars');
+          const refs = streamingRefs.current[questionId];
+          if (refs && refs.isActive) {
+            refs.thinking += thinking;
+            updateStreamingDisplay(questionId);
           }
         },
         onContent: (content) => {
-          if (isAIAnswering[questionId]) { // Only update if still active
-            fullContent += content;
-            setAIStreamingContent(prev => ({
-              ...prev,
-              [questionId]: { 
-                thinking: prev[questionId]?.thinking || '',
-                content: fullContent
-              }
-            }));
+          console.log('📝 PublicThread: Received content chunk:', content.length, 'chars');
+          const refs = streamingRefs.current[questionId];
+          if (refs && refs.isActive) {
+            refs.content += content;
+            updateStreamingDisplay(questionId);
           }
         },
         onComplete: async (finalContent) => {
-          // Only process completion if still active
-          if (!isAIAnswering[questionId]) {
-            console.log('⚠️ AI completion ignored - request was cancelled');
+          console.log('✅ PublicThread: AI stream completed for question:', questionId);
+          
+          // Check if we're still the active request
+          const refs = streamingRefs.current[questionId];
+          if (!refs || !refs.isActive) {
+            console.log('⚠️ PublicThread: AI completion ignored - request was cancelled');
             return;
           }
           
-          // Capture the thinking process before clearing streaming state
-          const finalThinking = fullThinking;
+          // Mark as inactive and hide streaming UI
+          refs.isActive = false;
+          hideStreamingUI(questionId);
+          
+          // Capture the thinking process
+          const finalThinking = refs.thinking;
+          console.log('🧠 PublicThread: Captured thinking for persistence:', finalThinking.length, 'chars');
           
           // Create AI answer
           const aiAnswer: Answer = {
@@ -351,11 +396,11 @@ Structure:
             isPinned: true,
             isAI: true,
             interactionCount: 0,
-            thinking: finalThinking // Include thinking in the answer object
+            thinking: finalThinking || undefined // Include thinking in the answer object
           };
 
           console.log('🎉 AI answer completed for question:', questionId);
-          console.log('🧠 Final thinking length:', finalThinking.length);
+          console.log('🧠 Final thinking length:', finalThinking?.length || 0);
           console.log('💬 Final content length:', finalContent.length);
 
           // Add to local state immediately
@@ -375,7 +420,7 @@ Structure:
                 userId: null,
                 isAI: true,
                 isPinned: true,
-                thinking: finalThinking || ''
+                thinking: finalThinking || undefined
               })
             });
           } catch (error) {
@@ -384,31 +429,34 @@ Structure:
 
           // Clear streaming state
           setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
-          setAIStreamingContent(prev => {
-            const newState = { ...prev };
-            delete newState[questionId];
-            return newState;
-          });
+          
+          // Clean up streaming refs
+          if (streamingRefs.current[questionId]) {
+            delete streamingRefs.current[questionId];
+          }
         },
         onError: (error) => {
           console.error('AI streaming error:', error);
+          
+          // Clean up on error
           setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
-          setAIStreamingContent(prev => {
-            const newState = { ...prev };
-            delete newState[questionId];
-            return newState;
-          });
+          hideStreamingUI(questionId);
+          
+          if (streamingRefs.current[questionId]) {
+            streamingRefs.current[questionId].isActive = false;
+            delete streamingRefs.current[questionId];
+          }
         }
       });
 
     } catch (error) {
       console.error('Failed to get AI answer:', error);
       setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
-      setAIStreamingContent(prev => {
-        const newState = { ...prev };
-        delete newState[questionId];
-        return newState;
-      });
+      
+      if (streamingRefs.current[questionId]) {
+        streamingRefs.current[questionId].isActive = false;
+        delete streamingRefs.current[questionId];
+      }
     }
   };
 
@@ -665,63 +713,6 @@ Structure:
                     </div>
                   </div>
 
-                  {/* AI Streaming Response */}
-                  {isAIAnswering[question.id] && (
-                    <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center space-x-2 mb-3">
-                        <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">AI</span>
-                        </div>
-                        <span className="font-medium text-blue-800">AI is responding...</span>
-                        <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                      </div>
-                      
-                      {/* Thinking Process */}
-                      {aiStreamingContent[question.id]?.thinking && (
-                        <div className="mb-3">
-                          <div className="flex items-center mb-2">
-                            <Brain className="w-4 h-4 text-gray-500 mr-2" />
-                            <span className="text-xs font-medium text-gray-600">Thought Process</span>
-                          </div>
-                          <div className="text-xs text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded">
-                            {aiStreamingContent[question.id].thinking}
-                            <span className="animate-pulse">|</span>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Content */}
-                      {aiStreamingContent[question.id]?.content && (
-                        <div className="text-sm text-gray-800 whitespace-pre-wrap">
-                          <div className="prose prose-sm max-w-none">
-                            <ReactMarkdown
-                              components={{
-                                // Simplified styling for streaming content
-                                h1: ({node, ...props}) => <h1 className="text-base font-semibold mb-1" {...props} />,
-                                h2: ({node, ...props}) => <h2 className="text-sm font-semibold mb-1" {...props} />,
-                                h3: ({node, ...props}) => <h3 className="text-sm font-medium mb-1" {...props} />,
-                                p: ({node, ...props}) => <p className="mb-1 last:mb-0" {...props} />,
-                                ul: ({node, ...props}) => <ul className="list-disc list-inside mb-1" {...props} />,
-                                ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-1" {...props} />,
-                                code: ({node, inline, ...props}) => 
-                                  inline ? (
-                                    <code className="bg-gray-200 px-1 rounded text-xs font-mono" {...props} />
-                                  ) : (
-                                    <code className="block bg-gray-200 p-2 rounded text-xs font-mono" {...props} />
-                                  ),
-                                strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
-                                em: ({node, ...props}) => <em className="italic" {...props} />
-                              }}
-                            >
-                              {aiStreamingContent[question.id].content}
-                            </ReactMarkdown>
-                          </div>
-                          <span className="animate-pulse">|</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   {/* Answers */}
                   <div className="space-y-4">
                     {(answers[question.id] || []).map((answer) => (
@@ -817,6 +808,78 @@ Structure:
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  {/* AI Streaming Response - Always present, controlled via DOM */}
+                  <div 
+                    ref={(el) => { 
+                      if (streamingRefs.current[question.id]) {
+                        streamingRefs.current[question.id].streamingContainer = el;
+                      }
+                    }}
+                    className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+                    style={{ display: 'none' }}
+                  >
+                    <div className="flex items-center space-x-2 mb-3">
+                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">AI</span>
+                      </div>
+                      <span className="font-medium text-blue-800">AI is responding...</span>
+                      <div className="flex space-x-1">
+                        <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                        <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      </div>
+                    </div>
+                    
+                    {/* Thinking Process */}
+                    <div className="mb-3">
+                      <div className="flex items-center mb-2">
+                        <Brain className="w-4 h-4 text-gray-500 mr-2" />
+                        <span className="text-xs font-medium text-gray-600">Thought Process</span>
+                        <div className="ml-2">
+                          <div className="flex space-x-1">
+                            <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded">
+                        <div 
+                          ref={(el) => { 
+                            if (streamingRefs.current[question.id]) {
+                              streamingRefs.current[question.id].thinkingElement = el;
+                            }
+                          }}
+                          className="min-h-[1em]"
+                        />
+                        <span className="animate-pulse text-blue-500">▋</span>
+                      </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="text-sm text-gray-800 whitespace-pre-wrap">
+                      <div className="flex items-center mb-2">
+                        <span className="text-xs font-medium text-gray-600">Response</span>
+                        <div className="ml-2">
+                          <div className="flex space-x-1">
+                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div 
+                        ref={(el) => { 
+                          if (streamingRefs.current[question.id]) {
+                            streamingRefs.current[question.id].contentElement = el;
+                          }
+                        }}
+                        className="min-h-[1em] text-gray-800"
+                      />
+                      <span className="animate-pulse text-blue-500">▋</span>
+                    </div>
                   </div>
 
                   {/* Add Answer Section */}
