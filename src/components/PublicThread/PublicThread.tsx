@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { ArrowLeft, MessageSquare, Users, Clock, Brain, Loader2, Plus, ArrowUpDown, MessageCircle, X, Send } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Users, Clock, Brain, Loader2, Plus, ArrowUpDown, MessageCircle, X, Send, ChevronDown, Lock, Globe } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -34,6 +34,16 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [expandedAnswerInputs, setExpandedAnswerInputs] = useState<{ [questionId: string]: boolean }>({});
   const [commentPanelOpen, setCommentPanelOpen] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // New thread modal state
+  const [showNewThreadModal, setShowNewThreadModal] = useState(false);
+  const [showNewThreadDropdown, setShowNewThreadDropdown] = useState(false);
+  const [newThreadData, setNewThreadData] = useState({
+    title: '',
+    category: 'Relationships',
+    question: ''
+  });
+  const [isCreatingThread, setIsCreatingThread] = useState(false);
   
   // AI streaming state management using refs (like PrivateChat)
   const [isAIAnswering, setIsAIAnswering] = useState<{ [questionId: string]: boolean }>({});
@@ -553,6 +563,58 @@ Structure:
       console.error('Failed to add question:', error);
     } finally {
       setIsAddingQuestion(false);
+    }
+  };
+
+  // Handle creating new public thread
+  const handleCreatePublicThread = async () => {
+    if (!newThreadData.title.trim() || !newThreadData.question.trim() || !state.currentUser) {
+      return;
+    }
+
+    try {
+      setIsCreatingThread(true);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      
+      const threadData = {
+        title: newThreadData.title.trim(),
+        creatorId: state.currentUser.id,
+        category: newThreadData.category,
+        questions: [{
+          id: uuidv4(),
+          content: newThreadData.question.trim(),
+          userId: state.currentUser.id,
+          timestamp: new Date().toISOString()
+        }],
+        initialAnswers: []
+      };
+
+      const response = await fetch(`${apiUrl}/threads`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(threadData)
+      });
+
+      if (response.ok) {
+        const newThread = await response.json();
+        
+        // Update app state
+        dispatch({ type: 'ADD_THREAD', payload: newThread });
+        dispatch({ type: 'SET_CURRENT_THREAD', payload: newThread.id });
+        
+        // Reset modal state
+        setShowNewThreadModal(false);
+        setNewThreadData({ title: '', category: 'Relationships', question: '' });
+        
+        // Refresh the current view to show the new thread
+        window.location.reload();
+      } else {
+        console.error('Failed to create thread:', response.statusText);
+      }
+    } catch (error) {
+      console.error('Error creating thread:', error);
+    } finally {
+      setIsCreatingThread(false);
     }
   };
 
@@ -1082,6 +1144,132 @@ Structure:
               </Button>
             </div>
           )}
+        </div>
+      )}
+
+      {/* New Public Thread Modal */}
+      {showNewThreadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-lg mx-4 bg-white">
+            <CardContent className="p-0">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b">
+                <h3 className="text-xl font-semibold text-gray-900">Create Public Thread</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setShowNewThreadModal(false);
+                    setNewThreadData({ title: '', category: 'Relationships', question: '' });
+                  }}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-6">
+                <div>
+                  <p className="text-gray-600 text-sm leading-relaxed">
+                    Start a public discussion that the community can engage with immediately.
+                  </p>
+                </div>
+
+                {/* Thread Title */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Thread Title *
+                  </label>
+                  <Input
+                    placeholder="Give your thread a descriptive title..."
+                    value={newThreadData.title}
+                    onChange={(e) => setNewThreadData(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Category Selection */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Category
+                  </label>
+                  <select 
+                    value={newThreadData.category}
+                    onChange={(e) => setNewThreadData(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="Relationships">Relationships</option>
+                    <option value="Psychology">Psychology</option>
+                    <option value="Marriage">Marriage</option>
+                    <option value="Friendship">Friendship</option>
+                    <option value="Intimacy">Intimacy</option>
+                    <option value="General">General</option>
+                  </select>
+                </div>
+
+                {/* Question Content */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Your Question *
+                  </label>
+                  <Textarea
+                    placeholder="What would you like to ask the community? Be specific and provide context to get better answers..."
+                    value={newThreadData.question}
+                    onChange={(e) => setNewThreadData(prev => ({ ...prev, question: e.target.value }))}
+                    className="w-full min-h-[120px]"
+                    rows={5}
+                  />
+                </div>
+
+                {/* Public Notice */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      <Globe className="h-5 w-5 text-blue-600 mt-0.5" />
+                    </div>
+                    <div className="text-sm">
+                      <p className="text-blue-800 font-medium mb-1">
+                        This will be public immediately
+                      </p>
+                      <p className="text-blue-700">
+                        Your question will be visible to all community members. Others can add answers and engage in discussions right away.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end space-x-3 p-6 border-t bg-gray-50">
+                <Button 
+                  onClick={() => {
+                    setShowNewThreadModal(false);
+                    setNewThreadData({ title: '', category: 'Relationships', question: '' });
+                  }}
+                  variant="outline"
+                  className="px-4 py-2"
+                  disabled={isCreatingThread}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreatePublicThread}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={!newThreadData.title.trim() || !newThreadData.question.trim() || isCreatingThread}
+                >
+                  {isCreatingThread ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Thread'
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
