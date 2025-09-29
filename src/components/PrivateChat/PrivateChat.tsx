@@ -940,6 +940,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               </div>
             </div>
             <div ref={messagesEndRef} />
+          </>
 
             {/* Message Input */}
             <div className="bg-white border-t p-4">
@@ -968,7 +969,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </Button>
               </div>
             </div>
-          </>
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center">
