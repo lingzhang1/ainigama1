@@ -3,6 +3,20 @@ import { Card, CardContent } from '../ui/card';
 import { Avatar } from '../ui/avatar';
 import { Brain, Loader2 } from 'lucide-react';
 
+/**
+ * StreamingMessage Component
+ * 
+ * Purpose: Displays a streaming AI response in real-time with:
+ * - AI thinking process (if enabled and available)
+ * - Streaming content with typing indicators
+ * - Loading states and animations
+ * - Proper styling to distinguish from regular messages
+ * 
+ * This component is used during active AI response generation
+ * to provide real-time feedback to the user about the AI's
+ * thinking and response process.
+ */
+
 interface StreamingMessageProps {
   thinking?: string;
   content: string;
