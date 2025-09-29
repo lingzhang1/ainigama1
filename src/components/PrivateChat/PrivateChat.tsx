@@ -968,6 +968,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </Button>
               </div>
             </div>
+          </>
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center">
