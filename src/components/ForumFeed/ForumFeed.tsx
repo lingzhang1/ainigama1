@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { SearchIcon, TrendingUpIcon, ClockIcon, PlusIcon } from 'lucide-react';
+import { SearchIcon, TrendingUpIcon, ClockIcon, PlusIcon, ChevronDown, Lock, Globe } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent } from '../ui/card';
@@ -45,6 +45,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showNewThreadDropdown, setShowNewThreadDropdown] = useState(false);
 
   useEffect(() => {
     const loadThreads = async () => {
@@ -95,13 +96,56 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
       {/* Left Sidebar */}
       <aside className="w-64 h-full bg-white border-r flex flex-col">
         <div className="p-4">
-          <Button 
-            onClick={handleNewThread}
-            className="w-full bg-gray-800 hover:bg-gray-700 text-white h-auto py-3"
-          >
-            <PlusIcon className="w-4 h-4 mr-3" />
-            New Thread
-          </Button>
+          <div className="relative">
+            <Button 
+              onClick={() => setShowNewThreadDropdown(!showNewThreadDropdown)}
+              className="w-full bg-gray-800 hover:bg-gray-700 text-white h-auto py-3 flex items-center justify-between"
+            >
+              <div className="flex items-center">
+                <PlusIcon className="w-4 h-4 mr-3" />
+                New Thread
+              </div>
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+            
+            {/* Dropdown Menu */}
+            {showNewThreadDropdown && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                <button
+                  onClick={() => {
+                    dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
+                    setShowNewThreadDropdown(false);
+                  }}
+                  className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center border-b border-gray-100"
+                >
+                  <Lock className="w-4 h-4 mr-3 text-gray-500" />
+                  <div>
+                    <div className="font-medium text-gray-800">Private Chat</div>
+                    <div className="text-xs text-gray-500">Start with AI, publish later</div>
+                  </div>
+                </button>
+                <button
+                  onClick={() => {
+                    if (isGuest) {
+                      dispatch({ type: 'SET_GUEST_MODE', payload: false });
+                    } else {
+                      // TODO: Add public thread creation functionality
+                      console.log('Public thread creation not implemented yet');
+                    }
+                    setShowNewThreadDropdown(false);
+                  }}
+                  className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center"
+                  disabled={isGuest}
+                >
+                  <Globe className="w-4 h-4 mr-3 text-gray-500" />
+                  <div>
+                    <div className="font-medium text-gray-800">Public Thread</div>
+                    <div className="text-xs text-gray-500">Start discussion directly</div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 px-3">

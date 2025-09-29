@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Lock, Globe, MessageSquare, X, Settings, Brain, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Message, PrivateConversation } from '../../types';
@@ -148,6 +148,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     loadMessages();
   }, [currentConversation?.id, isGuest]); // Keep dependency on ID only
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [currentConversation?.messages]);
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [currentConversation?.messages]);
@@ -952,12 +958,23 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             {/* Message Input */}
             <div className="bg-white border-t p-4">
               <div className="flex space-x-2">
-                <Input
+                <Textarea
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Ask DeepSeek anything..."
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                  className="flex-1"
+                  className="flex-1 min-h-[40px] max-h-[120px] resize-none"
+                  rows={1}
+                  style={{
+                    height: 'auto',
+                    minHeight: '40px',
+                    maxHeight: '120px'
+                  }}
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = 'auto';
+                    target.style.height = Math.min(target.scrollHeight, 120) + 'px';
+                  }}
                   disabled={streamingRef.current.isTyping}
                 />
                 <Button onClick={handleSendMessage} disabled={!newMessage.trim() || streamingRef.current.isTyping}>
