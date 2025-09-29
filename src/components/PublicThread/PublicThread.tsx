@@ -182,8 +182,6 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     loadThread();
   }, [currentThreadId]);
 
-  // Build context for AI with proper multi-user structure
-  const buildThreadContextForAI = async (targetQuestionId: string): Promise<{ messages: ChatMessage[], summaryAdded: boolean }> => {
     if (!thread) return { messages: [], summaryAdded: false };
 
     let messages: ChatMessage[] = [];
