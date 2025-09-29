@@ -1,2 +1,3 @@
-src/components/ui/*
 infrastructure/nodejs-server/*
+public/*
+supabase/*

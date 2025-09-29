@@ -154,9 +154,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [currentConversation?.messages]);
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentConversation?.messages]);
 
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !currentConversation) return;
@@ -882,9 +879,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </div>
               )}
 
-              <div ref={messagesEndRef} />
-            </div>
-
             {/* Streaming AI Response - Always present, controlled via DOM */}
             <div 
               ref={(el) => { streamingRef.current.streamingContainer = el; }}
@@ -952,7 +946,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </div>
               </div>
             </div>
-
+            <div ref={messagesEndRef} />
             <div ref={messagesEndRef} />
 
             {/* Message Input */}
