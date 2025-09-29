@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { SearchIcon, TrendingUpIcon, ClockIcon, PlusIcon, ChevronDown, Lock, Globe } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
@@ -46,6 +48,13 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showNewThreadDropdown, setShowNewThreadDropdown] = useState(false);
+  const [showPublicThreadModal, setShowPublicThreadModal] = useState(false);
+  const [publicThreadForm, setPublicThreadForm] = useState({
+    title: '',
+    category: 'General',
+    question: ''
+  });
+  const [isCreatingThread, setIsCreatingThread] = useState(false);
 
   useEffect(() => {
     const loadThreads = async () => {
@@ -84,6 +93,62 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
 
   const handleNewThread = () => {
     dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
+  };
+
+  const handleCreatePublicThread = async () => {
+    if (!publicThreadForm.title.trim() || !publicThreadForm.question.trim() || !state.currentUser) {
+      return;
+    }
+
+    try {
+      setIsCreatingThread(true);
+      
+      // Create thread data similar to PrivateChat publish functionality
+      const threadData = {
+        title: publicThreadForm.title.trim(),
+        creatorId: state.currentUser.id,
+        category: publicThreadForm.category,
+        questions: [{
+          id: `question-${Date.now()}`,
+          content: publicThreadForm.question.trim(),
+          userId: state.currentUser.id,
+          timestamp: new Date().toISOString()
+        }],
+        initialAnswers: [] // No initial answers for direct public threads
+      };
+
+      // Call API to create public thread
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/threads`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(threadData)
+      });
+
+      if (response.ok) {
+        const newThread = await response.json();
+        console.log('✅ Successfully created public thread:', newThread.id);
+        
+        // Update app state
+        dispatch({ type: 'ADD_THREAD', payload: newThread });
+        dispatch({ type: 'SET_CURRENT_THREAD', payload: newThread.id });
+        dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
+        
+        // Reset form and close modal
+        setPublicThreadForm({ title: '', category: 'General', question: '' });
+        setShowPublicThreadModal(false);
+      } else {
+        console.error('Failed to create public thread:', response.statusText);
+        const errorText = await response.text();
+        console.error('Error details:', errorText);
+      }
+    } catch (error) {
+      console.error('Error creating public thread:', error);
+    } finally {
+      setIsCreatingThread(false);
+    }
   };
 
   const filteredThreads = threads.filter(thread =>
@@ -129,18 +194,18 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                     if (isGuest) {
                       dispatch({ type: 'SET_GUEST_MODE', payload: false });
                     } else {
-                      // TODO: Add public thread creation functionality
-                      console.log('Public thread creation not implemented yet');
+                      setShowPublicThreadModal(true);
                     }
                     setShowNewThreadDropdown(false);
                   }}
                   className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center"
-                  disabled={isGuest}
                 >
                   <Globe className="w-4 h-4 mr-3 text-gray-500" />
                   <div>
                     <div className="font-medium text-gray-800">Public Thread</div>
-                    <div className="text-xs text-gray-500">Start discussion directly</div>
+                    <div className="text-xs text-gray-500">
+                      {isGuest ? 'Sign in to create public threads' : 'Start discussion directly'}
+                    </div>
                   </div>
                 </button>
               </div>
@@ -318,6 +383,131 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
           )}
         </div>
       </main>
+
+      {/* Public Thread Creation Modal */}
+      {showPublicThreadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="w-full max-w-lg mx-4 bg-white">
+            <CardContent className="p-0">
+              {/* Header */}
+              <div className="flex items-center justify-between p-6 border-b">
+                <h3 className="text-xl font-semibold text-gray-900">Create Public Thread</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setShowPublicThreadModal(false);
+                    setPublicThreadForm({ title: '', category: 'General', question: '' });
+                  }}
+                  className="h-8 w-8 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              {/* Content */}
+              <div className="p-6 space-y-6">
+                <div>
+                  <p className="text-gray-600 text-sm leading-relaxed mb-4">
+                    Create a new public discussion thread that the community can engage with.
+                  </p>
+                </div>
+
+                {/* Thread Title */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Thread Title *
+                  </label>
+                  <Input
+                    placeholder="Give your thread a descriptive title..."
+                    value={publicThreadForm.title}
+                    onChange={(e) => setPublicThreadForm(prev => ({ ...prev, title: e.target.value }))}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* Category Selection */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Category
+                  </label>
+                  <select 
+                    value={publicThreadForm.category}
+                    onChange={(e) => setPublicThreadForm(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="General">General</option>
+                    <option value="Relationships">Relationships</option>
+                    <option value="Psychology">Psychology</option>
+                    <option value="Marriage">Marriage</option>
+                    <option value="Friendship">Friendship</option>
+                    <option value="Intimacy">Intimacy</option>
+                  </select>
+                </div>
+
+                {/* Question Content */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Your Question *
+                  </label>
+                  <Textarea
+                    placeholder="What would you like to ask the community? Be specific and provide context to get better responses..."
+                    value={publicThreadForm.question}
+                    onChange={(e) => setPublicThreadForm(prev => ({ ...prev, question: e.target.value }))}
+                    className="min-h-[120px] w-full"
+                    rows={5}
+                  />
+                </div>
+
+                {/* Privacy Notice */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0">
+                      <Globe className="h-5 w-5 text-blue-600 mt-0.5" />
+                    </div>
+                    <div className="text-sm">
+                      <p className="text-blue-800 font-medium mb-1">
+                        This will be public
+                      </p>
+                      <p className="text-blue-700">
+                        Your thread will be visible to all community members. Others can add answers and engage in discussions.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-end space-x-3 p-6 border-t bg-gray-50">
+                <Button 
+                  onClick={() => {
+                    setShowPublicThreadModal(false);
+                    setPublicThreadForm({ title: '', category: 'General', question: '' });
+                  }}
+                  variant="outline"
+                  className="px-4 py-2"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleCreatePublicThread}
+                  disabled={!publicThreadForm.title.trim() || !publicThreadForm.question.trim() || isCreatingThread}
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  {isCreatingThread ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Thread'
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Right Sidebar */}
       <aside className="w-72 h-full bg-white border-l overflow-y-auto">
