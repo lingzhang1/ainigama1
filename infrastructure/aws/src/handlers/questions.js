@@ -20,7 +20,7 @@ exports.addQuestion = async (event) => {
     }
 
     const requestBody = parseRequestBody(event.body);
-    const { content, userId } = requestBody;
+    const { content, userId, isSummary } = requestBody;
     
     if (!content || !content.trim()) {
       return addCorsHeaders({
@@ -54,7 +54,8 @@ exports.addQuestion = async (event) => {
       thread_id: threadId,
       content: content.trim(),
       user_id: userId,
-      created_at: now
+      created_at: now,
+      is_summary: Boolean(isSummary) // Store summary flag
     };
 
     await dbOperations.put(tables.questions, question);
@@ -76,7 +77,8 @@ exports.addQuestion = async (event) => {
       content: content.trim(),
       timestamp: now,
       userId: userId,
-      threadId: threadId
+      threadId: threadId,
+      isSummary: Boolean(isSummary) // Return summary flag
     };
 
     console.log('✅ Created question:', questionId, 'for thread:', threadId);

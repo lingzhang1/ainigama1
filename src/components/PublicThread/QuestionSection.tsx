@@ -66,15 +66,34 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
             </Avatar>
             <div className="flex-1">
               <div className="flex items-center space-x-2 mb-2">
-                <span className="font-medium text-gray-800">{threadCreator.name}</span>
+                <span className="font-medium text-gray-800">
+                  {question.isSummary ? 'AI System' : threadCreator.name}
+                </span>
                 <Badge variant="outline" className="text-xs">
-                  Question {sortOrder === 'newest' ? totalQuestions - questionIndex : questionIndex + 1}
+                  {question.isSummary 
+                    ? 'Summary' 
+                    : `Question ${sortOrder === 'newest' ? totalQuestions - questionIndex : questionIndex + 1}`
+                  }
                 </Badge>
                 <span className="text-xs text-gray-500">
                   {formatDistanceToNow(question.timestamp)} ago
                 </span>
               </div>
-              <p className="text-gray-800 leading-relaxed">{question.content}</p>
+              <div className={`text-gray-800 leading-relaxed ${question.isSummary ? 'bg-blue-50 border border-blue-200 rounded-lg p-3' : ''}`}>
+                {question.isSummary ? (
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center mr-2">
+                        <span className="text-white text-xs">∑</span>
+                      </div>
+                      <span className="text-sm font-medium text-blue-800">Previous Discussion Summary</span>
+                    </div>
+                    <p className="text-sm text-blue-700">{question.content.replace('**Thread Summary**: ', '')}</p>
+                  </div>
+                ) : (
+                  <p>{question.content}</p>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -167,67 +186,69 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
         </div>
 
         {/* Add Answer Section */}
-        <div className="mt-6 pt-4 border-t border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <h4 className="font-medium text-gray-700">Add Your Answer</h4>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onAskAI(question.id)}
-              disabled={isAIAnswering || isGuest}
-              className="flex items-center space-x-2"
-            >
-              {isAIAnswering ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Brain className="w-4 h-4" />
-              )}
-              <span>{isAIAnswering ? 'AI Thinking...' : isGuest ? 'Sign In to Ask AI' : 'Ask AI'}</span>
-            </Button>
-          </div>
-          
-          {!isGuest && (
-            <div className="space-y-3">
-              {!expandedAnswerInput ? (
-                <Button
-                  variant="outline"
-                  onClick={() => setExpandedAnswerInput(true)}
-                  className="w-full justify-start text-gray-500"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Write an answer...
-                </Button>
-              ) : (
-                <>
-                  <Textarea
-                    placeholder="Share your thoughts and insights..."
-                    value={newAnswer}
-                    onChange={(e) => setNewAnswer(e.target.value)}
-                    className="min-h-[100px]"
-                    autoFocus
-                  />
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setExpandedAnswerInput(false);
-                        setNewAnswer('');
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleAddAnswer}
-                      disabled={!newAnswer.trim()}
-                    >
-                      Post Answer
-                    </Button>
-                  </div>
-                </>
-              )}
+        {!question.isSummary && (
+          <div className="mt-6 pt-4 border-t border-gray-100">
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="font-medium text-gray-700">Add Your Answer</h4>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onAskAI(question.id)}
+                disabled={isAIAnswering || isGuest}
+                className="flex items-center space-x-2"
+              >
+                {isAIAnswering ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Brain className="w-4 h-4" />
+                )}
+                <span>{isAIAnswering ? 'AI Thinking...' : isGuest ? 'Sign In to Ask AI' : 'Ask AI'}</span>
+              </Button>
             </div>
-          )}
-        </div>
+            
+            {!isGuest && (
+              <div className="space-y-3">
+                {!expandedAnswerInput ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => setExpandedAnswerInput(true)}
+                    className="w-full justify-start text-gray-500"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Write an answer...
+                  </Button>
+                ) : (
+                  <>
+                    <Textarea
+                      placeholder="Share your thoughts and insights..."
+                      value={newAnswer}
+                      onChange={(e) => setNewAnswer(e.target.value)}
+                      className="min-h-[100px]"
+                      autoFocus
+                    />
+                    <div className="flex justify-end space-x-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setExpandedAnswerInput(false);
+                          setNewAnswer('');
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleAddAnswer}
+                        disabled={!newAnswer.trim()}
+                      >
+                        Post Answer
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

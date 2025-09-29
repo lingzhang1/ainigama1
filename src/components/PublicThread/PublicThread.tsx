@@ -6,6 +6,8 @@ import { useAppContext } from '../../context/AppContext';
 import { usePublicThread } from '../../hooks/useWebSocket';
 import { deepSeekService, ChatMessage } from '../../services/deepseek';
 import { v4 as uuidv4 } from 'uuid';
+import { countChatMessagesTokens } from '../../utils/tokenCounter';
+import { CONTEXT_OVERFLOW_THRESHOLD } from '../../constants/ai';
 import { PublicThreadHeader } from './PublicThreadHeader';
 import { QuestionSection } from './QuestionSection';
 import { NewQuestionInput } from './NewQuestionInput';
@@ -181,10 +183,11 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   }, [currentThreadId]);
 
   // Build context for AI with proper multi-user structure
-  const buildThreadContextForAI = (targetQuestionId: string): ChatMessage[] => {
-    if (!thread) return [];
+  const buildThreadContextForAI = async (targetQuestionId: string): Promise<{ messages: ChatMessage[], summaryAdded: boolean }> => {
+    if (!thread) return { messages: [], summaryAdded: false };
 
-    const messages: ChatMessage[] = [];
+    let messages: ChatMessage[] = [];
+    let summaryAdded = false;
 
     // System message explaining the multi-user thread structure
     messages.push({
@@ -250,9 +253,71 @@ Structure:
       });
     }
 
-    console.log("AI Input Context:", messages);
+    // Check for context overflow
+    const currentTokenCount = countChatMessagesTokens(messages);
+    console.log(`📊 Public thread estimated token count: ${currentTokenCount} / ${CONTEXT_OVERFLOW_THRESHOLD}`);
 
-    return messages;
+    if (currentTokenCount > CONTEXT_OVERFLOW_THRESHOLD) {
+      console.warn('⚠️ Public thread context overflow detected. Summarizing...');
+      
+      try {
+        // Generate summary of the conversation
+        const summary = await deepSeekService.summarizeConversation(messages);
+        
+        // Create a summary question to prepend to the thread
+        const summaryQuestion: Question = {
+          id: uuidv4(),
+          content: `**Thread Summary**: ${summary}`,
+          timestamp: new Date(),
+          userId: 'ai-system',
+          threadId: thread.id,
+          isSummary: true
+        };
+        
+        // Update thread state to include summary question
+        setThread(prev => prev ? {
+          ...prev,
+          questions: [summaryQuestion, ...prev.questions],
+          questionCount: prev.questionCount + 1
+        } : null);
+        
+        // Persist summary question to backend
+        try {
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+          await fetch(`${apiUrl}/threads/${thread.id}/questions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              content: summaryQuestion.content,
+              userId: summaryQuestion.userId,
+              isSummary: true
+            })
+          });
+          console.log('✅ Summary question saved to backend');
+        } catch (error) {
+          console.error('❌ Failed to save summary question to backend:', error);
+        }
+        
+        // Replace messages with summarized context
+        messages = [
+          {
+            role: 'system',
+            content: `You are participating in a public discussion thread. Here is a summary of the previous discussion: ${summary}`
+          },
+          {
+            role: 'user',
+            content: `Based on this summary and the current question, please provide your answer to: "${targetQuestion?.content}"`
+          }
+        ];
+        
+        summaryAdded = true;
+        console.log('✅ Context summarized and reduced for AI processing');
+        
+      } catch (error) {
+        console.error('❌ Failed to summarize thread context:', error);
+        // Continue with original messages if summarization fails
+      }
+    }
   };
 
   // Handle AI answer generation
@@ -279,7 +344,11 @@ Structure:
       };
 
       // Build context for this specific question
-      const contextMessages = buildThreadContextForAI(questionId);
+      const { messages: contextMessages, summaryAdded } = await buildThreadContextForAI(questionId);
+      
+      if (summaryAdded) {
+        console.log('📝 Using summarized context for AI response');
+      }
 
       // Show streaming UI via DOM manipulation
       const showStreamingUI = (questionId: string) => {

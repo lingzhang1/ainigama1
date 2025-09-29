@@ -344,7 +344,8 @@ exports.getThread = async (event) => {
       content: q.content,
       timestamp: q.created_at || q.timestamp,
       userId: q.user_id,
-      threadId: q.thread_id
+      threadId: q.thread_id,
+      isSummary: Boolean(q.is_summary) // Include summary flag
     }));
 
     // Calculate answer count for the thread

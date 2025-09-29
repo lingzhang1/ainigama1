@@ -4,6 +4,8 @@ import { useAppContext } from '../../context/AppContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { deepSeekService, ChatMessage } from '../../services/deepseek';
 import { v4 as uuidv4 } from 'uuid';
+import { estimateTokens, countChatMessagesTokens, wouldExceedThreshold } from '../../utils/tokenCounter';
+import { CONTEXT_OVERFLOW_THRESHOLD } from '../../constants/ai';
 
 // Import all the smaller components
 import { ConversationSidebar } from './ConversationSidebar';
@@ -13,6 +15,7 @@ import { MessageInput } from './MessageInput';
 import { NoConversationSelected } from './NoConversationSelected';
 import { PublishConversationModal } from './PublishConversationModal';
 
+import { ConversationContextWarning } from './ConversationContextWarning';
 /**
  * PrivateChat Component - Main Orchestrator
  * 
@@ -42,6 +45,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showThinking, setShowThinking] = useState(true);
   const [newMessage, setNewMessage] = useState('');
+  
+  // Context window management state
+  const [conversationSummary, setConversationSummary] = useState<string | null>(null);
+  const [showContextWarning, setShowContextWarning] = useState(false);
+  const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   
   // Refs for managing streaming and preventing race conditions
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -234,6 +242,73 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     setNewMessage('');
     
     console.log('🔒 Processing locked, starting AI stream...');
+    
+    // Check for context window overflow BEFORE processing
+    const chatMessagesForTokenCount: ChatMessage[] = updatedConversation.messages.map(msg => ({
+      role: msg.sender === 'user' ? 'user' : 'assistant',
+      content: msg.content
+    }));
+
+    const currentTokenCount = countChatMessagesTokens(chatMessagesForTokenCount);
+    console.log(`📊 Estimated token count: ${currentTokenCount} / ${CONTEXT_OVERFLOW_THRESHOLD}`);
+
+    // If context window is exceeded, handle overflow
+    if (currentTokenCount > CONTEXT_OVERFLOW_THRESHOLD) {
+      console.warn('⚠️ Private chat context overflow detected. Triggering summarization.');
+      
+      // Release processing lock immediately since we're not calling AI
+      isProcessingRef.current = false;
+      
+      // Show warning banner
+      setShowContextWarning(true);
+      setIsGeneratingSummary(true);
+      
+      // Add system message to inform user
+      const systemMessage: Message = {
+        id: uuidv4(),
+        content: "Your conversation history is getting very long and may cause issues with AI responses. A summary is being prepared. Please use the banner above to start a new conversation with the summary.",
+        timestamp: new Date(),
+        sender: 'ai'
+      };
+      
+      const conversationWithSystemMessage = {
+        ...updatedConversation,
+        messages: [...updatedConversation.messages, systemMessage],
+        updatedAt: new Date()
+      };
+      
+      setCurrentConversation(conversationWithSystemMessage);
+      setConversations(prev => 
+        isGuest ? [conversationWithSystemMessage] : prev.map(c => c.id === conversationWithSystemMessage.id ? conversationWithSystemMessage : c)
+      );
+      
+      // Generate summary asynchronously
+      try {
+        const summary = await deepSeekService.summarizeConversation(chatMessagesForTokenCount);
+        setConversationSummary(summary);
+        setIsGeneratingSummary(false);
+        console.log('✅ Summary generated successfully');
+      } catch (error) {
+        console.error('❌ Summarization failed:', error);
+        setIsGeneratingSummary(false);
+        
+        // Add error message to conversation
+        const errorMessage: Message = {
+          id: uuidv4(),
+          content: "Failed to summarize conversation history. Please start a new chat manually to avoid potential issues.",
+          timestamp: new Date(),
+          sender: 'ai'
+        };
+        
+        setCurrentConversation(prev => prev ? {
+          ...prev,
+          messages: [...prev.messages, errorMessage],
+          updatedAt: new Date()
+        } : null);
+      }
+      
+      return; // Stop processing here
+    }
     
     // Reset streaming refs and show streaming UI
     streamingRef.current = {
@@ -664,6 +739,86 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     dispatch({ type: 'SET_GUEST_MODE', payload: false });
   };
 
+  /**
+   * Handle starting a new conversation with summary context
+   */
+  const handleStartNewConversationWithSummary = async (summary: string) => {
+    try {
+      // Create a new conversation first
+      await handleNewConversation();
+      
+      // Wait a bit for the new conversation to be set
+      setTimeout(() => {
+        setCurrentConversation(prev => {
+          if (!prev) {
+            console.error('No current conversation after creating new one');
+            return null;
+          }
+
+          const aiSummaryMessage: Message = {
+            id: uuidv4(),
+            content: `Here's a summary of our previous discussion: ${summary}`,
+            timestamp: new Date(),
+            sender: 'ai'
+          };
+
+          const userContinuationMessage: Message = {
+            id: uuidv4(),
+            content: "Based on this summary, let's continue our discussion.",
+            timestamp: new Date(),
+            sender: 'user'
+          };
+
+          const newMessages = [aiSummaryMessage, userContinuationMessage];
+
+          // Update the new conversation with these messages
+          const updatedNewConversation = {
+            ...prev,
+            messages: newMessages,
+            updatedAt: new Date(),
+            title: 'Continued Discussion'
+          };
+
+          // Persist these initial messages to the backend
+          if (ws.socket?.connected && !isGuest) {
+            console.log('💾 Saving summary continuation messages to backend');
+            ws.socket.emit('save_conversation', {
+              conversationId: updatedNewConversation.id,
+              messages: newMessages
+            });
+          } else if (!isGuest) {
+            // Fallback: save via REST API if WebSocket is not available
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+            fetch(`${apiUrl}/save-messages`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                conversationId: updatedNewConversation.id,
+                messages: newMessages
+              })
+            }).catch(apiError => {
+              console.error('Failed to save initial summary messages via API:', apiError);
+            });
+          }
+
+          return updatedNewConversation;
+        });
+
+        // Clear the warning state
+        setConversationSummary(null);
+        setShowContextWarning(false);
+        setIsGeneratingSummary(false);
+        
+        console.log('✅ Successfully started new conversation with summary');
+      }, 100); // Small delay to ensure new conversation is set
+      
+    } catch (error) {
+      console.error('Failed to start new conversation with summary:', error);
+      // Clear warning state even on error
+      setShowContextWarning(false);
+      setIsGeneratingSummary(false);
+    }
+  };
   return (
     <div className="flex w-full h-screen bg-gray-50">
       {/* Left Sidebar - Conversations List */}
@@ -682,6 +837,16 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
       {/* Main Chat Area */}
       <main className="flex-1 flex flex-col">
+        {/* Context Warning Banner */}
+        {showContextWarning && (
+          <ConversationContextWarning
+            summary={conversationSummary}
+            onStartNewConversationWithSummary={handleStartNewConversationWithSummary}
+            onDismiss={() => setShowContextWarning(false)}
+            isGeneratingSummary={isGeneratingSummary}
+          />
+        )}
+        
         {currentConversation ? (
           <>
             {/* Chat Header */}

@@ -1,3 +1,4 @@
-export const DEEPSEEK_CONTEXT_WINDOW = 128000; // Tokens for deepseek-reasoner
+export const DEEPSEEK_CONTEXT_WINDOW = 128; // Tokens for deepseek-reasoner
+// export const DEEPSEEK_CONTEXT_WINDOW = 128000; // Tokens for deepseek-reasoner
 export const CONTEXT_OVERFLOW_THRESHOLD = DEEPSEEK_CONTEXT_WINDOW * 0.8; // 80% threshold (102,400 tokens)
 export const SUMMARIZATION_PROMPT = "You are an expert summarizer. Condense the following conversation into a concise, coherent summary of the main topics and key points, suitable for continuing the discussion. Focus on retaining essential context. The summary should be no more than 500 words.";
