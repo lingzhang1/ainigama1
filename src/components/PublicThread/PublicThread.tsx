@@ -7,7 +7,7 @@ import { Textarea } from '../ui/textarea';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { Thread, Question, Answer, Comment } from '../../types';
+import { Thread, Question, Answer, Comment, User } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { usePublicThread } from '../../hooks/useWebSocket';
 import { deepSeekService, ChatMessage } from '../../services/deepseek';
@@ -24,18 +24,18 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [thread, setThread] = useState<Thread | null>(null);
   const [answers, setAnswers] = useState<{ [questionId: string]: Answer[] }>({});
   const [comments, setComments] = useState<{ [answerId: string]: Comment[] }>({});
+  const [users, setUsers] = useState<{ [userId: string]: User }>({});
   const [newAnswer, setNewAnswer] = useState<{ [questionId: string]: string }>({});
   const [newComment, setNewComment] = useState<{ [answerId: string]: string }>({});
   const [newQuestion, setNewQuestion] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAddingQuestion, setIsAddingQuestion] = useState(false);
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [expandedAnswerInputs, setExpandedAnswerInputs] = useState<{ [questionId: string]: boolean }>({});
+  const [commentPanelOpen, setCommentPanelOpen] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  // Sort and UI state
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
-  const [showAddAnswerForm, setShowAddAnswerForm] = useState<{ [questionId: string]: boolean }>({});
-  const [showCommentsModal, setShowCommentsModal] = useState<string | null>(null);
-  
-  // AI streaming state management using refs
+  // AI streaming state management using refs (like PrivateChat)
   const [isAIAnswering, setIsAIAnswering] = useState<{ [questionId: string]: boolean }>({});
   const streamingRefs = React.useRef<{ [questionId: string]: {
     thinking: string;
@@ -46,9 +46,61 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     streamingContainer: HTMLDivElement | null;
   } }>({});
 
-  // WebSocket hook for real-time updates
+  // Function to fetch user info by ID
+  const fetchUserInfo = async (userId: string): Promise<User | null> => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/users/${userId}`);
+      if (response.ok) {
+        const userData = await response.json();
+        return userData;
+      }
+    } catch (error) {
+      console.error('Failed to fetch user info:', error);
+    }
+    return null;
+  };
+
+  // Get current thread ID from state
+  const currentThreadId = state.currentThreadId;
+
+  // Helper function to get user display name
+  const getUserDisplayName = async (userId: string | null): Promise<string> => {
+    if (!userId) return 'Unknown User';
+    
+    // Check if it's the current user
+    if (state.currentUser && userId === state.currentUser.id) {
+      return state.currentUser.name;
+    }
+    
+    // Check if it's the thread creator
+    if (thread && userId === thread.creator.id) {
+      return thread.creator.name;
+    }
+    
+    // Check cached users
+    if (users[userId]) {
+      return users[userId].name;
+    }
+    
+    // Fetch user info if not cached
+    const userInfo = await fetchUserInfo(userId);
+    if (userInfo) {
+      // Cache the user info
+      setUsers(prev => ({
+        ...prev,
+        [userId]: userInfo
+      }));
+      return userInfo.name;
+    }
+    
+    // Fallback to generic name
+    return `User${userId.slice(-4)}`;
+  };
+
+  // WebSocket hooks for real-time updates
   const { addAnswer, addComment } = usePublicThread(
-    state.currentThreadId || '',
+    currentThreadId || '',
     (answer: Answer) => {
       setAnswers(prev => ({
         ...prev,
@@ -69,26 +121,95 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   // Load thread data
   useEffect(() => {
     const loadThread = async () => {
-      if (!state.currentThreadId) return;
-      
+      if (!currentThreadId) {
+        setIsLoading(false);
+        return;
+      }
+
       try {
         setIsLoading(true);
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
         
         // Load thread details
-        const threadResponse = await fetch(`${apiUrl}/threads/${state.currentThreadId}`);
+        const threadResponse = await fetch(`${apiUrl}/threads/${currentThreadId}`);
         if (threadResponse.ok) {
           const threadData = await threadResponse.json();
           setThread(threadData);
         }
-        
-        // Load answers for all questions
-        const answersResponse = await fetch(`${apiUrl}/threads/${state.currentThreadId}/answers`);
+
+        // Load answers for the thread
+        const answersResponse = await fetch(`${apiUrl}/threads/${currentThreadId}/answers`);
+        let answersData = {};
         if (answersResponse.ok) {
-          const answersData = await answersResponse.json();
+          answersData = await answersResponse.json();
           setAnswers(answersData);
         }
+
+        // Load comments for each answer
+        const allAnswers = Object.values(answersData).flat();
+        for (const answer of allAnswers) {
+          try {
+            const commentsResponse = await fetch(`${apiUrl}/answers/${answer.id}/comments`);
+            if (commentsResponse.ok) {
+              const commentsData = await commentsResponse.json();
+              setComments(prev => ({
+                ...prev,
+                [answer.id]: commentsData
+              }));
+            }
+          } catch (error) {
+            console.error('Failed to load comments for answer:', answer.id, error);
+          }
+        }
+
+        // Collect all unique user IDs from answers and comments
+        const userIds = new Set<string>();
         
+        // Add user IDs from answers
+        Object.values(answersData).flat().forEach((answer: any) => {
+          if (answer.userId && !answer.isAI) {
+            userIds.add(answer.userId);
+          }
+        });
+        
+        // Add user IDs from comments
+        Object.values(answersData).flat().forEach(async (answer: any) => {
+          try {
+            const commentsResponse = await fetch(`${apiUrl}/answers/${answer.id}/comments`);
+            if (commentsResponse.ok) {
+              const commentsData = await commentsResponse.json();
+              commentsData.forEach((comment: any) => {
+                if (comment.userId) {
+                  userIds.add(comment.userId);
+                }
+              });
+            }
+          } catch (error) {
+            console.error('Failed to load comments for user collection:', error);
+          }
+        });
+        
+        // Fetch user info for all unique user IDs
+        const userPromises = Array.from(userIds).map(async (userId) => {
+          if (!users[userId] && userId !== state.currentUser?.id && userId !== threadResponse?.creator?.id) {
+            const userInfo = await fetchUserInfo(userId);
+            return { userId, userInfo };
+          }
+          return null;
+        });
+        
+        const userResults = await Promise.all(userPromises);
+        const newUsers: { [key: string]: User } = {};
+        
+        userResults.forEach((result) => {
+          if (result && result.userInfo) {
+            newUsers[result.userId] = result.userInfo;
+          }
+        });
+        
+        if (Object.keys(newUsers).length > 0) {
+          setUsers(prev => ({ ...prev, ...newUsers }));
+        }
       } catch (error) {
         console.error('Failed to load thread:', error);
       } finally {
@@ -97,68 +218,255 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     };
 
     loadThread();
-  }, [state.currentThreadId]);
+  }, [currentThreadId]);
 
-  // Load comments for answers
-  useEffect(() => {
-    const loadComments = async () => {
-      const allAnswers = Object.values(answers).flat();
-      
-      for (const answer of allAnswers) {
-        if (!comments[answer.id]) {
-          try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-            const response = await fetch(`${apiUrl}/answers/${answer.id}/comments`);
-            if (response.ok) {
-              const answerComments = await response.json();
-              setComments(prev => ({
-                ...prev,
-                [answer.id]: answerComments
-              }));
-            }
-          } catch (error) {
-            console.error('Failed to load comments for answer:', answer.id, error);
-          }
+  // Build context for AI with proper multi-user structure
+  const buildThreadContextForAI = (targetQuestionId: string): ChatMessage[] => {
+    if (!thread) return [];
+
+    const messages: ChatMessage[] = [];
+
+    // System message explaining the multi-user thread structure
+    messages.push({
+      role: 'system',
+      content: `You are participating in a public discussion thread where multiple users can ask questions and provide answers. The thread creator can ask multiple questions, and each question can have multiple answers from different users and AI.
+
+Structure:
+- Original User asks questions (Question 1, Question 2, etc.)
+- Multiple users and AI can provide answers to each question
+- You should acknowledge the community context and build upon previous answers when relevant
+- Address your response to the community, not just the original questioner`
+    });
+
+    // Add all questions and their answers in chronological order
+    const sortedQuestions = [...thread.questions].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    let questionNumber = 1;
+    let targetQuestionNumber = 1;
+
+    for (const question of sortedQuestions) {
+      // Add the question
+      messages.push({
+        role: 'user',
+        content: `[Question ${questionNumber} from ${thread.creator.name}]: ${question.content}`
+      });
+
+      if (question.id === targetQuestionId) {
+        targetQuestionNumber = questionNumber;
+      }
+
+      // Add all answers for this question
+      const questionAnswers = answers[question.id] || [];
+      const sortedAnswers = [...questionAnswers].sort((a, b) => 
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      );
+
+      for (const answer of sortedAnswers) {
+        if (answer.isAI) {
+          messages.push({
+            role: 'assistant',
+            content: answer.content
+          });
+        } else {
+          // For user answers, we need to get user info
+          messages.push({
+            role: 'user',
+            content: `[Answer from User${answer.userId?.slice(-4) || 'Unknown'}]: ${answer.content}`
+          });
         }
       }
-    };
 
-    if (Object.keys(answers).length > 0) {
-      loadComments();
+      questionNumber++;
     }
-  }, [answers]);
 
-  const handleAddQuestion = async () => {
-    if (!newQuestion.trim() || !thread || !state.currentUser) return;
+    // Find the target question content
+    const targetQuestion = sortedQuestions.find(q => q.id === targetQuestionId);
+    if (targetQuestion) {
+      messages.push({
+        role: 'user',
+        content: `Now please provide your answer to Question ${targetQuestionNumber}: "${targetQuestion.content}"`
+      });
+    }
+
+    console.log("AI Input Context:", messages);
+
+    return messages;
+  };
+
+  // Handle AI answer generation
+  const handleAskAI = async (questionId: string) => {
+    if (isGuest) return; // Guests can't use AI
+    
+    // Prevent multiple simultaneous AI requests for the same question
+    if (isAIAnswering[questionId]) {
+      console.log('⚠️ AI already answering question:', questionId);
+      return;
+    }
     
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-      const response = await fetch(`${apiUrl}/threads/${thread.id}/questions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          content: newQuestion.trim(),
-          userId: state.currentUser.id
-        })
-      });
+      setIsAIAnswering(prev => ({ ...prev, [questionId]: true }));
       
-      if (response.ok) {
-        const newQuestionData = await response.json();
-        setThread(prev => prev ? {
-          ...prev,
-          questions: [...prev.questions, newQuestionData],
-          questionCount: prev.questionCount + 1
-        } : null);
-        setNewQuestion('');
-      }
+      // Initialize streaming refs for this question
+      streamingRefs.current[questionId] = {
+        thinking: '',
+        content: '',
+        isActive: true,
+        thinkingElement: null,
+        contentElement: null,
+        streamingContainer: null,
+      };
+
+      // Build context for this specific question
+      const contextMessages = buildThreadContextForAI(questionId);
+
+      // Show streaming UI via DOM manipulation
+      const showStreamingUI = (questionId: string) => {
+        const container = streamingRefs.current[questionId]?.streamingContainer;
+        if (container) {
+          container.style.display = 'block';
+        }
+      };
+
+      const hideStreamingUI = (questionId: string) => {
+        const container = streamingRefs.current[questionId]?.streamingContainer;
+        if (container) {
+          container.style.display = 'none';
+        }
+      };
+
+      const updateStreamingDisplay = (questionId: string) => {
+        const refs = streamingRefs.current[questionId];
+        if (!refs) return;
+        
+        showStreamingUI(questionId);
+        if (refs.thinkingElement) {
+          refs.thinkingElement.textContent = refs.thinking;
+        }
+        if (refs.contentElement) {
+          refs.contentElement.textContent = refs.content;
+        }
+        // Auto-scroll to bottom
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      };
+
+      // Stream AI response
+      await deepSeekService.streamChat(contextMessages, {
+        onThinking: (thinking) => {
+          console.log('🧠 PublicThread: Received thinking chunk:', thinking.length, 'chars');
+          const refs = streamingRefs.current[questionId];
+          if (refs && refs.isActive) {
+            refs.thinking += thinking;
+            updateStreamingDisplay(questionId);
+          }
+        },
+        onContent: (content) => {
+          console.log('📝 PublicThread: Received content chunk:', content.length, 'chars');
+          const refs = streamingRefs.current[questionId];
+          if (refs && refs.isActive) {
+            refs.content += content;
+            updateStreamingDisplay(questionId);
+          }
+        },
+        onComplete: async (finalContent) => {
+          console.log('✅ PublicThread: AI stream completed for question:', questionId);
+          
+          // Check if we're still the active request
+          const refs = streamingRefs.current[questionId];
+          if (!refs || !refs.isActive) {
+            console.log('⚠️ PublicThread: AI completion ignored - request was cancelled');
+            return;
+          }
+          
+          // Mark as inactive and hide streaming UI
+          refs.isActive = false;
+          hideStreamingUI(questionId);
+          
+          // Capture the thinking process
+          const finalThinking = refs.thinking;
+          console.log('🧠 PublicThread: Captured thinking for persistence:', finalThinking.length, 'chars');
+          
+          // Create AI answer
+          const aiAnswer: Answer = {
+            id: uuidv4(),
+            content: finalContent,
+            timestamp: new Date(),
+            userId: null,
+            questionId: questionId,
+            isPinned: true,
+            isAI: true,
+            interactionCount: 0,
+            thinking: finalThinking || undefined // Include thinking in the answer object
+          };
+
+          console.log('🎉 AI answer completed for question:', questionId);
+          console.log('🧠 Final thinking length:', finalThinking?.length || 0);
+          console.log('💬 Final content length:', finalContent.length);
+
+          // Add to local state immediately
+          setAnswers(prev => ({
+            ...prev,
+            [questionId]: [...(prev[questionId] || []), aiAnswer]
+          }));
+
+          // Save to backend
+          try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+            await fetch(`${apiUrl}/questions/${questionId}/answers`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                content: finalContent,
+                userId: null,
+                isAI: true,
+                isPinned: true,
+                thinking: finalThinking || undefined
+              })
+            });
+          } catch (error) {
+            console.error('Failed to save AI answer:', error);
+          }
+
+          // Clear streaming state
+          setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
+          
+          // Clean up streaming refs
+          if (streamingRefs.current[questionId]) {
+            delete streamingRefs.current[questionId];
+          }
+        },
+        onError: (error) => {
+          console.error('AI streaming error:', error);
+          
+          // Clean up on error
+          setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
+          hideStreamingUI(questionId);
+          
+          if (streamingRefs.current[questionId]) {
+            streamingRefs.current[questionId].isActive = false;
+            delete streamingRefs.current[questionId];
+          }
+        }
+      });
+
     } catch (error) {
-      console.error('Failed to add question:', error);
+      console.error('Failed to get AI answer:', error);
+      setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
+      
+      if (streamingRefs.current[questionId]) {
+        streamingRefs.current[questionId].isActive = false;
+        delete streamingRefs.current[questionId];
+      }
     }
   };
 
+  // Handle adding user answer
   const handleAddAnswer = async (questionId: string) => {
     const content = newAnswer[questionId]?.trim();
-    if (!content || !state.currentUser) return;
+    if (!content || (!state.currentUser && !isGuest)) return;
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
@@ -167,7 +475,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content,
-          userId: state.currentUser.id,
+          userId: state.currentUser?.id || 'guest',
           isAI: false,
           isPinned: false
         })
@@ -180,150 +488,16 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
           [questionId]: [...(prev[questionId] || []), newAnswerData.answer]
         }));
         setNewAnswer(prev => ({ ...prev, [questionId]: '' }));
-        
-        // Also send via WebSocket for real-time updates
-        addAnswer(questionId, content);
       }
     } catch (error) {
       console.error('Failed to add answer:', error);
     }
   };
 
-  const handleAIAnswer = async (questionId: string) => {
-    if (isAIAnswering[questionId]) return;
-    
-    const question = thread?.questions.find(q => q.id === questionId);
-    if (!question) return;
-
-    // Set AI answering state
-    setIsAIAnswering(prev => ({ ...prev, [questionId]: true }));
-    
-    // Initialize streaming refs for this question
-    streamingRefs.current[questionId] = {
-      thinking: '',
-      content: '',
-      isActive: true,
-      thinkingElement: null,
-      contentElement: null,
-      streamingContainer: null,
-    };
-
-    try {
-      // Prepare context for AI
-      const chatMessages: ChatMessage[] = [
-        {
-          role: 'user',
-          content: question.content
-        }
-      ];
-
-      // Add existing answers as context
-      const existingAnswers = answers[questionId] || [];
-      existingAnswers.forEach(answer => {
-        chatMessages.push({
-          role: 'assistant',
-          content: answer.content
-        });
-      });
-
-      // Show streaming UI
-      const showStreamingUI = (qId: string) => {
-        const container = streamingRefs.current[qId]?.streamingContainer;
-        if (container) {
-          container.style.display = 'block';
-        }
-      };
-
-      const hideStreamingUI = (qId: string) => {
-        const container = streamingRefs.current[qId]?.streamingContainer;
-        if (container) {
-          container.style.display = 'none';
-        }
-      };
-
-      const updateStreamingDisplay = (qId: string) => {
-        const refs = streamingRefs.current[qId];
-        if (!refs) return;
-        
-        showStreamingUI(qId);
-        if (refs.thinkingElement) {
-          refs.thinkingElement.textContent = refs.thinking;
-        }
-        if (refs.contentElement) {
-          refs.contentElement.textContent = refs.content;
-        }
-      };
-
-      // Stream AI response
-      await deepSeekService.streamChat(chatMessages, {
-        onThinking: (thinking) => {
-          if (streamingRefs.current[questionId]?.isActive) {
-            streamingRefs.current[questionId].thinking += thinking;
-            updateStreamingDisplay(questionId);
-          }
-        },
-        onContent: (content) => {
-          if (streamingRefs.current[questionId]?.isActive) {
-            streamingRefs.current[questionId].content += content;
-            updateStreamingDisplay(questionId);
-          }
-        },
-        onComplete: async (fullContent) => {
-          if (!streamingRefs.current[questionId]?.isActive) return;
-          
-          streamingRefs.current[questionId].isActive = false;
-          hideStreamingUI(questionId);
-          
-          const finalThinking = streamingRefs.current[questionId].thinking;
-          
-          // Save AI answer to backend
-          try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-            const response = await fetch(`${apiUrl}/questions/${questionId}/answers`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                content: fullContent,
-                userId: null,
-                isAI: true,
-                isPinned: true,
-                thinking: finalThinking || undefined
-              })
-            });
-
-            if (response.ok) {
-              const newAnswerData = await response.json();
-              setAnswers(prev => ({
-                ...prev,
-                [questionId]: [...(prev[questionId] || []), newAnswerData.answer]
-              }));
-              
-              // Also send via WebSocket
-              addAnswer(questionId, fullContent);
-            }
-          } catch (error) {
-            console.error('Failed to save AI answer:', error);
-          }
-          
-          setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
-        },
-        onError: (error) => {
-          console.error('AI answer error:', error);
-          streamingRefs.current[questionId].isActive = false;
-          hideStreamingUI(questionId);
-          setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
-        }
-      });
-
-    } catch (error) {
-      console.error('Failed to get AI answer:', error);
-      setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
-    }
-  };
-
+  // Handle adding comment
   const handleAddComment = async (answerId: string) => {
     const content = newComment[answerId]?.trim();
-    if (!content || !state.currentUser) return;
+    if (!content || (!state.currentUser && !isGuest)) return;
 
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
@@ -332,7 +506,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content,
-          userId: state.currentUser.id
+          userId: state.currentUser?.id || 'guest'
         })
       });
 
@@ -343,12 +517,42 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
           [answerId]: [...(prev[answerId] || []), newCommentData]
         }));
         setNewComment(prev => ({ ...prev, [answerId]: '' }));
-        
-        // Also send via WebSocket
-        addComment(answerId, content);
       }
     } catch (error) {
       console.error('Failed to add comment:', error);
+    }
+  };
+
+  // Handle adding new question (only thread creator can do this)
+  const handleAddQuestion = async () => {
+    if (!newQuestion.trim() || !state.currentUser || !thread) return;
+    if (state.currentUser.id !== thread.creator.id) return;
+
+    try {
+      setIsAddingQuestion(true);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/threads/${thread.id}/questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: newQuestion.trim(),
+          userId: state.currentUser.id
+        })
+      });
+
+      if (response.ok) {
+        const newQuestionData = await response.json();
+        setThread(prev => prev ? {
+          ...prev,
+          questions: [...prev.questions, newQuestionData],
+          questionCount: prev.questionCount + 1
+        } : null);
+        setNewQuestion('');
+      }
+    } catch (error) {
+      console.error('Failed to add question:', error);
+    } finally {
+      setIsAddingQuestion(false);
     }
   };
 
@@ -361,177 +565,68 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
       return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
     });
   };
-
-  // Sort answers: pinned first, then by timestamp
-  const getSortedAnswers = (questionId: string) => {
-    const questionAnswers = answers[questionId] || [];
-    return [...questionAnswers].sort((a, b) => {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-    });
-  };
-
-  if (!thread) {
+  if (isLoading) {
     return (
-      <div className="flex w-full h-screen bg-gray-50">
-        <aside className="w-64 h-full bg-white border-r flex flex-col">
-          <div className="p-4">
-            <Button 
-              onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
-              className="w-full bg-gray-800 hover:bg-gray-700 text-white h-auto py-3 flex items-center"
-            >
-              <ArrowLeft className="w-4 h-4 mr-3" />
-              Back to Forum
-            </Button>
-          </div>
-
-          <div className="flex-1 px-3">
-            <div className="mb-6">
-              <div className="text-xs text-gray-500 font-normal tracking-[0.60px] mb-2 px-3">
-                Navigation
-              </div>
-              <nav className="space-y-1">
-                <div 
-                  className="flex items-center px-3 py-2 rounded-md text-base text-gray-700 hover:bg-gray-50 cursor-pointer"
-                  onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
-                >
-                  <ArrowLeft className="w-5 h-4 mr-3" />
-                  Back to Forum
-                </div>
-              </nav>
-            </div>
-          </div>
-
-          {/* User Profile */}
-          <div className="border-t p-4">
-            {isGuest ? (
-              <div className="text-center">
-                <div className="text-sm text-gray-600 mb-2">Guest Mode</div>
-                <Button
-                  onClick={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
-                  size="sm"
-                  className="w-full"
-                >
-                  Sign In
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center">
-                <Avatar className="w-8 h-8">
-                  <AvatarImage src={state.currentUser?.avatar} alt={state.currentUser?.name} />
-                  <AvatarFallback>{state.currentUser?.name?.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="ml-3 flex-1">
-                  <div className="text-sm font-normal text-gray-800">
-                    {state.currentUser?.name}
-                  </div>
-                  <button 
-                    onClick={onLogout}
-                    className="text-xs text-gray-500 hover:text-gray-700"
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </aside>
-        
-        <main className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-800 mb-2">No thread selected</h3>
-            <p className="text-gray-500 mb-4">Select a thread from the forum to view the discussion</p>
-            <Button onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}>
-              Back to Forum
-            </Button>
-          </div>
-        </main>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading thread...</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="flex w-full h-screen bg-gray-50">
-      {/* Left Sidebar */}
-      <aside className="w-64 h-full bg-white border-r flex flex-col">
-        <div className="p-4">
-          <Button 
-            onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
-            className="w-full bg-gray-800 hover:bg-gray-700 text-white h-auto py-3 flex items-center"
-          >
-            <ArrowLeft className="w-4 h-4 mr-3" />
+  if (!thread) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-800 mb-2">Thread not found</h3>
+          <p className="text-gray-500 mb-4">The thread you're looking for doesn't exist or has been removed.</p>
+          <Button onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}>
             Back to Forum
           </Button>
         </div>
+      </div>
+    );
+  }
 
-        <div className="flex-1 px-3">
-          <div className="mb-6">
-            <div className="text-xs text-gray-500 font-normal tracking-[0.60px] mb-2 px-3">
-              Navigation
-            </div>
-            <nav className="space-y-1">
-              <div 
-                className="flex items-center px-3 py-2 rounded-md text-base text-gray-700 hover:bg-gray-50 cursor-pointer"
-                onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
-              >
-                <ArrowLeft className="w-5 h-4 mr-3" />
-                Back to Forum
-              </div>
-            </nav>
-          </div>
-        </div>
-
-        {/* User Profile */}
-        <div className="border-t p-4">
-          {isGuest ? (
-            <div className="text-center">
-              <div className="text-sm text-gray-600 mb-2">Guest Mode</div>
-              <Button
-                onClick={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
-                size="sm"
-                className="w-full"
-              >
-                Sign In
-              </Button>
-            </div>
-          ) : (
-            <div className="flex items-center">
-              <Avatar className="w-8 h-8">
-                <AvatarImage src={state.currentUser?.avatar} alt={state.currentUser?.name} />
-                <AvatarFallback>{state.currentUser?.name?.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <div className="ml-3 flex-1">
-                <div className="text-sm font-normal text-gray-800">
-                  {state.currentUser?.name}
-                </div>
-                <button 
-                  onClick={onLogout}
-                  className="text-xs text-gray-500 hover:text-gray-700"
-                >
-                  Sign Out
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </aside>
-
-      {/* Main Content - Public Thread Discussion */}
+  const sortedQuestions = getSortedQuestions();
+  return (
+    <div className="flex w-full h-screen bg-gray-50 relative">
+      {/* Main Content */}
       <main className="flex-1 flex flex-col">
         {/* Header */}
         <header className="bg-white border-b p-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <h1 className="text-xl font-normal text-gray-800 mr-4">{thread.title}</h1>
-              {thread.category && (
-                <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs">
-                  {thread.category}
-                </Badge>
-              )}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Forum
+              </Button>
+              <div>
+                <h1 className="text-xl font-semibold text-gray-800">{thread.title}</h1>
+                <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                  <div className="flex items-center">
+                    <Avatar className="w-5 h-5 mr-2">
+                      <AvatarImage src={thread.creator.avatar} />
+                      <AvatarFallback>{thread.creator.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span>{thread.creator.name}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Clock className="w-4 h-4 mr-1" />
+                    <span>{formatDistanceToNow(thread.createdAt)} ago</span>
+                  </div>
+                  <Badge variant="secondary">{thread.category}</Badge>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center space-x-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -541,144 +636,91 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                 <ArrowUpDown className="w-4 h-4" />
                 {sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}
               </Button>
+              {isGuest ? (
+                <Button
+                  onClick={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
+                  size="sm"
+                >
+                  Sign In to Participate
+                </Button>
+              ) : (
+                <Button onClick={onLogout} variant="ghost" size="sm">
+                  Sign Out
+                </Button>
+              )}
             </div>
-          </div>
-          
-          <div className="flex items-center text-sm text-gray-500 space-x-4">
-            <div className="flex items-center">
-              <Avatar className="w-5 h-5 mr-2">
-                <AvatarImage src={thread.creator.avatar} alt={thread.creator.name} />
-                <AvatarFallback>{thread.creator.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <span>{thread.creator.name}</span>
-            </div>
-            <div className="flex items-center">
-              <Clock className="w-3.5 h-3.5 mr-2" />
-              <span>Created {formatDistanceToNow(thread.createdAt)} ago</span>
-            </div>
-            <span>{thread.questionCount} questions</span>
-            <span>{thread.answerCount} answers</span>
           </div>
         </header>
 
-        {/* Questions and Answers */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-8">
-          {getSortedQuestions().map((question, questionIndex) => (
-            <div key={question.id} className="space-y-4">
-              {/* Question */}
+        {/* Thread Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-4xl mx-auto space-y-8">
+            {/* Add New Question (Only for thread creator) - Show at top if newest first */}
+            {state.currentUser && state.currentUser.id === thread.creator.id && sortOrder === 'newest' && (
               <Card className="border border-gray-200">
                 <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <h3 className="text-lg font-medium text-gray-800">
-                      Question {questionIndex + 1}
-                    </h3>
-                    <div className="text-sm text-gray-500">
-                      {formatDistanceToNow(question.timestamp)} ago
-                    </div>
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Plus className="w-5 h-5 text-gray-500" />
+                    <h4 className="font-medium text-gray-700">Add Another Question</h4>
                   </div>
-                  <div className="text-gray-700 whitespace-pre-wrap mb-4">
-                    {question.content}
-                  </div>
-                  
-                  {/* AI Answer Button */}
-                  {!isGuest && (
-                    <div className="flex items-center space-x-2">
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="What else would you like to ask the community?"
+                      value={newQuestion}
+                      onChange={(e) => setNewQuestion(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                    <div className="flex justify-end">
                       <Button
-                        onClick={() => handleAIAnswer(question.id)}
-                        disabled={isAIAnswering[question.id]}
-                        size="sm"
-                        variant="outline"
-                        className="flex items-center gap-2"
+                        onClick={handleAddQuestion}
+                        disabled={!newQuestion.trim() || isAddingQuestion}
                       >
-                        {isAIAnswering[question.id] ? (
+                        {isAddingQuestion ? (
                           <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            AI is thinking...
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Adding...
                           </>
                         ) : (
-                          <>
-                            <Brain className="w-4 h-4" />
-                            Get AI Answer
-                          </>
+                          'Add Question'
                         )}
                       </Button>
                     </div>
-                  )}
+                  </div>
                 </CardContent>
               </Card>
+            )}
 
-              {/* Streaming AI Response */}
-              <div 
-                ref={(el) => {
-                  if (streamingRefs.current[question.id]) {
-                    streamingRefs.current[question.id].streamingContainer = el;
-                  }
-                }}
-                className="space-y-4"
-                style={{ display: 'none' }}
-              >
-                <Card className="border border-blue-200 bg-blue-50">
-                  <CardContent className="p-4">
-                    <div className="flex items-center mb-3">
-                      <Brain className="w-5 h-5 text-blue-600 mr-2" />
-                      <span className="font-medium text-blue-800">AI is thinking...</span>
-                      <div className="ml-2">
-                        <div className="flex space-x-1">
-                          <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                          <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                          <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            {/* Questions and Answers */}
+            {sortedQuestions.map((question, questionIndex) => (
+              <Card key={question.id} className="border border-gray-200">
+                <CardContent className="p-6">
+                  {/* Question */}
+                  <div className="mb-6">
+                    <div className="flex items-start space-x-3">
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage src={thread.creator.avatar} />
+                        <AvatarFallback>{thread.creator.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <span className="font-medium text-gray-800">{thread.creator.name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            Question {sortOrder === 'newest' ? sortedQuestions.length - questionIndex : questionIndex + 1}
+                          </Badge>
+                          <span className="text-xs text-gray-500">
+                            {formatDistanceToNow(question.timestamp)} ago
+                          </span>
                         </div>
+                        <p className="text-gray-800 leading-relaxed">{question.content}</p>
                       </div>
                     </div>
-                    <div className="text-sm text-blue-700 whitespace-pre-wrap font-mono bg-blue-100 p-3 rounded text-xs">
-                      <div 
-                        ref={(el) => {
-                          if (streamingRefs.current[question.id]) {
-                            streamingRefs.current[question.id].thinkingElement = el;
-                          }
-                        }}
-                        className="min-h-[1em]"
-                      />
-                      <span className="animate-pulse text-blue-500">▋</span>
-                    </div>
-                  </CardContent>
-                </Card>
+                  </div>
 
-                <Card className="border border-gray-200">
-                  <CardContent className="p-4">
-                    <div className="flex items-center mb-3">
-                      <MessageSquare className="w-5 h-5 text-gray-600 mr-2" />
-                      <span className="font-medium text-gray-800">AI Response</span>
-                      <div className="ml-2">
-                        <div className="flex space-x-1">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                          <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                          <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-gray-700 whitespace-pre-wrap">
-                      <div 
-                        ref={(el) => {
-                          if (streamingRefs.current[question.id]) {
-                            streamingRefs.current[question.id].contentElement = el;
-                          }
-                        }}
-                        className="min-h-[1em]"
-                      />
-                      <span className="animate-pulse text-blue-500">▋</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Answers */}
-              <div className="space-y-4">
-                {getSortedAnswers(question.id).map((answer, answerIndex) => (
-                  <Card key={answer.id} className={`border ${answer.isPinned ? 'border-blue-200 bg-blue-50' : 'border-gray-200'}`}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center space-x-2">
+                  {/* Answers */}
+                  <div className="space-y-4">
+                    {(answers[question.id] || []).map((answer) => (
+                      <div key={answer.id} className="border-l-2 border-gray-100 pl-4">
+                        <div className="flex items-start space-x-3">
                           <Avatar className="w-6 h-6">
                             {answer.isAI ? (
                               <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
@@ -691,227 +733,357 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                               </>
                             )}
                           </Avatar>
-                          <span className="text-sm font-medium text-gray-800">
-                            {answer.isAI ? 'AI Assistant' : 'User'}
-                          </span>
-                          {answer.isPinned && (
-                            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
-                              Pinned
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {formatDistanceToNow(answer.timestamp)} ago
-                        </div>
-                      </div>
-
-                      {/* Show AI thinking process if available */}
-                      {answer.isAI && answer.thinking && (
-                        <Card className="mb-4 bg-gray-50 border-gray-200">
-                          <CardContent className="p-3">
-                            <div className="flex items-center mb-2">
-                              <Brain className="w-4 h-4 text-gray-500 mr-2" />
-                              <span className="text-xs font-medium text-gray-600">
-                                AI Thought Process
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2 mb-2">
+                              <span className="font-medium text-gray-700">
+                                {answer.isAI ? 'AI Assistant' : users[answer.userId] ? users[answer.userId].name : (state.currentUser && answer.userId === state.currentUser.id) ? state.currentUser.name : (thread && answer.userId === thread.creator.id) ? thread.creator.name : `User${answer.userId?.slice(-4) || 'Unknown'}`}
+                              </span>
+                              {answer.isPinned && (
+                                <Badge variant="secondary" className="text-xs">Pinned</Badge>
+                              )}
+                              <span className="text-xs text-gray-500">
+                                {formatDistanceToNow(answer.timestamp)} ago
                               </span>
                             </div>
-                            <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
-                              {answer.thinking}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      <div className="text-gray-700 whitespace-pre-wrap mb-4">
-                        <ReactMarkdown>{answer.content}</ReactMarkdown>
-                      </div>
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setShowCommentsModal(answer.id)}
-                            className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                            <span>{(comments[answer.id] || []).length} comments</span>
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              {/* Add Answer */}
-              {!isGuest && (
-                <div>
-                  {!showAddAnswerForm[question.id] ? (
-                    <Button
-                      onClick={() => setShowAddAnswerForm(prev => ({ ...prev, [question.id]: true }))}
-                      variant="outline"
-                      className="w-full flex items-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Your Answer
-                    </Button>
-                  ) : (
-                    <Card className="border border-gray-200">
-                      <CardContent className="p-4">
-                        <div className="flex items-start space-x-3">
-                          <Avatar className="w-6 h-6">
-                            <AvatarImage src={state.currentUser?.avatar} />
-                            <AvatarFallback>{state.currentUser?.name?.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 space-y-3">
-                            <Textarea
-                              placeholder="Share your thoughts and insights..."
-                              value={newAnswer[question.id] || ''}
-                              onChange={(e) => setNewAnswer(prev => ({ ...prev, [question.id]: e.target.value }))}
-                              className="min-h-[80px]"
-                            />
-                            <div className="flex justify-end gap-2">
+                            
+                            {/* Show AI thinking process if available */}
+                            {answer.isAI && answer.thinking && (
+                              <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                                <div className="flex items-center mb-2">
+                                  <Brain className="w-4 h-4 text-gray-500 mr-2" />
+                                  <span className="text-xs font-medium text-gray-600">
+                                    AI Thought Process
+                                  </span>
+                                </div>
+                                <div className="text-xs text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded">
+                                  {answer.thinking}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Render AI responses with markdown formatting */}
+                            {answer.isAI ? (
+                              <div className="text-gray-700 leading-relaxed mb-3 prose prose-sm max-w-none">
+                                <ReactMarkdown
+                                  components={{
+                                    h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0" {...props} />,
+                                    h2: ({node, ...props}) => <h2 className="text-base font-semibold mb-2 mt-3 first:mt-0" {...props} />,
+                                    h3: ({node, ...props}) => <h3 className="text-sm font-medium mb-2 mt-3 first:mt-0" {...props} />,
+                                    p: ({node, ...props}) => <p className="mb-3 last:mb-0" {...props} />,
+                                    ul: ({node, ...props}) => <ul className="list-disc list-inside mb-3 space-y-1" {...props} />,
+                                    ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-3 space-y-1" {...props} />,
+                                    li: ({node, ...props}) => <li className="ml-2" {...props} />,
+                                    code: ({node, inline, ...props}) => 
+                                      inline ? (
+                                        <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-gray-800" {...props} />
+                                      ) : (
+                                        <code className="block bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />
+                                      ),
+                                    pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />,
+                                    blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-3" {...props} />,
+                                    strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                                    em: ({node, ...props}) => <em className="italic" {...props} />,
+                                    a: ({node, ...props}) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />
+                                  }}
+                                >
+                                  {answer.content}
+                                </ReactMarkdown>
+                              </div>
+                            ) : (
+                              <p className="text-gray-700 leading-relaxed mb-3">{answer.content}</p>
+                            )}
+                            
+                            {/* Comment Icon */}
+                            <div className="flex items-center space-x-2">
                               <Button
-                                onClick={() => setShowAddAnswerForm(prev => ({ ...prev, [question.id]: false }))}
-                                variant="outline"
+                                variant="ghost"
                                 size="sm"
+                                onClick={() => setCommentPanelOpen(answer.id)}
+                                className="flex items-center space-x-1 text-gray-500 hover:text-gray-700"
                               >
-                                Cancel
-                              </Button>
-                              <Button
-                                onClick={() => {
-                                  handleAddAnswer(question.id);
-                                  setShowAddAnswerForm(prev => ({ ...prev, [question.id]: false }));
-                                }}
-                                disabled={!newAnswer[question.id]?.trim()}
-                                className="flex items-center gap-2"
-                                size="sm"
-                              >
-                                <Send className="w-4 h-4" />
-                                Add Answer
+                                <MessageCircle className="w-4 h-4" />
+                                <span className="text-xs">
+                                  {(comments[answer.id] || []).length} comments
+                                </span>
                               </Button>
                             </div>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* Add New Question (only for thread creator) */}
-          {!isGuest && state.currentUser?.id === thread.creator.id && (
-            <Card className="border border-gray-200">
-              <CardContent className="p-4">
-                <h4 className="font-medium text-gray-800 mb-3">Add Follow-up Question</h4>
-                <div className="space-y-3">
-                  <Textarea
-                    placeholder="What else would you like to ask the community?"
-                    value={newQuestion}
-                    onChange={(e) => setNewQuestion(e.target.value)}
-                    className="min-h-[80px]"
-                  />
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={handleAddQuestion}
-                      disabled={!newQuestion.trim()}
-                      className="flex items-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Add Question
-                    </Button>
+                      </div>
+                    ))}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
 
-          {/* Scroll anchor */}
-          <div ref={messagesEndRef} style={{ height: '1px' }} />
-        </div>
-      </main>
-
-      {/* Comments Modal */}
-      {showCommentsModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-2xl mx-4 bg-white max-h-[80vh] overflow-hidden">
-            <CardContent className="p-0">
-              {/* Header */}
-              <div className="flex items-center justify-between p-6 border-b">
-                <h3 className="text-xl font-semibold text-gray-900">Comments</h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setShowCommentsModal(null)}
-                  className="h-8 w-8 p-0"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Comments List */}
-              <div className="p-6 max-h-96 overflow-y-auto space-y-4">
-                {(comments[showCommentsModal] || []).map((comment) => (
-                  <div key={comment.id} className="flex items-start space-x-3">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src="/img-5.svg" />
-                      <AvatarFallback>U</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="text-sm text-gray-700 mb-1">{comment.content}</div>
-                      <div className="text-xs text-gray-500">
-                        {formatDistanceToNow(comment.timestamp)} ago
+                  {/* AI Streaming Response - Always present, controlled via DOM */}
+                  <div 
+                    ref={(el) => { 
+                      if (streamingRefs.current[question.id]) {
+                        streamingRefs.current[question.id].streamingContainer = el;
+                      }
+                    }}
+                    className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+                    style={{ display: 'none' }}
+                  >
+                    <div className="flex items-center space-x-2 mb-3">
+                      <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">AI</span>
+                      </div>
+                      <span className="font-medium text-blue-800">AI is responding...</span>
+                      <div className="flex space-x-1">
+                        <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                        <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                        <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                       </div>
                     </div>
-                  </div>
-                ))}
-                
-                {(comments[showCommentsModal] || []).length === 0 && (
-                  <div className="text-center text-gray-500 py-8">
-                    No comments yet. Be the first to comment!
-                  </div>
-                )}
-              </div>
+                    
+                    {/* Thinking Process */}
+                    <div className="mb-3">
+                      <div className="flex items-center mb-2">
+                        <Brain className="w-4 h-4 text-gray-500 mr-2" />
+                        <span className="text-xs font-medium text-gray-600">Thought Process</span>
+                        <div className="ml-2">
+                          <div className="flex space-x-1">
+                            <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded">
+                        <div 
+                          ref={(el) => { 
+                            if (streamingRefs.current[question.id]) {
+                              streamingRefs.current[question.id].thinkingElement = el;
+                            }
+                          }}
+                          className="min-h-[1em]"
+                        />
+                        <span className="animate-pulse text-blue-500">▋</span>
+                      </div>
+                    </div>
 
-              {/* Add Comment */}
-              {!isGuest && (
-                <div className="border-t p-6">
-                  <div className="flex items-start space-x-3">
-                    <Avatar className="w-8 h-8">
-                      <AvatarImage src={state.currentUser?.avatar} />
-                      <AvatarFallback>{state.currentUser?.name?.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 flex space-x-2">
-                      <Input
-                        placeholder="Add a comment..."
-                        value={newComment[showCommentsModal] || ''}
-                        onChange={(e) => setNewComment(prev => ({ ...prev, [showCommentsModal!]: e.target.value }))}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            handleAddComment(showCommentsModal!);
+                    {/* Content */}
+                    <div className="text-sm text-gray-800 whitespace-pre-wrap">
+                      <div className="flex items-center mb-2">
+                        <span className="text-xs font-medium text-gray-600">Response</span>
+                        <div className="ml-2">
+                          <div className="flex space-x-1">
+                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                          </div>
+                        </div>
+                      </div>
+                      <div 
+                        ref={(el) => { 
+                          if (streamingRefs.current[question.id]) {
+                            streamingRefs.current[question.id].contentElement = el;
                           }
                         }}
-                        className="flex-1"
+                        className="min-h-[1em] text-gray-800"
                       />
+                      <span className="animate-pulse text-blue-500">▋</span>
+                    </div>
+                  </div>
+
+                  {/* Add Answer Section */}
+                  <div className="mt-6 pt-4 border-t border-gray-100">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-medium text-gray-700">Add Your Answer</h4>
                       <Button
-                        onClick={() => handleAddComment(showCommentsModal!)}
-                        disabled={!newComment[showCommentsModal]?.trim()}
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleAskAI(question.id)}
+                        disabled={isAIAnswering[question.id] || isGuest}
+                        className="flex items-center space-x-2"
                       >
-                        <Send className="w-4 h-4" />
+                        {isAIAnswering[question.id] ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Brain className="w-4 h-4" />
+                        )}
+                        <span>{isAIAnswering[question.id] ? 'AI Thinking...' : isGuest ? 'Sign In to Ask AI' : 'Ask AI'}</span>
+                      </Button>
+                    </div>
+                    
+                    {!isGuest && (
+                      <div className="space-y-3">
+                        {!expandedAnswerInputs[question.id] ? (
+                          <Button
+                            variant="outline"
+                            onClick={() => setExpandedAnswerInputs(prev => ({ ...prev, [question.id]: true }))}
+                            className="w-full justify-start text-gray-500"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Write an answer...
+                          </Button>
+                        ) : (
+                          <>
+                            <Textarea
+                              placeholder="Share your thoughts and insights..."
+                              value={newAnswer[question.id] || ''}
+                              onChange={(e) => setNewAnswer(prev => ({
+                                ...prev,
+                                [question.id]: e.target.value
+                              }))}
+                              className="min-h-[100px]"
+                              autoFocus
+                            />
+                            <div className="flex justify-end space-x-2">
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setExpandedAnswerInputs(prev => ({ ...prev, [question.id]: false }));
+                                  setNewAnswer(prev => ({ ...prev, [question.id]: '' }));
+                                }}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={() => handleAddAnswer(question.id)}
+                                disabled={!newAnswer[question.id]?.trim()}
+                              >
+                                Post Answer
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+
+            {/* Add New Question (Only for thread creator) - Show at bottom if oldest first */}
+            {state.currentUser && state.currentUser.id === thread.creator.id && sortOrder === 'oldest' && (
+              <Card className="border border-gray-200">
+                <CardContent className="p-6">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <Plus className="w-5 h-5 text-gray-500" />
+                    <h4 className="font-medium text-gray-700">Add Another Question</h4>
+                  </div>
+                  <div className="space-y-3">
+                    <Textarea
+                      placeholder="What else would you like to ask the community?"
+                      value={newQuestion}
+                      onChange={(e) => setNewQuestion(e.target.value)}
+                      className="min-h-[100px]"
+                    />
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={handleAddQuestion}
+                        disabled={!newQuestion.trim() || isAddingQuestion}
+                      >
+                        {isAddingQuestion ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                            Adding...
+                          </>
+                        ) : (
+                          'Add Question'
+                        )}
                       </Button>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+
+        {/* Scroll anchor */}
+        <div ref={messagesEndRef} />
+      </main>
+
+      {/* Comment Side Panel */}
+      {commentPanelOpen && (
+        <div className="fixed inset-y-0 right-0 w-96 bg-white border-l shadow-lg z-50 flex flex-col">
+          {/* Panel Header */}
+          <div className="flex items-center justify-between p-4 border-b">
+            <h3 className="font-medium text-gray-800">Comments</h3>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setCommentPanelOpen(null)}
+              className="h-8 w-8 p-0"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Comments List */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3">
+            {(comments[commentPanelOpen] || []).map((comment) => (
+              <div key={comment.id} className="bg-gray-50 p-3 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Avatar className="w-5 h-5">
+                    <AvatarImage src="/img-5.svg" />
+                    <AvatarFallback>U</AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium text-gray-700 text-sm">
+                    {users[comment.userId] ? users[comment.userId].name : (state.currentUser && comment.userId === state.currentUser.id) ? state.currentUser.name : (thread && comment.userId === thread.creator.id) ? thread.creator.name : `User${comment.userId?.slice(-4) || 'Unknown'}`}
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {formatDistanceToNow(comment.timestamp)} ago
+                  </span>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+                <p className="text-gray-700 text-sm leading-relaxed">{comment.content}</p>
+              </div>
+            ))}
+            
+            {(comments[commentPanelOpen] || []).length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                <MessageCircle className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No comments yet</p>
+                <p className="text-xs">Be the first to comment!</p>
+              </div>
+            )}
+          </div>
+
+          {/* Add Comment Input */}
+          {!isGuest && commentPanelOpen && (
+            <div className="border-t p-4">
+              <div className="flex space-x-2">
+                <Input
+                  placeholder="Add a comment..."
+                  value={newComment[commentPanelOpen] || ''}
+                  onChange={(e) => setNewComment(prev => ({
+                    ...prev,
+                    [commentPanelOpen]: e.target.value
+                  }))}
+                  className="flex-1"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleAddComment(commentPanelOpen);
+                    }
+                  }}
+                />
+                <Button
+                  size="sm"
+                  onClick={() => handleAddComment(commentPanelOpen)}
+                  disabled={!newComment[commentPanelOpen]?.trim()}
+                  className="px-3"
+                >
+                  <Send className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {isGuest && (
+            <div className="border-t p-4 text-center">
+              <p className="text-sm text-gray-500 mb-2">Sign in to add comments</p>
+              <Button
+                size="sm"
+                onClick={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
+              >
+                Sign In
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 };
-
-export default PublicThread;

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Lock, Globe, MessageSquare, X, Settings, Brain, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Message, PrivateConversation } from '../../types';
 import { useAppContext } from '../../context/AppContext';
+import { usePrivateChat, useWebSocket } from '../../hooks/useWebSocket';
 import { deepSeekService, ChatMessage } from '../../services/deepseek';
 import { formatDistanceToNow } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
@@ -25,6 +25,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [showThinking, setShowThinking] = useState(true);
   const [newMessage, setNewMessage] = useState('');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isProcessingRef = useRef(false);
+  
   // Use refs for streaming to completely avoid state updates
   const streamingRef = useRef<{
     thinking: string;
@@ -45,22 +48,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   });
   
   const [isStreaming, setIsStreaming] = useState(false);
-  
-  // Processing lock to prevent multiple simultaneous AI requests
-  const isProcessingRef = useRef(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    // Use setTimeout to ensure DOM is updated before scrolling
-    const timer = setTimeout(() => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }, [currentConversation?.messages]);
+  // Initialize WebSocket connection for persistence only
+  const ws = useWebSocket(state.currentUser?.id || '');
 
   // Load conversations from backend on component mount
   useEffect(() => {
@@ -265,11 +255,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           streamingRef.current.contentElement.textContent = streamingRef.current.content;
         }
         // Auto-scroll
-        if (messagesEndRef.current) {
-          setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-          }, 50);
-        }
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
       };
 
       console.log('🤖 Starting AI stream...');
@@ -277,12 +263,14 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       // Stream AI response using DeepSeek service
       await deepSeekService.streamChat(chatMessages, {
         onThinking: (thinking) => {
+          console.log('🧠 Received thinking chunk:', thinking.length, 'chars');
           if (streamingRef.current.isActive) {
             streamingRef.current.thinking += thinking;
             updateStreamingDisplay();
           }
         },
         onContent: (content) => {
+          console.log('📝 Received content chunk:', content.length, 'chars');
           if (streamingRef.current.isActive) {
             // Mark as typing when content starts streaming
             if (!streamingRef.current.isTyping) {
@@ -384,9 +372,17 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               console.error('Failed to save title to backend:', titleSaveError);
             }
           }
-          
-          // Save messages to backend via REST API (skip for guests)
-          if (!isGuest) {
+          // Send both messages to backend for persistence in correct order
+          if (ws.socket?.connected && !isGuest) {
+            console.log('Sending messages to backend in order:', [userMessage, aiMessage]);
+            ws.socket.emit('save_conversation', {
+              conversationId: currentConversation.id,
+              messages: [userMessage, aiMessage] // Ensure correct order: user first, then AI
+            });
+          } else {
+            console.warn('WebSocket not connected, attempting to save via API');
+            // Fallback: save via REST API if WebSocket is not available (skip for guests)
+            if (!isGuest) {
             try {
               const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
               await fetch(`${apiUrl}/save-messages`, {
@@ -399,9 +395,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                   messages: [userMessage, aiMessage] // Ensure correct order: user first, then AI
                 })
               });
-              console.log('Messages saved via REST API');
+              console.log('Messages saved via REST API fallback');
             } catch (apiError) {
               console.error('Failed to save messages via API:', apiError);
+            }
             }
           }
         },
@@ -770,7 +767,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             </header>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4" id="messages-container">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
               {currentConversation.messages.map((message, index) => (
                 <div
                   key={message.id}
@@ -879,14 +876,13 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </div>
               )}
 
-              {/* Scroll anchor - positioned at the very bottom */}
-              <div ref={messagesEndRef} style={{ height: '1px' }} />
+              <div ref={messagesEndRef} />
             </div>
 
             {/* Streaming AI Response - Always present, controlled via DOM */}
             <div 
               ref={(el) => { streamingRef.current.streamingContainer = el; }}
-              className="flex justify-start px-4 pb-4"
+              className="flex justify-start px-4"
               style={{ display: 'none' }}
             >
               <div className="flex items-start space-x-3 max-w-[70%]">
@@ -951,33 +947,18 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               </div>
             </div>
 
+            <div ref={messagesEndRef} />
+
             {/* Message Input */}
             <div className="bg-white border-t p-4">
               <div className="flex space-x-2">
-                <Textarea
+                <Input
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Ask DeepSeek anything..."
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   className="flex-1"
                   disabled={streamingRef.current.isTyping}
-                  rows={1}
-                  style={{
-                    minHeight: '40px',
-                    maxHeight: '120px',
-                    resize: 'none',
-                    overflow: 'hidden'
-                  }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = 'auto';
-                    target.style.height = Math.min(target.scrollHeight, 120) + 'px';
-                  }}
                 />
                 <Button onClick={handleSendMessage} disabled={!newMessage.trim() || streamingRef.current.isTyping}>
                   <Send className="w-4 h-4" />
