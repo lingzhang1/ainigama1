@@ -874,7 +874,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
             {/* Streaming AI Response - Always present, controlled via DOM */}
             <div 
-            </div>
               ref={(el) => { streamingRef.current.streamingContainer = el; }}
               className="flex justify-start px-4"
               style={{ display: 'none' }}
