@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Send, Lock, Globe, MessageSquare, X, Settings, Brain, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
+import { Input } from '../ui/input';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Message, PrivateConversation } from '../../types';
@@ -51,9 +52,14 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
+    // Use setTimeout to ensure DOM is updated before scrolling
+    const timer = setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [currentConversation?.messages]);
 
   // Load conversations from backend on component mount
@@ -260,7 +266,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         }
         // Auto-scroll
         if (messagesEndRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+          }, 50);
         }
       };
 
@@ -762,7 +770,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             </header>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4" id="messages-container">
               {currentConversation.messages.map((message, index) => (
                 <div
                   key={message.id}
@@ -871,16 +879,14 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </div>
               )}
 
-              <div ref={messagesEndRef} />
+              {/* Scroll anchor - positioned at the very bottom */}
+              <div ref={messagesEndRef} style={{ height: '1px' }} />
             </div>
-
-            {/* Scroll anchor for auto-scroll */}
-            <div ref={messagesEndRef} />
 
             {/* Streaming AI Response - Always present, controlled via DOM */}
             <div 
               ref={(el) => { streamingRef.current.streamingContainer = el; }}
-              className="flex justify-start px-4"
+              className="flex justify-start px-4 pb-4"
               style={{ display: 'none' }}
             >
               <div className="flex items-start space-x-3 max-w-[70%]">
@@ -944,8 +950,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </div>
               </div>
             </div>
-
-            <div ref={messagesEndRef} />
 
             {/* Message Input */}
             <div className="bg-white border-t p-4">
