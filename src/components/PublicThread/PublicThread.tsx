@@ -1,1021 +1,982 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Lock, Globe, MessageSquare, X, Settings, Brain, Loader2, Trash2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import { ArrowLeft, MessageSquare, Users, Clock, Brain, Loader2, Plus, ArrowUpDown, MessageCircle, X, Send, ChevronDown, Lock, Globe } from 'lucide-react';
 import { Button } from '../ui/button';
-import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
+import { Textarea } from '../ui/textarea';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Message, PrivateConversation } from '../../types';
+import { Badge } from '../ui/badge';
+import { Thread, Question, Answer, Comment } from '../../types';
 import { useAppContext } from '../../context/AppContext';
+import { usePublicThread } from '../../hooks/useWebSocket';
 import { deepSeekService, ChatMessage } from '../../services/deepseek';
 import { formatDistanceToNow } from 'date-fns';
 import { v4 as uuidv4 } from 'uuid';
 
-interface PrivateChatProps {
+interface PublicThreadProps {
   onLogout: () => void;
 }
 
-export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
+const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
   const isGuest = state.isGuestMode && !state.isAuthenticated;
-  const [conversations, setConversations] = useState<PrivateConversation[]>([]);
-  const [currentConversation, setCurrentConversation] = useState<PrivateConversation | null>(
-    null
-  );
-  const [showPublishModal, setShowPublishModal] = useState(false);
-  const [showThinking, setShowThinking] = useState(true);
-  const [newMessage, setNewMessage] = useState('');
-  // Use refs for streaming to completely avoid state updates
-  const streamingRef = useRef<{
+  const [thread, setThread] = useState<Thread | null>(null);
+  const [answers, setAnswers] = useState<{ [questionId: string]: Answer[] }>({});
+  const [comments, setComments] = useState<{ [answerId: string]: Comment[] }>({});
+  const [newAnswer, setNewAnswer] = useState<{ [questionId: string]: string }>({});
+  const [newComment, setNewComment] = useState<{ [answerId: string]: string }>({});
+  const [newQuestion, setNewQuestion] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [commentPanelOpen, setCommentPanelOpen] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // New thread modal state
+  const [showNewThreadModal, setShowNewThreadModal] = useState(false);
+  const [showNewThreadDropdown, setShowNewThreadDropdown] = useState(false);
+  const [newThreadData, setNewThreadData] = useState({
+    title: '',
+    category: 'Relationships',
+    question: ''
+  });
+  const [isCreatingThread, setIsCreatingThread] = useState(false);
+  
+  // AI streaming state management using refs (like PrivateChat)
+  const [isAIAnswering, setIsAIAnswering] = useState<{ [questionId: string]: boolean }>({});
+  const streamingRefs = React.useRef<{ [questionId: string]: {
     thinking: string;
     content: string;
     isActive: boolean;
-    isTyping: boolean;
     thinkingElement: HTMLDivElement | null;
     contentElement: HTMLDivElement | null;
     streamingContainer: HTMLDivElement | null;
-  }>({
-    thinking: '',
-    content: '',
-    isActive: false,
-    isTyping: false,
-    thinkingElement: null,
-    contentElement: null,
-    streamingContainer: null,
-  });
-  
-  const [isStreaming, setIsStreaming] = useState(false);
-  
-  // Processing lock to prevent multiple simultaneous AI requests
-  const isProcessingRef = useRef(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  } }>({});
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    // Use setTimeout to ensure DOM is updated before scrolling
-    const timer = setTimeout(() => {
-      if (messagesEndRef.current) {
-        messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-      }
-    }, 100);
-    
-    return () => clearTimeout(timer);
-  }, [currentConversation?.messages]);
-
-  // Load conversations from backend on component mount
-  useEffect(() => {
-    // Skip loading conversations for guest users
-    if (isGuest) {
-      return;
+  // WebSocket hook for real-time updates
+  const { addAnswer, addComment } = usePublicThread(
+    state.currentThreadId || '',
+    (answer: Answer) => {
+      setAnswers(prev => ({
+        ...prev,
+        [answer.questionId]: [...(prev[answer.questionId] || []), answer]
+      }));
+    },
+    (comment: Comment) => {
+      setComments(prev => ({
+        ...prev,
+        [comment.answerId]: [...(prev[comment.answerId] || []), comment]
+      }));
+    },
+    (updatedThread: Thread) => {
+      setThread(updatedThread);
     }
-    
-    const loadConversations = async () => {
-      if (!state.currentUser?.id) return;
+  );
+
+  // Load thread data
+  useEffect(() => {
+    const loadThread = async () => {
+      if (!state.currentThreadId) return;
       
       try {
+        setIsLoading(true);
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-        console.log('Loading conversations from:', apiUrl);
         
-        const response = await fetch(`${apiUrl}/user-conversations/${state.currentUser.id}`);
-        
-        if (response.ok) {
-          const loadedConversations = await response.json();
-          const conversationsArray = Array.isArray(loadedConversations) ? loadedConversations : loadedConversations.conversations || [];
-          // Sort by updatedAt descending (latest first)
-          const sortedConversations = conversationsArray.sort((a, b) => 
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          );
-          setConversations(sortedConversations);
-          
-          // Set first conversation as current if none selected
-          if (sortedConversations.length > 0 && !currentConversation) {
-            setCurrentConversation(sortedConversations[0]);
-          }
-        } else {
-          console.error('Failed to load conversations:', response.status, response.statusText);
+        // Load thread details
+        const threadResponse = await fetch(`${apiUrl}/threads/${state.currentThreadId}`);
+        if (threadResponse.ok) {
+          const threadData = await threadResponse.json();
+          setThread(threadData);
         }
+        
+        // Load answers for all questions
+        const answersResponse = await fetch(`${apiUrl}/threads/${state.currentThreadId}/answers`);
+        if (answersResponse.ok) {
+          const answersData = await answersResponse.json();
+          setAnswers(answersData);
+        }
+        
       } catch (error) {
-        console.error('Failed to load conversations:', error);
+        console.error('Failed to load thread:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    loadConversations();
-  }, [state.currentUser?.id, isGuest]);
+    loadThread();
+  }, [state.currentThreadId]);
 
-  // Cleanup on unmount
+  // Load comments for answers
   useEffect(() => {
-    return () => {
-      // Cleanup any pending operations
-    };
-  }, []);
-
-  // Load messages for current conversation
-  useEffect(() => {
-    // Skip loading messages for guest users
-    if (isGuest) {
-      return;
-    }
-    
-    const loadMessages = async () => {
-      if (!currentConversation?.id) {
-        console.log('❌ No current conversation ID, skipping message load');
-        return;
-      }
+    const loadComments = async () => {
+      const allAnswers = Object.values(answers).flat();
       
-      console.log('🔄 Loading messages for conversation:', currentConversation.id);
-      
-      try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-        console.log('Loading messages from:', apiUrl);
-        
-        const response = await fetch(`${apiUrl}/messages/${currentConversation.id}`);
-        
-        if (response.ok) {
-          const messages = await response.json();
-          console.log('📥 Received messages for conversation:', currentConversation.id, {
-            messageCount: messages.length,
-            messageIds: messages.map(m => m.id)
-          });
-          
-          setCurrentConversation(prev => {
-            if (!prev || prev.id !== currentConversation.id) {
-              console.log('⚠️ Conversation changed during message load, ignoring');
-              return prev;
+      for (const answer of allAnswers) {
+        if (!comments[answer.id]) {
+          try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+            const response = await fetch(`${apiUrl}/answers/${answer.id}/comments`);
+            if (response.ok) {
+              const answerComments = await response.json();
+              setComments(prev => ({
+                ...prev,
+                [answer.id]: answerComments
+              }));
             }
-            return {
-              ...prev,
-              messages
-            };
-          });
-        } else {
-          console.error('Failed to load messages:', response.status, response.statusText);
+          } catch (error) {
+            console.error('Failed to load comments for answer:', answer.id, error);
+          }
         }
-      } catch (error) {
-        console.error('Failed to load messages:', error);
       }
     };
 
-    loadMessages();
-  }, [currentConversation?.id, isGuest]); // Keep dependency on ID only
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [currentConversation?.messages]);
-
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !currentConversation) return;
-
-    // CRITICAL: Check if already processing to prevent double execution
-    if (isProcessingRef.current) {
-      console.log('⚠️ Already processing a message, ignoring new request');
-      return;
+    if (Object.keys(answers).length > 0) {
+      loadComments();
     }
+  }, [answers]);
 
-    // Prevent multiple simultaneous requests - ENHANCED CHECK
-    if (isProcessingRef.current) {
-      console.log('⚠️ Already processing a message, ignoring new request. Current state:', isProcessingRef.current);
-      return;
+  const handleNewThread = () => {
+    dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
+  };
+
+  const handleAddQuestion = async () => {
+    if (!newQuestion.trim() || !thread || !state.currentUser) return;
+    
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/threads/${thread.id}/questions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: newQuestion.trim(),
+          userId: state.currentUser.id
+        })
+      });
+      
+      if (response.ok) {
+        const newQuestionData = await response.json();
+        setThread(prev => prev ? {
+          ...prev,
+          questions: [...prev.questions, newQuestionData],
+          questionCount: prev.questionCount + 1
+        } : null);
+        setNewQuestion('');
+      }
+    } catch (error) {
+      console.error('Failed to add question:', error);
     }
+  };
 
-    console.log('🚀 Starting message processing... Setting processing lock.');
-    
-    // Mark as processing IMMEDIATELY to prevent race conditions
-    isProcessingRef.current = true;
-    
-    // For guest users, create a temporary conversation if none exists
-    let workingConversation = currentConversation;
-    if (isGuest && !workingConversation) {
-      workingConversation = {
-        id: `guest-${Date.now()}`,
-        userId: 'guest',
-        messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        title: 'Guest Conversation'
-      };
-      setCurrentConversation(workingConversation);
+  const handleAddAnswer = async (questionId: string) => {
+    const content = newAnswer[questionId]?.trim();
+    if (!content || !state.currentUser) return;
+
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/questions/${questionId}/answers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content,
+          userId: state.currentUser.id,
+          isAI: false,
+          isPinned: false
+        })
+      });
+
+      if (response.ok) {
+        const newAnswerData = await response.json();
+        setAnswers(prev => ({
+          ...prev,
+          [questionId]: [...(prev[questionId] || []), newAnswerData.answer]
+        }));
+        setNewAnswer(prev => ({ ...prev, [questionId]: '' }));
+        
+        // Also send via WebSocket for real-time updates
+        addAnswer(questionId, content);
+      }
+    } catch (error) {
+      console.error('Failed to add answer:', error);
     }
+  };
 
-    const userMessage: Message = {
-      id: uuidv4(),
-      content: newMessage.trim(),
-      timestamp: new Date(),
-      sender: 'user'
-    };
-
-    // Add user message to conversation immediately
-    const updatedConversation = {
-      ...workingConversation,
-      messages: [...workingConversation.messages, userMessage],
-      updatedAt: new Date()
-    };
-    setCurrentConversation(updatedConversation);
-    setConversations(prev => 
-      prev.map(c => c.id === updatedConversation.id ? updatedConversation : c)
-    );
-
-    // Generate title for new conversations (first message)
-    let shouldGenerateTitle = false;
-    if (!workingConversation.title && workingConversation.messages.length === 0) {
-      shouldGenerateTitle = true;
-    }
-    setNewMessage('');
+  const handleAIAnswer = async (questionId: string) => {
+    if (isAIAnswering[questionId]) return;
     
-    console.log('🔒 Processing locked, starting AI stream...');
+    const question = thread?.questions.find(q => q.id === questionId);
+    if (!question) return;
+
+    // Set AI answering state
+    setIsAIAnswering(prev => ({ ...prev, [questionId]: true }));
     
-    // Reset streaming refs and show streaming UI
-    streamingRef.current = {
+    // Initialize streaming refs for this question
+    streamingRefs.current[questionId] = {
       thinking: '',
       content: '',
       isActive: true,
-      isTyping: false, // Start as false, will be set to true when content starts
       thinkingElement: null,
       contentElement: null,
       streamingContainer: null,
     };
 
-    // Show streaming container via DOM manipulation
-    const showStreamingUI = () => {
-      if (streamingRef.current.streamingContainer) {
-        streamingRef.current.streamingContainer.style.display = 'block';
-      }
-    };
-
-    // Hide streaming container via DOM manipulation
-    const hideStreamingUI = () => {
-      if (streamingRef.current.streamingContainer) {
-        streamingRef.current.streamingContainer.style.display = 'none';
-      }
-    };
-
     try {
-      // Prepare conversation history for AI
-      const chatMessages: ChatMessage[] = updatedConversation.messages.map(msg => ({
-        role: msg.sender === 'user' ? 'user' : 'assistant',
-        content: msg.content
-      }));
+      // Prepare context for AI
+      const chatMessages: ChatMessage[] = [
+        {
+          role: 'user',
+          content: question.content
+        }
+      ];
 
-      // Direct DOM manipulation for streaming display
-      const updateStreamingDisplay = () => {
-        showStreamingUI();
-        if (streamingRef.current.thinkingElement) {
-          streamingRef.current.thinkingElement.textContent = streamingRef.current.thinking;
-        }
-        if (streamingRef.current.contentElement) {
-          streamingRef.current.contentElement.textContent = streamingRef.current.content;
-        }
-        // Auto-scroll
-        if (messagesEndRef.current) {
-          setTimeout(() => {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-          }, 50);
+      // Add existing answers as context
+      const existingAnswers = answers[questionId] || [];
+      existingAnswers.forEach(answer => {
+        chatMessages.push({
+          role: 'assistant',
+          content: answer.content
+        });
+      });
+
+      // Show streaming UI
+      const showStreamingUI = (qId: string) => {
+        const container = streamingRefs.current[qId]?.streamingContainer;
+        if (container) {
+          container.style.display = 'block';
         }
       };
 
-      console.log('🤖 Starting AI stream...');
-      
-      // Stream AI response using DeepSeek service
+      const hideStreamingUI = (qId: string) => {
+        const container = streamingRefs.current[qId]?.streamingContainer;
+        if (container) {
+          container.style.display = 'none';
+        }
+      };
+
+      const updateStreamingDisplay = (qId: string) => {
+        const refs = streamingRefs.current[qId];
+        if (!refs) return;
+        
+        showStreamingUI(qId);
+        if (refs.thinkingElement) {
+          refs.thinkingElement.textContent = refs.thinking;
+        }
+        if (refs.contentElement) {
+          refs.contentElement.textContent = refs.content;
+        }
+      };
+
+      // Stream AI response
       await deepSeekService.streamChat(chatMessages, {
         onThinking: (thinking) => {
-          if (streamingRef.current.isActive) {
-            streamingRef.current.thinking += thinking;
-            updateStreamingDisplay();
+          if (streamingRefs.current[questionId]?.isActive) {
+            streamingRefs.current[questionId].thinking += thinking;
+            updateStreamingDisplay(questionId);
           }
         },
         onContent: (content) => {
-          if (streamingRef.current.isActive) {
-            // Mark as typing when content starts streaming
-            if (!streamingRef.current.isTyping) {
-              streamingRef.current.isTyping = true;
-              console.log('🎯 Content streaming started, showing typing indicator');
-            }
-            streamingRef.current.content += content;
-            updateStreamingDisplay();
+          if (streamingRefs.current[questionId]?.isActive) {
+            streamingRefs.current[questionId].content += content;
+            updateStreamingDisplay(questionId);
           }
         },
         onComplete: async (fullContent) => {
-          console.log('✅ AI stream completed');
+          if (!streamingRefs.current[questionId]?.isActive) return;
           
-          // Check if we're still the active request - CRITICAL CHECK
-          if (!isProcessingRef.current) {
-            console.log('⚠️ Request was cancelled or already completed, ignoring completion');
-            return;
-          }
+          streamingRefs.current[questionId].isActive = false;
+          hideStreamingUI(questionId);
           
-          // Mark streaming as inactive FIRST
-          isProcessingRef.current = false;
-          console.log('🔓 Processing unlocked in onComplete');
-          streamingRef.current.isActive = false;
-          streamingRef.current.isTyping = false;
+          const finalThinking = streamingRefs.current[questionId].thinking;
           
-          // Hide streaming UI
-          hideStreamingUI();
-          
-          // Ensure we capture the thinking process
-          const finalThinking = streamingRef.current.thinking;
-          console.log('Captured thinking for persistence:', finalThinking); // Debug log
-          
-          const aiMessage: Message = {
-            id: uuidv4(),
-            content: fullContent,
-            timestamp: new Date(),
-            sender: 'ai',
-            thinking: finalThinking || undefined
-          };
+          // Save AI answer to backend
+          try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+            const response = await fetch(`${apiUrl}/questions/${questionId}/answers`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                content: fullContent,
+                userId: null,
+                isAI: true,
+                isPinned: true,
+                thinking: finalThinking || undefined
+              })
+            });
 
-          console.log('AI message with thinking:', aiMessage); // Debug log
-
-          // Generate title if this is the first message
-          let generatedTitle = currentConversation.title;
-          if (shouldGenerateTitle) {
-            try {
-              const titleMessages: ChatMessage[] = [
-                {
-                  role: 'user',
-                  content: `Summarize this question into a short, descriptive title (max 6 words): "${userMessage.content}"`
-                }
-              ];
+            if (response.ok) {
+              const newAnswerData = await response.json();
+              setAnswers(prev => ({
+                ...prev,
+                [questionId]: [...(prev[questionId] || []), newAnswerData.answer]
+              }));
               
-              generatedTitle = await deepSeekService.generateResponse(titleMessages);
-              generatedTitle = generatedTitle.replace(/['"]/g, '').trim();
-              
-              // Limit title length
-              if (generatedTitle.length > 50) {
-                generatedTitle = generatedTitle.substring(0, 47) + '...';
-              }
-              
-              console.log('Generated title:', generatedTitle);
-            } catch (titleError) {
-              console.error('Failed to generate title:', titleError);
-              // Fallback: use first few words of user message
-              generatedTitle = userMessage.content.split(' ').slice(0, 6).join(' ');
-              if (generatedTitle.length > 50) {
-                generatedTitle = generatedTitle.substring(0, 47) + '...';
-              }
+              // Also send via WebSocket
+              addAnswer(questionId, fullContent);
             }
-          }
-          // Add AI message to conversation
-          const finalConversation = {
-            ...updatedConversation,
-            messages: [...updatedConversation.messages, aiMessage],
-            title: generatedTitle,
-            updatedAt: new Date()
-          };
-          
-          setCurrentConversation(finalConversation);
-          setConversations(prev => 
-            isGuest ? [finalConversation] : prev.map(c => c.id === finalConversation.id ? finalConversation : c)
-              .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-          );
-
-          // Save title to backend if generated
-          if (shouldGenerateTitle && generatedTitle) {
-            try {
-              const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-              await fetch(`${apiUrl}/conversations/${currentConversation.id}/title`, {
-                method: 'PUT',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ title: generatedTitle })
-              });
-              console.log('Title saved to backend:', generatedTitle);
-            } catch (titleSaveError) {
-              console.error('Failed to save title to backend:', titleSaveError);
-            }
+          } catch (error) {
+            console.error('Failed to save AI answer:', error);
           }
           
-          // Save messages to backend via REST API (skip for guests)
-          if (!isGuest) {
-            try {
-              const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-              await fetch(`${apiUrl}/save-messages`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  conversationId: currentConversation.id,
-                  messages: [userMessage, aiMessage] // Ensure correct order: user first, then AI
-                })
-              });
-              console.log('Messages saved via REST API');
-            } catch (apiError) {
-              console.error('Failed to save messages via API:', apiError);
-            }
-          }
+          setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
         },
         onError: (error) => {
-          console.error('AI streaming error:', error);
-          
-          // Only unlock if we're still the active request
-          if (isProcessingRef.current) {
-            isProcessingRef.current = false;
-            console.log('🔓 Processing unlocked in onError');
-          }
-          
-          streamingRef.current.isActive = false;
-          streamingRef.current.isTyping = false;
-          
-          // Hide streaming UI
-          hideStreamingUI();
-          
-          // Show error message
-          const errorMessage: Message = {
-            id: uuidv4(),
-            content: `Sorry, I encountered an error: ${error.message}`,
-            timestamp: new Date(),
-            sender: 'ai'
-          };
-
-          const errorConversation = {
-            ...updatedConversation,
-            messages: [...updatedConversation.messages, errorMessage],
-            updatedAt: new Date()
-          };
-          
-          setCurrentConversation(errorConversation);
-          setConversations(prev => 
-            prev.map(c => c.id === errorConversation.id ? errorConversation : c)
-          );
+          console.error('AI answer error:', error);
+          streamingRefs.current[questionId].isActive = false;
+          hideStreamingUI(questionId);
+          setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
         }
       });
 
     } catch (error) {
-      console.error('Failed to send message:', error);
-      
-      // Only unlock if we're still the active request
-      if (isProcessingRef.current) {
-        isProcessingRef.current = false;
-        console.log('🔓 Processing unlocked in catch block');
-      }
-      
-      streamingRef.current.isTyping = false;
-      hideStreamingUI();
+      console.error('Failed to get AI answer:', error);
+      setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
     }
   };
 
-  const handleNewConversation = async () => {
-    // For guest users, create a temporary conversation
-    if (isGuest) {
-      const guestConversation: PrivateConversation = {
-        id: `guest-${Date.now()}`,
-        userId: 'guest',
-        messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        title: 'Guest Conversation'
-      };
-      setCurrentConversation(guestConversation);
-      setConversations([guestConversation]);
-      return;
-    }
-    
-    if (!state.currentUser?.id) return;
-    
+  const handleAddComment = async (answerId: string) => {
+    const content = newComment[answerId]?.trim();
+    if (!content || !state.currentUser) return;
+
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-      const response = await fetch(`${apiUrl}/new-conversation`, {
+      const response = await fetch(`${apiUrl}/answers/${answerId}/comments`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: state.currentUser.id,
-          title: null
+          content,
+          userId: state.currentUser.id
         })
       });
-      
+
       if (response.ok) {
-        const newConversation = await response.json();
-        setConversations(prev => [newConversation, ...prev].sort((a, b) => 
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        ));
-        setCurrentConversation(newConversation);
+        const newCommentData = await response.json();
+        setComments(prev => ({
+          ...prev,
+          [answerId]: [...(prev[answerId] || []), newCommentData]
+        }));
+        setNewComment(prev => ({ ...prev, [answerId]: '' }));
+        
+        // Also send via WebSocket
+        addComment(answerId, content);
       }
     } catch (error) {
-      console.error('Failed to create conversation:', error);
+      console.error('Failed to add comment:', error);
     }
   };
 
-  const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
-    // Guest users can't delete conversations (they're not persisted anyway)
-    if (isGuest) {
+  // Handle creating new public thread
+  const handleCreatePublicThread = async () => {
+    if (!newThreadData.title.trim() || !newThreadData.question.trim() || !state.currentUser) {
       return;
     }
-    
-    e.stopPropagation(); // Prevent conversation selection when clicking delete
-    
-    if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
-      return;
-    }
-    
+
     try {
+      setIsCreatingThread(true);
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-      const response = await fetch(`${apiUrl}/conversations/${conversationId}`, {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        }
-      });
       
-      if (response.ok) {
-        // Remove from conversations list
-        setConversations(prev => prev.filter(c => c.id !== conversationId));
-        
-        // If this was the current conversation, clear it
-        if (currentConversation?.id === conversationId) {
-          setCurrentConversation(null);
-        }
-        
-        console.log('✅ Conversation deleted:', conversationId);
-      } else {
-        console.error('Failed to delete conversation:', response.statusText);
-        alert('Failed to delete conversation. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error deleting conversation:', error);
-      alert('Failed to delete conversation. Please try again.');
-    }
-  };
-
-  const handleMakePublic = () => {
-    // Redirect guest users to login
-    if (isGuest) {
-      dispatch({ type: 'SET_GUEST_MODE', payload: false });
-      return;
-    }
-    
-    setShowPublishModal(true);
-  };
-
-  const handlePublish = () => {
-    if (currentConversation) {
-      handlePublishConversation();
-    }
-  };
-
-  const handlePublishConversation = async () => {
-    // This should not be called for guest users, but add safety check
-    if (isGuest) {
-      return;
-    }
-    
-    if (!currentConversation || !state.currentUser) return;
-    
-    try {
-      // Extract the first user message as the main question
-      const userMessages = currentConversation.messages.filter(m => m.sender === 'user');
-      const aiMessages = currentConversation.messages.filter(m => m.sender === 'ai');
-      
-      if (userMessages.length === 0) {
-        console.error('No user messages to publish');
-        return;
-      }
-
-      // Create thread data
       const threadData = {
-        title: currentConversation.title || userMessages[0].content.substring(0, 100) + '...',
+        title: newThreadData.title.trim(),
         creatorId: state.currentUser.id,
-        category: 'General',
-        questions: userMessages.map((userMsg, index) => ({
-          id: userMsg.id,
-          content: userMsg.content,
-          userId: state.currentUser!.id,
-          timestamp: userMsg.timestamp
-        })),
-        initialAnswers: aiMessages.map((aiMsg, index) => {
-          // Find the corresponding user message for this AI response
-          const correspondingUserMsg = userMessages[index];
-          return {
-            id: aiMsg.id,
-            questionId: correspondingUserMsg?.id || userMessages[0].id,
-            content: aiMsg.content,
-            isAI: true,
-            isPinned: true,
-            thinking: aiMsg.thinking || undefined
-          };
-        })
+        category: newThreadData.category,
+        questions: [{
+          id: uuidv4(),
+          content: newThreadData.question.trim(),
+          userId: state.currentUser.id,
+          timestamp: new Date().toISOString()
+        }],
+        initialAnswers: []
       };
 
-      // Call API to create public thread
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-      console.log('Creating public thread at:', apiUrl);
-      
       const response = await fetch(`${apiUrl}/threads`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(threadData)
       });
 
       if (response.ok) {
         const newThread = await response.json();
-        console.log('✅ Successfully published thread:', newThread.id);
         
         // Update app state
         dispatch({ type: 'ADD_THREAD', payload: newThread });
         dispatch({ type: 'SET_CURRENT_THREAD', payload: newThread.id });
-        dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
         
-        setShowPublishModal(false);
+        // Reset modal state
+        setShowNewThreadModal(false);
+        setNewThreadData({ title: '', category: 'Relationships', question: '' });
+        
+        // Refresh the current view to show the new thread
+        window.location.reload();
       } else {
-        console.error('Failed to publish thread:', response.statusText);
-        const errorText = await response.text();
-        console.error('Error details:', errorText);
+        console.error('Failed to create thread:', response.statusText);
       }
     } catch (error) {
-      console.error('Error publishing conversation:', error);
+      console.error('Error creating thread:', error);
+    } finally {
+      setIsCreatingThread(false);
     }
   };
 
+  // Sort questions based on timestamp
+  const getSortedQuestions = () => {
+    if (!thread) return [];
+    return [...thread.questions].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+  };
+
+  // Sort answers: pinned first, then by timestamp
+  const getSortedAnswers = (questionId: string) => {
+    const questionAnswers = answers[questionId] || [];
+    return [...questionAnswers].sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+    });
+  };
+
+  if (!thread) {
+    return (
+      <div className="flex w-full h-screen bg-gray-50">
+        <aside className="w-64 h-full bg-white border-r flex flex-col">
+          <div className="p-4">
+            <div className="relative">
+              <Button 
+                onClick={() => {
+                  console.log('New Thread button clicked (no thread), current state:', showNewThreadDropdown);
+                  setShowNewThreadDropdown(!showNewThreadDropdown);
+                }}
+                className="w-full bg-gray-800 hover:bg-gray-700 text-white h-auto py-3 flex items-center justify-between"
+              >
+                <div className="flex items-center">
+                  <Plus className="w-4 h-4 mr-3" />
+                  New Thread
+                </div>
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+              
+              {/* Dropdown Menu */}
+              {showNewThreadDropdown && (
+                <>
+                  {console.log('Rendering dropdown menu (no thread)')}
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                    <button
+                      onClick={() => {
+                        handleNewThread();
+                        setShowNewThreadDropdown(false);
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center border-b border-gray-100"
+                    >
+                      <Lock className="w-4 h-4 mr-3 text-gray-500" />
+                      <div>
+                        <div className="font-medium text-gray-800">Private Chat</div>
+                        <div className="text-xs text-gray-500">Start with AI, publish later</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (isGuest) {
+                          dispatch({ type: 'SET_GUEST_MODE', payload: false });
+                        } else {
+                          setShowNewThreadModal(true);
+                        }
+                        setShowNewThreadDropdown(false);
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center"
+                      disabled={isGuest}
+                    >
+                      <Globe className="w-4 h-4 mr-3 text-gray-500" />
+                      <div>
+                        <div className="font-medium text-gray-800">Public Thread</div>
+                        <div className="text-xs text-gray-500">Start discussion directly</div>
+                      </div>
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </aside>
+        
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-800 mb-2">No thread selected</h3>
+            <p className="text-gray-500 mb-4">Select a thread from the forum to view the discussion</p>
+            <Button onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}>
+              Back to Forum
+            </Button>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex w-full h-screen bg-gray-50">
-      {/* Left Sidebar - Conversations List */}
-      <aside className="w-80 h-full bg-white border-r flex flex-col">
-        <div className="p-4 border-b">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-              <Lock className="w-5 h-5 mr-2" />
-              Private Chat
-              {isGuest && (
-                <span className="ml-2 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                  Guest Mode
-                </span>
-              )}
-            </h2>
-            <Button
-              onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
-              variant="ghost"
-              size="sm"
-              title="Go to Forum"
+      {/* Left Sidebar */}
+      <aside className="w-64 h-full bg-white border-r flex flex-col">
+        <div className="p-4">
+          <div className="relative">
+            <Button 
+              onClick={() => {
+                console.log('New Thread button clicked, current state:', showNewThreadDropdown);
+                setShowNewThreadDropdown(!showNewThreadDropdown);
+              }}
+              className="w-full bg-gray-800 hover:bg-gray-700 text-white h-auto py-3 flex items-center justify-between"
             >
-              <Globe className="w-4 h-4" />
+              <div className="flex items-center">
+                <Plus className="w-4 h-4 mr-3" />
+                New Thread
+              </div>
+              <ChevronDown className="w-4 h-4" />
             </Button>
-            {!isGuest && (
-            <Button
-              onClick={onLogout}
-              variant="ghost"
-              size="sm"
-              title="Sign Out"
-              className="text-gray-500 hover:text-gray-700"
-            >
-              Sign Out
-            </Button>
+            
+            {/* Dropdown Menu */}
+            {showNewThreadDropdown && (
+              <>
+                {console.log('Rendering dropdown menu')}
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                  <button
+                    onClick={() => {
+                      handleNewThread();
+                      setShowNewThreadDropdown(false);
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center border-b border-gray-100"
+                  >
+                    <Lock className="w-4 h-4 mr-3 text-gray-500" />
+                    <div>
+                      <div className="font-medium text-gray-800">Private Chat</div>
+                      <div className="text-xs text-gray-500">Start with AI, publish later</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (isGuest) {
+                        dispatch({ type: 'SET_GUEST_MODE', payload: false });
+                      } else {
+                        setShowNewThreadModal(true);
+                      }
+                      setShowNewThreadDropdown(false);
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center"
+                    disabled={isGuest}
+                  >
+                    <Globe className="w-4 h-4 mr-3 text-gray-500" />
+                    <div>
+                      <div className="font-medium text-gray-800">Public Thread</div>
+                      <div className="text-xs text-gray-500">Start discussion directly</div>
+                    </div>
+                  </button>
+                </div>
+              </>
             )}
-            {isGuest && (
+          </div>
+        </div>
+
+        <div className="flex-1 px-3">
+          <div className="mb-6">
+            <div className="text-xs text-gray-500 font-normal tracking-[0.60px] mb-2 px-3">
+              Navigation
+            </div>
+            <nav className="space-y-1">
+              <div 
+                className="flex items-center px-3 py-2 rounded-md text-base text-gray-700 hover:bg-gray-50 cursor-pointer"
+                onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
+              >
+                <ArrowLeft className="w-5 h-4 mr-3" />
+                Back to Forum
+              </div>
+              <div 
+                className="flex items-center px-3 py-2 rounded-md text-base text-gray-700 hover:bg-gray-50 cursor-pointer"
+                onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'private' })}
+              >
+                <MessageSquare className="w-5 h-4 mr-3" />
+                My Threads
+              </div>
+            </nav>
+          </div>
+        </div>
+
+        {/* User Profile */}
+        <div className="border-t p-4">
+          {isGuest ? (
+            <div className="text-center">
+              <div className="text-sm text-gray-600 mb-2">Guest Mode</div>
               <Button
                 onClick={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
-                variant="ghost"
                 size="sm"
-                title="Sign In"
-                className="text-gray-500 hover:text-gray-700"
+                className="w-full"
               >
                 Sign In
               </Button>
-            )}
-          </div>
-          <Button onClick={handleNewConversation} className="w-full">
-            <MessageSquare className="w-4 h-4 mr-2" />
-            New Conversation
-          </Button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto">
-          {isGuest && (
-            <div className="p-4 bg-yellow-50 border-b border-yellow-200">
-              <p className="text-sm text-yellow-800">
-                <strong>Guest Mode:</strong> Your conversations won't be saved. Sign in to keep your chat history.
-              </p>
             </div>
-          )}
-          {conversations.map((conversation) => (
-            <div
-              key={conversation.id}
-              className={`p-4 border-b cursor-pointer hover:bg-gray-50 group relative ${
-                currentConversation?.id === conversation.id ? 'bg-blue-50 border-blue-200' : ''
-              }`}
-              onClick={() => {
-                // Always set the conversation, even if it's the same one
-                // This ensures the UI refreshes properly
-                if (currentConversation?.id !== conversation.id) {
-                  setCurrentConversation(conversation);
-                } else {
-                  // If clicking the same conversation, force a refresh
-                  setCurrentConversation(null);
-                  setTimeout(() => setCurrentConversation(conversation), 0);
-                }
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-800 mb-1 truncate">
-                    {conversation.title || 'New Conversation'}
-                  </div>
-                  <div className="text-xs text-gray-400">
-                    {formatDistanceToNow(conversation.updatedAt)} ago
-                  </div>
+          ) : (
+            <div className="flex items-center">
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={state.currentUser?.avatar} alt={state.currentUser?.name} />
+                <AvatarFallback>{state.currentUser?.name?.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="ml-3 flex-1">
+                <div className="text-sm font-normal text-gray-800">
+                  {state.currentUser?.name}
                 </div>
-                {!isGuest && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
-                  onClick={(e) => handleDeleteConversation(conversation.id, e)}
-                  title="Delete conversation"
+                <button 
+                  onClick={onLogout}
+                  className="text-xs text-gray-500 hover:text-gray-700"
                 >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-                )}
+                  Sign Out
+                </button>
               </div>
             </div>
-          ))}
+          )}
         </div>
       </aside>
 
-      {/* Main Chat Area */}
+      {/* Main Content */}
       <main className="flex-1 flex flex-col">
-        {currentConversation ? (
-          <>
-            {/* Chat Header */}
-            <header className="bg-white border-b p-4 flex items-center justify-between">
-              <div className="flex items-center">
-                <Lock className="w-5 h-5 mr-2 text-gray-500" />
-                <h3 className="text-lg font-medium text-gray-800">
-                  {currentConversation.title || 'Private Conversation'}
-                </h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => setShowThinking(!showThinking)}
-                  variant="ghost"
-                  size="sm"
-                  className="flex items-center gap-2"
-                  title={showThinking ? 'Hide AI thinking' : 'Show AI thinking'}
-                >
-                  <Settings className="w-4 h-4" />
-                  {showThinking ? 'Hide Thinking' : 'Show Thinking'}
-                </Button>
-                <Button
-                  onClick={handleMakePublic}
-                  variant="outline"
-                  className="flex items-center gap-2"
-                  disabled={currentConversation.messages.length === 0 || isGuest}
-                >
-                  <Globe className="w-4 h-4" />
-                  {isGuest ? 'Sign In to Publish' : 'Make Public'}
-                </Button>
-              </div>
-            </header>
-
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4" id="messages-container">
-              {currentConversation.messages.map((message, index) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className={`flex items-start space-x-3 max-w-[70%] ${
-                    message.sender === 'user' ? 'flex-row-reverse space-x-reverse' : ''
-                  }`}>
-                    <Avatar className="w-8 h-8">
-                      {message.sender === 'ai' ? (
-                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">AI</span>
-                        </div>
-                      ) : (
-                        <>
-                          <AvatarImage src={state.currentUser?.avatar} />
-                          <AvatarFallback>{state.currentUser?.name?.charAt(0)}</AvatarFallback>
-                        </>
-                      )}
-                    </Avatar>
-                    <div className="space-y-2 flex-1">
-                      {/* Show thinking process for AI messages */}
-                      {message.sender === 'ai' && showThinking && message.thinking && (
-                        <Card className="bg-gray-50 border-gray-200">
-                          <CardContent className="p-3">
-                            <div className="flex items-center mb-2">
-                              <Brain className="w-4 h-4 text-gray-500 mr-2" />
-                              <span className="text-xs font-medium text-gray-600">
-                                Thought Process
-                              </span>
-                            </div>
-                            <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
-                              {message.thinking}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-                      
-                      {/* Main message content */}
-                      <Card className={`${
-                        message.sender === 'user' 
-                          ? 'bg-blue-500 text-white' 
-                          : 'bg-white border-gray-200'
-                      }`}>
-                        <CardContent className="p-3">
-                          <div className="text-sm whitespace-pre-wrap">{message.content}</div>
-                          <div className={`text-xs mt-2 ${
-                            message.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
-                          }`}>
-                            {formatDistanceToNow(message.timestamp)} ago
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {/* Streaming AI Response - Direct DOM manipulation */}
-              {isStreaming && (
-                <div className="flex justify-start">
-                  <div className="flex items-start space-x-3 max-w-[70%]">
-                    <Avatar className="w-8 h-8 flex-shrink-0">
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">AI</span>
-                      </div>
-                    </Avatar>
-                    
-                    <div className="space-y-2 flex-1">
-                      {/* Thinking Process */}
-                      {showThinking && (
-                        <Card className="bg-gray-50 border-gray-200">
-                          <CardContent className="p-3">
-                            <div className="flex items-center mb-2">
-                              <Brain className="w-4 h-4 text-gray-500 mr-2" />
-                              <span className="text-xs font-medium text-gray-600">
-                                Thought Process
-                              </span>
-                              <Loader2 className="w-3 h-3 text-gray-400 ml-2 animate-spin" />
-                            </div>
-                            <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
-                              <div 
-                                ref={(el) => { streamingRef.current.thinkingElement = el; }}
-                                className="min-h-[1em]"
-                              />
-                              <span className="animate-pulse">|</span>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Main Response */}
-                      <Card className="bg-white border-gray-200">
-                        <CardContent className="p-3">
-                          <div className="text-sm whitespace-pre-wrap">
-                            <div 
-                              ref={(el) => { streamingRef.current.contentElement = el; }}
-                              className="min-h-[1em]"
-                            />
-                            <span className="animate-pulse">|</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </div>
-                </div>
+        {/* Header */}
+        <header className="bg-white border-b p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center">
+              <h1 className="text-xl font-normal text-gray-800 mr-4">{thread.title}</h1>
+              {thread.category && (
+                <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs">
+                  {thread.category}
+                </Badge>
               )}
-
-              {/* Scroll anchor - positioned at the very bottom */}
-              <div ref={messagesEndRef} style={{ height: '1px' }} />
-            </div>
-
-            {/* Streaming AI Response - Always present, controlled via DOM */}
-            <div 
-              ref={(el) => { streamingRef.current.streamingContainer = el; }}
-              className="flex justify-start px-4 pb-4"
-              style={{ display: 'none' }}
-            >
-              <div className="flex items-start space-x-3 max-w-[70%]">
-                <Avatar className="w-8 h-8 flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">AI</span>
-                  </div>
-                </Avatar>
-                
-                <div className="space-y-2 flex-1">
-                  {/* Thinking Process */}
-                  {showThinking && (
-                    <Card className="bg-gray-50 border-gray-200">
-                      <CardContent className="p-3">
-                        <div className="flex items-center mb-2">
-                          <Brain className="w-4 h-4 text-gray-500 mr-2" />
-                          <span className="text-xs font-medium text-gray-600">
-                            Thought Process
-                          </span>
-                          <div className="ml-2">
-                            <div className="flex space-x-1">
-                              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
-                          <div 
-                            ref={(el) => { streamingRef.current.thinkingElement = el; }}
-                            className="min-h-[1em]"
-                          />
-                          <span className="animate-pulse text-blue-500">▋</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {/* Main Response */}
-                  <Card className="bg-white border-gray-200">
-                    <CardContent className="p-3">
-                      <div className="flex items-center mb-2">
-                        <span className="text-xs font-medium text-gray-600">Response</span>
-                        <div className="ml-2">
-                          <div className="flex space-x-1">
-                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-sm whitespace-pre-wrap">
-                        <div 
-                          ref={(el) => { streamingRef.current.contentElement = el; }}
-                          className="min-h-[1em] text-gray-800"
-                        />
-                        <span className="animate-pulse text-blue-500">▋</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </div>
-
-            {/* Message Input */}
-            <div className="bg-white border-t p-4">
-              <div className="flex space-x-2">
-                <Textarea
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Ask DeepSeek anything..."
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSendMessage();
-                    }
-                  }}
-                  className="flex-1"
-                  disabled={streamingRef.current.isTyping}
-                  rows={1}
-                  style={{
-                    minHeight: '40px',
-                    maxHeight: '120px',
-                    resize: 'none',
-                    overflow: 'hidden'
-                  }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = 'auto';
-                    target.style.height = Math.min(target.scrollHeight, 120) + 'px';
-                  }}
-                />
-                <Button onClick={handleSendMessage} disabled={!newMessage.trim() || streamingRef.current.isTyping}>
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-800 mb-2">No conversation selected</h3>
-              <p className="text-gray-500 mb-4">
-                {isGuest 
-                  ? 'Start chatting with DeepSeek AI (conversations won\'t be saved in guest mode)'
-                  : 'Start a new conversation to begin chatting with AI'
-                }
-              </p>
-              <Button onClick={handleNewConversation}>
-                {isGuest ? 'Start Guest Chat' : 'Start Chatting with DeepSeek'}
-              </Button>
             </div>
           </div>
-        )}
+          
+          <div className="flex items-center text-sm text-gray-500 space-x-4">
+            <div className="flex items-center">
+              <Avatar className="w-5 h-5 mr-2">
+                <AvatarImage src={thread.creator.avatar} alt={thread.creator.name} />
+                <AvatarFallback>{thread.creator.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <span>{thread.creator.name}</span>
+            </div>
+            <div className="flex items-center">
+              <Clock className="w-3.5 h-3.5 mr-2" />
+              <span>Created {formatDistanceToNow(thread.createdAt)} ago</span>
+            </div>
+            <span>{thread.questionCount} questions</span>
+            <span>{thread.answerCount} answers</span>
+          </div>
+        </header>
+
+        {/* Questions and Answers */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          {getSortedQuestions().map((question, questionIndex) => (
+            <div key={question.id} className="space-y-4">
+              {/* Question */}
+              <Card className="border border-gray-200">
+                <CardContent className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <h3 className="text-lg font-medium text-gray-800">
+                      Question {questionIndex + 1}
+                    </h3>
+                    <div className="text-sm text-gray-500">
+                      {formatDistanceToNow(question.timestamp)} ago
+                    </div>
+                  </div>
+                  <div className="text-gray-700 whitespace-pre-wrap mb-4">
+                    {question.content}
+                  </div>
+                  
+                  {/* AI Answer Button */}
+                  {!isGuest && (
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        onClick={() => handleAIAnswer(question.id)}
+                        disabled={isAIAnswering[question.id]}
+                        size="sm"
+                        variant="outline"
+                        className="flex items-center gap-2"
+                      >
+                        {isAIAnswering[question.id] ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            AI is thinking...
+                          </>
+                        ) : (
+                          <>
+                            <Brain className="w-4 h-4" />
+                            Get AI Answer
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Streaming AI Response */}
+              <div 
+                ref={(el) => {
+                  if (streamingRefs.current[question.id]) {
+                    streamingRefs.current[question.id].streamingContainer = el;
+                  }
+                }}
+                className="space-y-4"
+                style={{ display: 'none' }}
+              >
+                <Card className="border border-blue-200 bg-blue-50">
+                  <CardContent className="p-4">
+                    <div className="flex items-center mb-3">
+                      <Brain className="w-5 h-5 text-blue-600 mr-2" />
+                      <span className="font-medium text-blue-800">AI is thinking...</span>
+                      <div className="ml-2">
+                        <div className="flex space-x-1">
+                          <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-sm text-blue-700 whitespace-pre-wrap font-mono bg-blue-100 p-3 rounded text-xs">
+                      <div 
+                        ref={(el) => {
+                          if (streamingRefs.current[question.id]) {
+                            streamingRefs.current[question.id].thinkingElement = el;
+                          }
+                        }}
+                        className="min-h-[1em]"
+                      />
+                      <span className="animate-pulse text-blue-500">▋</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-gray-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-center mb-3">
+                      <MessageSquare className="w-5 h-5 text-gray-600 mr-2" />
+                      <span className="font-medium text-gray-800">AI Response</span>
+                      <div className="ml-2">
+                        <div className="flex space-x-1">
+                          <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                          <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                          <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-gray-700 whitespace-pre-wrap">
+                      <div 
+                        ref={(el) => {
+                          if (streamingRefs.current[question.id]) {
+                            streamingRefs.current[question.id].contentElement = el;
+                          }
+                        }}
+                        className="min-h-[1em]"
+                      />
+                      <span className="animate-pulse text-blue-500">▋</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Answers */}
+              <div className="space-y-4">
+                {getSortedAnswers(question.id).map((answer, answerIndex) => (
+                  <Card key={answer.id} className={`border ${answer.isPinned ? 'border-blue-200 bg-blue-50' : 'border-gray-200'}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <Avatar className="w-6 h-6">
+                            {answer.isAI ? (
+                              <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
+                                <span className="text-white text-xs font-bold">AI</span>
+                              </div>
+                            ) : (
+                              <>
+                                <AvatarImage src="/img-5.svg" />
+                                <AvatarFallback>U</AvatarFallback>
+                              </>
+                            )}
+                          </Avatar>
+                          <span className="text-sm font-medium text-gray-800">
+                            {answer.isAI ? 'AI Assistant' : 'User'}
+                          </span>
+                          {answer.isPinned && (
+                            <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800">
+                              Pinned
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          {formatDistanceToNow(answer.timestamp)} ago
+                        </div>
+                      </div>
+
+                      {/* Show AI thinking process if available */}
+                      {answer.isAI && answer.thinking && (
+                        <Card className="mb-4 bg-gray-50 border-gray-200">
+                          <CardContent className="p-3">
+                            <div className="flex items-center mb-2">
+                              <Brain className="w-4 h-4 text-gray-500 mr-2" />
+                              <span className="text-xs font-medium text-gray-600">
+                                AI Thought Process
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
+                              {answer.thinking}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      <div className="text-gray-700 whitespace-pre-wrap mb-4">
+                        <ReactMarkdown>{answer.content}</ReactMarkdown>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setCommentPanelOpen(commentPanelOpen === answer.id ? null : answer.id)}
+                            className="flex items-center gap-2 text-gray-500 hover:text-gray-700"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            <span>{(comments[answer.id] || []).length} comments</span>
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Comments Panel */}
+                      {commentPanelOpen === answer.id && (
+                        <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
+                          {/* Existing Comments */}
+                          {(comments[answer.id] || []).map((comment) => (
+                            <div key={comment.id} className="flex items-start space-x-3">
+                              <Avatar className="w-5 h-5">
+                                <AvatarImage src="/img-5.svg" />
+                                <AvatarFallback>U</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1">
+                                <div className="text-sm text-gray-700">{comment.content}</div>
+                                <div className="text-xs text-gray-500 mt-1">
+                                  {formatDistanceToNow(comment.timestamp)} ago
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Add Comment */}
+                          {!isGuest && (
+                            <div className="flex items-start space-x-3">
+                              <Avatar className="w-5 h-5">
+                                <AvatarImage src={state.currentUser?.avatar} />
+                                <AvatarFallback>{state.currentUser?.name?.charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 flex space-x-2">
+                                <Input
+                                  placeholder="Add a comment..."
+                                  value={newComment[answer.id] || ''}
+                                  onChange={(e) => setNewComment(prev => ({ ...prev, [answer.id]: e.target.value }))}
+                                  onKeyPress={(e) => {
+                                    if (e.key === 'Enter') {
+                                      handleAddComment(answer.id);
+                                    }
+                                  }}
+                                  className="text-sm"
+                                />
+                                <Button
+                                  onClick={() => handleAddComment(answer.id)}
+                                  size="sm"
+                                  disabled={!newComment[answer.id]?.trim()}
+                                >
+                                  <Send className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Add Answer */}
+              {!isGuest && (
+                <Card className="border border-gray-200">
+                  <CardContent className="p-4">
+                    <div className="flex items-start space-x-3">
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage src={state.currentUser?.avatar} />
+                        <AvatarFallback>{state.currentUser?.name?.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 space-y-3">
+                        <Textarea
+                          placeholder="Share your thoughts and insights..."
+                          value={newAnswer[question.id] || ''}
+                          onChange={(e) => setNewAnswer(prev => ({ ...prev, [question.id]: e.target.value }))}
+                          className="min-h-[80px]"
+                        />
+                        <div className="flex justify-end">
+                          <Button
+                            onClick={() => handleAddAnswer(question.id)}
+                            disabled={!newAnswer[question.id]?.trim()}
+                            className="flex items-center gap-2"
+                          >
+                            <Send className="w-4 h-4" />
+                            Add Answer
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ))}
+
+          {/* Add New Question (only for thread creator) */}
+          {!isGuest && state.currentUser?.id === thread.creator.id && (
+            <Card className="border border-gray-200">
+              <CardContent className="p-4">
+                <h4 className="font-medium text-gray-800 mb-3">Add Follow-up Question</h4>
+                <div className="space-y-3">
+                  <Textarea
+                    placeholder="What else would you like to ask the community?"
+                    value={newQuestion}
+                    onChange={(e) => setNewQuestion(e.target.value)}
+                    className="min-h-[80px]"
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleAddQuestion}
+                      disabled={!newQuestion.trim()}
+                      className="flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Question
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Scroll anchor - positioned at the very bottom */}
+          <div ref={messagesEndRef} style={{ height: '1px' }} />
+        </div>
       </main>
 
-      {/* Publish Modal */}
-      {showPublishModal && (
+      {/* New Public Thread Modal */}
+      {showNewThreadModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <Card className="w-full max-w-lg mx-4 bg-white">
             <CardContent className="p-0">
               {/* Header */}
               <div className="flex items-center justify-between p-6 border-b">
-                <h3 className="text-xl font-semibold text-gray-900">Publish to Community</h3>
+                <h3 className="text-xl font-semibold text-gray-900">Create Public Thread</h3>
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  onClick={() => setShowPublishModal(false)}
+                  onClick={() => {
+                    setShowNewThreadModal(false);
+                    setNewThreadData({ title: '', category: 'Relationships', question: '' });
+                  }}
                   className="h-8 w-8 p-0"
                 >
                   <X className="h-4 w-4" />
@@ -1026,18 +987,19 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               <div className="p-6 space-y-6">
                 <div>
                   <p className="text-gray-600 text-sm leading-relaxed">
-                    Share this conversation with the community to get diverse perspectives and additional insights from other users.
+                    Start a public discussion that the community can engage with immediately.
                   </p>
                 </div>
 
                 {/* Thread Title */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium text-gray-700">
-                    Thread Title
+                    Thread Title *
                   </label>
                   <Input
                     placeholder="Give your thread a descriptive title..."
-                    defaultValue={currentConversation?.title || "Relationship advice discussion"}
+                    value={newThreadData.title}
+                    onChange={(e) => setNewThreadData(prev => ({ ...prev, title: e.target.value }))}
                     className="w-full"
                   />
                 </div>
@@ -1047,16 +1009,35 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                   <label className="text-sm font-medium text-gray-700">
                     Category
                   </label>
-                  <select className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                    <option value="relationships">Relationships</option>
-                    <option value="psychology">Psychology</option>
-                    <option value="marriage">Marriage</option>
-                    <option value="friendship">Friendship</option>
-                    <option value="intimacy">Intimacy</option>
+                  <select 
+                    value={newThreadData.category}
+                    onChange={(e) => setNewThreadData(prev => ({ ...prev, category: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="Relationships">Relationships</option>
+                    <option value="Psychology">Psychology</option>
+                    <option value="Marriage">Marriage</option>
+                    <option value="Friendship">Friendship</option>
+                    <option value="Intimacy">Intimacy</option>
+                    <option value="General">General</option>
                   </select>
                 </div>
 
-                {/* Privacy Notice */}
+                {/* Question Content */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-gray-700">
+                    Your Question *
+                  </label>
+                  <Textarea
+                    placeholder="What would you like to ask the community? Be specific and provide context to get better answers..."
+                    value={newThreadData.question}
+                    onChange={(e) => setNewThreadData(prev => ({ ...prev, question: e.target.value }))}
+                    className="w-full min-h-[120px]"
+                    rows={5}
+                  />
+                </div>
+
+                {/* Public Notice */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-start space-x-3">
                     <div className="flex-shrink-0">
@@ -1064,10 +1045,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                     </div>
                     <div className="text-sm">
                       <p className="text-blue-800 font-medium mb-1">
-                        This will be public
+                        This will be public immediately
                       </p>
                       <p className="text-blue-700">
-                        Your conversation will be visible to all community members. Others can add answers and engage in discussions.
+                        Your question will be visible to all community members. Others can add answers and engage in discussions right away.
                       </p>
                     </div>
                   </div>
@@ -1077,17 +1058,29 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
               {/* Footer */}
               <div className="flex items-center justify-end space-x-3 p-6 border-t bg-gray-50">
                 <Button 
-                  onClick={() => setShowPublishModal(false)} 
+                  onClick={() => {
+                    setShowNewThreadModal(false);
+                    setNewThreadData({ title: '', category: 'Relationships', question: '' });
+                  }}
                   variant="outline"
                   className="px-4 py-2"
+                  disabled={isCreatingThread}
                 >
                   Cancel
                 </Button>
                 <Button 
-                  onClick={handlePublish} 
+                  onClick={handleCreatePublicThread}
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={!newThreadData.title.trim() || !newThreadData.question.trim() || isCreatingThread}
                 >
-                  Publish Thread
+                  {isCreatingThread ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Thread'
+                  )}
                 </Button>
               </div>
             </CardContent>
@@ -1097,3 +1090,5 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     </div>
   );
 };
+
+export default PublicThread;
