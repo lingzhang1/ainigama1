@@ -18,7 +18,7 @@ interface PublicThreadProps {
   onLogout: () => void;
 }
 
-export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
+const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
   const isGuest = state.isGuestMode && !state.isAuthenticated;
   const [thread, setThread] = useState<Thread | null>(null);
