@@ -148,13 +148,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     loadMessages();
   }, [currentConversation?.id, isGuest]); // Keep dependency on ID only
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-    }
-  }, [currentConversation?.messages]);
-
   const handleSendMessage = async () => {
     if (!newMessage.trim() || !currentConversation) return;
 
@@ -946,7 +939,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </div>
               </div>
             </div>
-            <div ref={messagesEndRef} />
             <div ref={messagesEndRef} />
 
             {/* Message Input */}
