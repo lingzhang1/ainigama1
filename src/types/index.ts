@@ -21,6 +21,7 @@ export interface Question {
   timestamp: Date;
   userId: string;
   threadId: string;
+  isSummary?: boolean; // Indicates if this is an AI-generated summary question
 }
 
 export interface Answer {

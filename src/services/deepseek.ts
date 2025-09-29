@@ -1,5 +1,6 @@
 import { createDeepSeek } from '@ai-sdk/deepseek';
 import { streamText } from 'ai';
+import { SUMMARIZATION_PROMPT } from '../constants/ai';
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
@@ -185,6 +186,28 @@ export class DeepSeekService {
       if (!streamCompleted) {
         callbacks.onError?.(error as Error);
       }
+    }
+  }
+
+  // Summarize a conversation when context window is getting full
+  async summarizeConversation(messages: ChatMessage[]): Promise<string> {
+    console.log('🔄 Starting conversation summarization with DeepSeek...');
+    
+    try {
+      const result = await streamText({
+        model: this.deepseekClient('deepseek-reasoner'),
+        system: SUMMARIZATION_PROMPT,
+        messages: messages,
+        maxTokens: 1000 // Limit summary length to ensure it fits in context
+      });
+      
+      const summary = await result.text;
+      console.log('✅ Summarization complete:', summary.length, 'characters');
+      return summary;
+      
+    } catch (error) {
+      console.error('❌ DeepSeek summarization error:', error);
+      throw new Error('Failed to summarize conversation. Please try starting a new conversation manually.');
     }
   }
 

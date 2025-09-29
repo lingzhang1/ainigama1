@@ -1,3 +1,7 @@
 infrastructure/nodejs-server/*
+
 public/*
+
 supabase/*
+
+designs/*
