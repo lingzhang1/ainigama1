@@ -52,6 +52,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   // Initialize WebSocket connection for persistence only
   const ws = useWebSocket(state.currentUser?.id || '');
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [currentConversation?.messages]);
+
   // Load conversations from backend on component mount
   useEffect(() => {
     // Skip loading conversations for guest users
@@ -822,125 +827,77 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </div>
               ))}
 
-              {/* Streaming AI Response - Direct DOM manipulation */}
-              {isStreaming && (
-                <div className="flex justify-start">
-                  <div className="flex items-start space-x-3 max-w-[70%]">
-                    <Avatar className="w-8 h-8 flex-shrink-0">
-                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                        <span className="text-white text-xs font-bold">AI</span>
-                      </div>
-                    </Avatar>
-                    
-                    <div className="space-y-2 flex-1">
-                      {/* Thinking Process */}
-                      {showThinking && (
-                        <Card className="bg-gray-50 border-gray-200">
-                          <CardContent className="p-3">
-                            <div className="flex items-center mb-2">
-                              <Brain className="w-4 h-4 text-gray-500 mr-2" />
-                              <span className="text-xs font-medium text-gray-600">
-                                Thought Process
-                              </span>
-                              <Loader2 className="w-3 h-3 text-gray-400 ml-2 animate-spin" />
-                            </div>
-                            <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
-                              <div 
-                                ref={(el) => { streamingRef.current.thinkingElement = el; }}
-                                className="min-h-[1em]"
-                              />
-                              <span className="animate-pulse">|</span>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Main Response */}
-                      <Card className="bg-white border-gray-200">
+              {/* Streaming AI Response - Always present, controlled via DOM */}
+              <div 
+                ref={(el) => { streamingRef.current.streamingContainer = el; }}
+                className="flex justify-start px-4"
+                style={{ display: 'none' }}
+              >
+                <div className="flex items-start space-x-3 max-w-[70%]">
+                  <Avatar className="w-8 h-8 flex-shrink-0">
+                    <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">AI</span>
+                    </div>
+                  </Avatar>
+                  
+                  <div className="space-y-2 flex-1">
+                    {/* Thinking Process */}
+                    {showThinking && (
+                      <Card className="bg-gray-50 border-gray-200">
                         <CardContent className="p-3">
-                          <div className="text-sm whitespace-pre-wrap">
+                          <div className="flex items-center mb-2">
+                            <Brain className="w-4 h-4 text-gray-500 mr-2" />
+                            <span className="text-xs font-medium text-gray-600">
+                              Thought Process
+                            </span>
+                            <div className="ml-2">
+                              <div className="flex space-x-1">
+                                <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                                <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                                <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
                             <div 
-                              ref={(el) => { streamingRef.current.contentElement = el; }}
+                              ref={(el) => { streamingRef.current.thinkingElement = el; }}
                               className="min-h-[1em]"
                             />
-                            <span className="animate-pulse">|</span>
+                            <span className="animate-pulse text-blue-500">▋</span>
                           </div>
                         </CardContent>
                       </Card>
-                    </div>
-                  </div>
-                </div>
-              )}
+                    )}
 
-            {/* Streaming AI Response - Always present, controlled via DOM */}
-            <div 
-              ref={(el) => { streamingRef.current.streamingContainer = el; }}
-              className="flex justify-start px-4"
-              style={{ display: 'none' }}
-            >
-              <div className="flex items-start space-x-3 max-w-[70%]">
-                <Avatar className="w-8 h-8 flex-shrink-0">
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">AI</span>
-                  </div>
-                </Avatar>
-                
-                <div className="space-y-2 flex-1">
-                  {/* Thinking Process */}
-                  {showThinking && (
-                    <Card className="bg-gray-50 border-gray-200">
+                    {/* Main Response */}
+                    <Card className="bg-white border-gray-200">
                       <CardContent className="p-3">
                         <div className="flex items-center mb-2">
-                          <Brain className="w-4 h-4 text-gray-500 mr-2" />
-                          <span className="text-xs font-medium text-gray-600">
-                            Thought Process
-                          </span>
+                          <span className="text-xs font-medium text-gray-600">Response</span>
                           <div className="ml-2">
                             <div className="flex space-x-1">
-                              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                              <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                              <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                              <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                             </div>
                           </div>
                         </div>
-                        <div className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded text-xs">
+                        <div className="text-sm whitespace-pre-wrap">
                           <div 
-                            ref={(el) => { streamingRef.current.thinkingElement = el; }}
-                            className="min-h-[1em]"
+                            ref={(el) => { streamingRef.current.contentElement = el; }}
+                            className="min-h-[1em] text-gray-800"
                           />
                           <span className="animate-pulse text-blue-500">▋</span>
                         </div>
                       </CardContent>
                     </Card>
-                  )}
-
-                  {/* Main Response */}
-                  <Card className="bg-white border-gray-200">
-                    <CardContent className="p-3">
-                      <div className="flex items-center mb-2">
-                        <span className="text-xs font-medium text-gray-600">Response</span>
-                        <div className="ml-2">
-                          <div className="flex space-x-1">
-                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-sm whitespace-pre-wrap">
-                        <div 
-                          ref={(el) => { streamingRef.current.contentElement = el; }}
-                          className="min-h-[1em] text-gray-800"
-                        />
-                        <span className="animate-pulse text-blue-500">▋</span>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  </div>
                 </div>
               </div>
+
+              {/* Scroll anchor */}
+              <div ref={messagesEndRef} />
             </div>
-            <div ref={messagesEndRef} />
-          </>
 
             {/* Message Input */}
             <div className="bg-white border-t p-4">
@@ -969,7 +926,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 </Button>
               </div>
             </div>
-          </div>
+          </>
         ) : (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-center">
@@ -1020,10 +977,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                   <label className="text-sm font-medium text-gray-700">
                     Thread Title
                   </label>
-                  <Input
+                  <input
+                    type="text"
                     placeholder="Give your thread a descriptive title..."
                     defaultValue={currentConversation?.title || "Relationship advice discussion"}
-                    className="w-full"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
                 </div>
 
