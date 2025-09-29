@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { SearchIcon, TrendingUpIcon, ClockIcon, PlusIcon } from 'lucide-react';
+import { SearchIcon, TrendingUpIcon, ClockIcon, PlusIcon, ChevronDown, Lock, Globe } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Card, CardContent } from '../ui/card';
@@ -13,58 +13,27 @@ interface ForumFeedProps {
   onLogout: () => void;
 }
 
-const suggestedTopics = [
-  'Trust in long-distance relationships',
-  'Boundaries in friendships',
-  'Emotional vulnerability',
-  'Conflict resolution in marriage',
-  'Dating after divorce'
-];
-
-const popularQuestions = [
-  {
-    question: 'How do you rebuild trust after it\'s been broken?',
-    answers: '15 answers',
-    category: 'Relationships'
-  },
-  {
-    question: 'What are signs of emotional manipulation in relationships?',
-    answers: '23 answers',
-    category: 'Psychology'
-  },
-  {
-    question: 'How important is physical intimacy in a long-term relationship?',
-    answers: '31 answers',
-    category: 'Intimacy'
-  }
-];
-
 export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
   const isGuest = state.isGuestMode && !state.isAuthenticated;
   const [searchQuery, setSearchQuery] = useState('');
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [showNewThreadDropdown, setShowNewThreadDropdown] = useState(false);
 
   useEffect(() => {
     const loadThreads = async () => {
       try {
         setIsLoading(true);
-        // Use local Node.js server for development, AWS for production
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-        console.log('Loading threads from:', apiUrl);
-        
         const response = await fetch(`${apiUrl}/threads?filter=${state.feedFilter}`);
         
         if (response.ok) {
-          const loadedThreads = await response.json();
-          // Extract threads array from response object
-          const threadsArray = loadedThreads.threads || loadedThreads;
-          console.log('Loaded threads:', threadsArray.length);
+          const data = await response.json();
+          const threadsArray = Array.isArray(data) ? data : data.threads || [];
           setThreads(threadsArray);
-          dispatch({ type: 'SET_THREADS', payload: threadsArray });
         } else {
-          console.error('Failed to load threads:', response.status, response.statusText);
+          console.error('Failed to load threads:', response.statusText);
         }
       } catch (error) {
         console.error('Failed to load threads:', error);
@@ -76,8 +45,8 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     loadThreads();
   }, [state.feedFilter]);
 
-  const handleThreadClick = (threadId: string) => {
-    dispatch({ type: 'SET_CURRENT_THREAD', payload: threadId });
+  const handleThreadClick = (thread: Thread) => {
+    dispatch({ type: 'SET_CURRENT_THREAD', payload: thread.id });
     dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
   };
 
@@ -87,7 +56,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
 
   const filteredThreads = threads.filter(thread =>
     thread.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    thread.category?.toLowerCase().includes(searchQuery.toLowerCase())
+    thread.creator.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -95,49 +64,94 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
       {/* Left Sidebar */}
       <aside className="w-64 h-full bg-white border-r flex flex-col">
         <div className="p-4">
-          <Button 
-            onClick={handleNewThread}
-            className="w-full bg-gray-800 hover:bg-gray-700 text-white h-auto py-3"
-          >
-            <PlusIcon className="w-4 h-4 mr-3" />
-            New Thread
-          </Button>
+          <div className="relative">
+            <Button 
+              onClick={() => {
+                console.log('New Thread button clicked in Forum, current state:', showNewThreadDropdown);
+                setShowNewThreadDropdown(!showNewThreadDropdown);
+              }}
+              className="w-full bg-gray-800 hover:bg-gray-700 text-white h-auto py-3 flex items-center justify-between"
+            >
+              <div className="flex items-center">
+                <PlusIcon className="w-4 h-4 mr-3" />
+                New Thread
+              </div>
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+            
+            {/* Dropdown Menu */}
+            {showNewThreadDropdown && (
+              <>
+                {console.log('Rendering dropdown menu in Forum')}
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                  <button
+                    onClick={() => {
+                      console.log('Private Chat option clicked');
+                      handleNewThread();
+                      setShowNewThreadDropdown(false);
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center border-b border-gray-100"
+                  >
+                    <Lock className="w-4 h-4 mr-3 text-gray-500" />
+                    <div>
+                      <div className="font-medium text-gray-800">Private Chat</div>
+                      <div className="text-xs text-gray-500">Start with AI, publish later</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      console.log('Public Thread option clicked');
+                      if (isGuest) {
+                        dispatch({ type: 'SET_GUEST_MODE', payload: false });
+                      } else {
+                        // TODO: Add public thread creation modal here
+                        console.log('Public thread creation not implemented in Forum yet');
+                      }
+                      setShowNewThreadDropdown(false);
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center"
+                    disabled={isGuest}
+                  >
+                    <Globe className="w-4 h-4 mr-3 text-gray-500" />
+                    <div>
+                      <div className="font-medium text-gray-800">Public Thread</div>
+                      <div className="text-xs text-gray-500">Start discussion directly</div>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         <div className="flex-1 px-3">
           <div className="mb-6">
             <div className="text-xs text-gray-500 font-normal tracking-[0.60px] mb-2 px-3">
-              Main
+              Feed
             </div>
             <nav className="space-y-1">
-              <div className="flex items-center px-3 py-2 rounded-md text-base bg-gray-100 text-gray-700">
-                <SearchIcon className="w-5 h-4 mr-3" />
-                Home
-              </div>
               <div 
-                className="flex items-center px-3 py-2 rounded-md text-base text-gray-700 hover:bg-gray-50 cursor-pointer"
-                onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'private' })}
+                className={`flex items-center px-3 py-2 rounded-md text-base cursor-pointer ${
+                  state.feedFilter === 'recent' 
+                    ? 'bg-gray-100 text-gray-900' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'recent' })}
               >
                 <ClockIcon className="w-5 h-4 mr-3" />
-                My Threads
+                Recent
               </div>
-            </nav>
-          </div>
-
-          <div>
-            <div className="text-xs text-gray-500 font-normal tracking-[0.60px] mb-2 px-3">
-              Categories
-            </div>
-            <nav className="space-y-1">
-              {['Relationships', 'Psychology', 'Marriage', 'Friendship', 'Intimacy'].map((category) => (
-                <div
-                  key={category}
-                  className="flex items-center px-3 py-2 text-gray-700 text-base hover:bg-gray-50 rounded-md cursor-pointer"
-                >
-                  <div className="w-4 h-4 mr-3 bg-gray-300 rounded-full"></div>
-                  {category}
-                </div>
-              ))}
+              <div 
+                className={`flex items-center px-3 py-2 rounded-md text-base cursor-pointer ${
+                  state.feedFilter === 'trending' 
+                    ? 'bg-gray-100 text-gray-900' 
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'trending' })}
+              >
+                <TrendingUpIcon className="w-5 h-4 mr-3" />
+                Trending
+              </div>
             </nav>
           </div>
         </div>
@@ -156,167 +170,111 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
               </Button>
             </div>
           ) : (
-          <div className="flex items-center">
-            <Avatar className="w-8 h-8">
-              <AvatarImage src={state.currentUser?.avatar} alt={state.currentUser?.name} />
-              <AvatarFallback>{state.currentUser?.name?.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="ml-3 flex-1">
-              <div className="text-sm font-normal text-gray-800">
-                {state.currentUser?.name}
+            <div className="flex items-center">
+              <Avatar className="w-8 h-8">
+                <AvatarImage src={state.currentUser?.avatar} alt={state.currentUser?.name} />
+                <AvatarFallback>{state.currentUser?.name?.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div className="ml-3 flex-1">
+                <div className="text-sm font-normal text-gray-800">
+                  {state.currentUser?.name}
+                </div>
+                <button 
+                  onClick={onLogout}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  Sign Out
+                </button>
               </div>
-              <button 
-                onClick={onLogout}
-                className="text-xs text-gray-500 hover:text-gray-700"
-              >
-                Sign Out
-              </button>
             </div>
-          </div>
           )}
         </div>
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 flex flex-col">
         {/* Header */}
-        <header className="bg-white border-b p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-normal text-gray-800">Knowledge Feed</h1>
-            <div className="flex gap-2">
-              <Button
-                variant={state.feedFilter === 'recent' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'recent' })}
-                className="flex items-center gap-2"
-              >
-                <ClockIcon className="w-4 h-4" />
-                Recent
-              </Button>
-              <Button
-                variant={state.feedFilter === 'trending' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'trending' })}
-                className="flex items-center gap-2"
-              >
-                <TrendingUpIcon className="w-4 h-4" />
-                Trending
-              </Button>
-            </div>
+        <header className="bg-white border-b p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-semibold text-gray-800">Community Forum</h1>
           </div>
-
+          
+          {/* Search */}
           <div className="relative">
-            <SearchIcon className="absolute w-4 h-4 top-1/2 left-3 transform -translate-y-1/2 text-gray-400" />
+            <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              className="w-full pl-10"
-              placeholder="Search topics, questions, and answers..."
+              placeholder="Search discussions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
             />
           </div>
         </header>
 
         {/* Thread List */}
-        <div className="p-6 overflow-y-auto h-full">
+        <div className="flex-1 overflow-y-auto p-6">
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              <span className="ml-3 text-gray-600">Loading threads...</span>
-            </div>
-          ) : threads.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-500 mb-4">No threads found</p>
-              <Button onClick={handleNewThread}>
-                Create the first thread
-              </Button>
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div>
             </div>
           ) : (
-          <div className="space-y-4">
-            {filteredThreads.map((thread) => (
-              <Card 
-                key={thread.id} 
-                className="border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => handleThreadClick(thread.id)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-lg font-normal text-gray-800 leading-7 flex-1 mr-4">
-                      {thread.title}
-                    </h3>
-                    {thread.category && (
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs">
-                        {thread.category}
-                      </Badge>
+            <div className="space-y-4">
+              {filteredThreads.map((thread) => (
+                <Card 
+                  key={thread.id} 
+                  className="cursor-pointer hover:shadow-md transition-shadow border border-gray-200"
+                  onClick={() => handleThreadClick(thread)}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <h3 className="text-lg font-medium text-gray-800 hover:text-gray-600">
+                        {thread.title}
+                      </h3>
+                      {thread.category && (
+                        <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs">
+                          {thread.category}
+                        </Badge>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center text-sm text-gray-500 space-x-4 mb-3">
+                      <div className="flex items-center">
+                        <Avatar className="w-5 h-5 mr-2">
+                          <AvatarImage src={thread.creator.avatar} alt={thread.creator.name} />
+                          <AvatarFallback>{thread.creator.name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <span>{thread.creator.name}</span>
+                      </div>
+                      <span>•</span>
+                      <span>{formatDistanceToNow(thread.createdAt)} ago</span>
+                      <span>•</span>
+                      <span>{thread.questionCount} questions</span>
+                      <span>•</span>
+                      <span>{thread.answerCount} answers</span>
+                    </div>
+                    
+                    {/* Show first question preview */}
+                    {thread.questions && thread.questions.length > 0 && (
+                      <div className="text-gray-600 text-sm line-clamp-2">
+                        {thread.questions[0].content}
+                      </div>
                     )}
-                  </div>
-
-                  <div className="flex items-center text-sm text-gray-500 space-x-4">
-                    <div className="flex items-center">
-                      <Avatar className="w-5 h-5 mr-2">
-                        <AvatarImage src={thread.creator.avatar} alt={thread.creator.name} />
-                        <AvatarFallback>{thread.creator.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <span>{thread.creator.name}</span>
-                    </div>
-
-                    <div className="flex items-center">
-                      <ClockIcon className="w-3.5 h-3.5 mr-2" />
-                      <span>Updated {formatDistanceToNow(thread.updatedAt)} ago</span>
-                    </div>
-
-                    <span>{thread.questionCount} questions</span>
-                    <span>{thread.answerCount} answers</span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+              
+              {filteredThreads.length === 0 && !isLoading && (
+                <div className="text-center py-12">
+                  <div className="text-gray-500 mb-4">No threads found</div>
+                  <Button onClick={handleNewThread}>
+                    Start the first discussion
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
         </div>
       </main>
-
-      {/* Right Sidebar */}
-      <aside className="w-72 h-full bg-white border-l overflow-y-auto">
-        <div className="p-4">
-          <div className="mb-6">
-            <h2 className="text-sm font-normal text-gray-800 mb-4">
-              Suggested Topics
-            </h2>
-            <div className="space-y-2">
-              {suggestedTopics.map((topic, index) => (
-                <div key={index} className="bg-gray-50 rounded-md p-3 hover:bg-gray-100 cursor-pointer">
-                  <div className="text-sm text-gray-800">{topic}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <h2 className="text-sm font-normal text-gray-800 mb-4">
-              Popular Questions
-            </h2>
-            <div className="space-y-0">
-              {popularQuestions.map((item, index) => (
-                <div
-                  key={index}
-                  className={`py-4 hover:bg-gray-50 cursor-pointer px-2 rounded ${
-                    index < popularQuestions.length - 1 ? 'border-b border-gray-100' : ''
-                  }`}
-                >
-                  <div className="text-sm text-gray-800 leading-5 mb-2">
-                    {item.question}
-                  </div>
-                  <div className="flex items-center text-xs text-gray-500">
-                    <span>{item.answers}</span>
-                    <span className="mx-2">•</span>
-                    <span>{item.category}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </aside>
     </div>
   );
 };
