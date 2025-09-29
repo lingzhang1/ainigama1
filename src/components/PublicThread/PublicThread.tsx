@@ -200,128 +200,8 @@ Structure:
   // Get current thread ID from state
   const currentThreadId = state.currentThreadId;
 
-  // WebSocket hooks for real-time updates
-  const { addAnswer, addComment } = usePublicThread(
-    currentThreadId || '',
-    (answer: Answer) => {
-      setAnswers(prev => ({
-        ...prev,
-        [answer.questionId]: [...(prev[answer.questionId] || []), answer]
-      }));
-    },
-    (comment: Comment) => {
-      setComments(prev => ({
-        ...prev,
-        [comment.answerId]: [...(prev[comment.answerId] || []), comment]
-      }));
-    },
-    (updatedThread: Thread) => {
-      setThread(updatedThread);
-    }
-  );
-
-  // Load thread data
-  useEffect(() => {
-    const loadThread = async () => {
-      if (!currentThreadId) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        setIsLoading(true);
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-        
-        // Load thread details
-        const threadResponse = await fetch(`${apiUrl}/threads/${currentThreadId}`);
-        if (threadResponse.ok) {
-          const threadData = await threadResponse.json();
-          setThread(threadData);
-        }
-
-        // Load answers for the thread
-        const answersResponse = await fetch(`${apiUrl}/threads/${currentThreadId}/answers`);
-        let answersData = {};
-        if (answersResponse.ok) {
-          answersData = await answersResponse.json();
-          setAnswers(answersData);
-        }
-
-        // Load comments for each answer
-        const allAnswers = Object.values(answersData).flat();
-        for (const answer of allAnswers) {
-          try {
-            const commentsResponse = await fetch(`${apiUrl}/answers/${answer.id}/comments`);
-            if (commentsResponse.ok) {
-              const commentsData = await commentsResponse.json();
-              setComments(prev => ({
-                ...prev,
-                [answer.id]: commentsData
-              }));
-            }
-          } catch (error) {
-            console.error('Failed to load comments for answer:', answer.id, error);
-          }
-        }
-
-        // Collect all unique user IDs from answers and comments
-        const userIds = new Set<string>();
-        
-        // Add user IDs from answers
-        Object.values(answersData).flat().forEach((answer: any) => {
-          if (answer.userId && !answer.isAI) {
-            userIds.add(answer.userId);
-          }
-        });
-        
-        // Add user IDs from comments
-        Object.values(answersData).flat().forEach(async (answer: any) => {
-          try {
-            const commentsResponse = await fetch(`${apiUrl}/answers/${answer.id}/comments`);
-            if (commentsResponse.ok) {
-              const commentsData = await commentsResponse.json();
-              commentsData.forEach((comment: any) => {
-                if (comment.userId) {
-                  userIds.add(comment.userId);
-                }
-              });
-            }
-          } catch (error) {
-            console.error('Failed to load comments for user collection:', error);
-          }
-        });
-        
-        // Fetch user info for all unique user IDs
-        const userPromises = Array.from(userIds).map(async (userId) => {
-          if (!users[userId] && userId !== state.currentUser?.id && userId !== threadResponse?.creator?.id) {
-            const userInfo = await fetchUserInfo(userId);
-            return { userId, userInfo };
-          }
-          return null;
-        });
-        
-        const userResults = await Promise.all(userPromises);
-        const newUsers: { [key: string]: User } = {};
-        
-        userResults.forEach((result) => {
-          if (result && result.userInfo) {
-            newUsers[result.userId] = result.userInfo;
-          }
-        });
-        
-        if (Object.keys(newUsers).length > 0) {
-          setUsers(prev => ({ ...prev, ...newUsers }));
-        }
-      } catch (error) {
-        console.error('Failed to load thread:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadThread();
-  }, [currentThreadId]);
-
+  // Build context for AI with proper multi-user structure and overflow handling
+  const buildThreadContextForAI = async (targetQuestionId: string): Promise<{ messages: ChatMessage[], summaryAdded: boolean }> => {
     if (!thread) return { messages: [], summaryAdded: false };
 
     let messages: ChatMessage[] = [];
@@ -456,7 +336,131 @@ Structure:
         // Continue with original messages if summarization fails
       }
     }
+
+    return { messages, summaryAdded };
   };
+
+  // WebSocket hooks for real-time updates
+  const { addAnswer, addComment } = usePublicThread(
+    currentThreadId || '',
+    (answer: Answer) => {
+      setAnswers(prev => ({
+        ...prev,
+        [answer.questionId]: [...(prev[answer.questionId] || []), answer]
+      }));
+    },
+    (comment: Comment) => {
+      setComments(prev => ({
+        ...prev,
+        [comment.answerId]: [...(prev[comment.answerId] || []), comment]
+      }));
+    },
+    (updatedThread: Thread) => {
+      setThread(updatedThread);
+    }
+  );
+
+  // Load thread data
+  useEffect(() => {
+    const loadThread = async () => {
+      if (!currentThreadId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+        
+        // Load thread details
+        const threadResponse = await fetch(`${apiUrl}/threads/${currentThreadId}`);
+        if (threadResponse.ok) {
+          const threadData = await threadResponse.json();
+          setThread(threadData);
+        }
+
+        // Load answers for the thread
+        const answersResponse = await fetch(`${apiUrl}/threads/${currentThreadId}/answers`);
+        let answersData = {};
+        if (answersResponse.ok) {
+          answersData = await answersResponse.json();
+          setAnswers(answersData);
+        }
+
+        // Load comments for each answer
+        const allAnswers = Object.values(answersData).flat();
+        for (const answer of allAnswers) {
+          try {
+            const commentsResponse = await fetch(`${apiUrl}/answers/${answer.id}/comments`);
+            if (commentsResponse.ok) {
+              const commentsData = await commentsResponse.json();
+              setComments(prev => ({
+                ...prev,
+                [answer.id]: commentsData
+              }));
+            }
+          } catch (error) {
+            console.error('Failed to load comments for answer:', answer.id, error);
+          }
+        }
+
+        // Collect all unique user IDs from answers and comments
+        const userIds = new Set<string>();
+        
+        // Add user IDs from answers
+        Object.values(answersData).flat().forEach((answer: any) => {
+          if (answer.userId && !answer.isAI) {
+            userIds.add(answer.userId);
+          }
+        });
+        
+        // Add user IDs from comments
+        Object.values(answersData).flat().forEach(async (answer: any) => {
+          try {
+            const commentsResponse = await fetch(`${apiUrl}/answers/${answer.id}/comments`);
+            if (commentsResponse.ok) {
+              const commentsData = await commentsResponse.json();
+              commentsData.forEach((comment: any) => {
+                if (comment.userId) {
+                  userIds.add(comment.userId);
+                }
+              });
+            }
+          } catch (error) {
+            console.error('Failed to load comments for user collection:', error);
+          }
+        });
+        
+        // Fetch user info for all unique user IDs
+        const userPromises = Array.from(userIds).map(async (userId) => {
+          if (!users[userId] && userId !== state.currentUser?.id && userId !== threadResponse?.creator?.id) {
+            const userInfo = await fetchUserInfo(userId);
+            return { userId, userInfo };
+          }
+          return null;
+        });
+        
+        const userResults = await Promise.all(userPromises);
+        const newUsers: { [key: string]: User } = {};
+        
+        userResults.forEach((result) => {
+          if (result && result.userInfo) {
+            newUsers[result.userId] = result.userInfo;
+          }
+        });
+        
+        if (Object.keys(newUsers).length > 0) {
+          setUsers(prev => ({ ...prev, ...newUsers }));
+        }
+      } catch (error) {
+        console.error('Failed to load thread:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadThread();
+  }, [currentThreadId]);
 
   // Handle AI answer generation
   const handleAskAI = async (questionId: string) => {
