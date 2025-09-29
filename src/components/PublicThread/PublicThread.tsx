@@ -18,7 +18,7 @@ interface PublicThreadProps {
   onLogout: () => void;
 }
 
-const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
+export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
   const isGuest = state.isGuestMode && !state.isAuthenticated;
   const [thread, setThread] = useState<Thread | null>(null);
@@ -41,7 +41,7 @@ const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   });
   const [isCreatingThread, setIsCreatingThread] = useState(false);
   
-  // AI streaming state management using refs (like PrivateChat)
+  // AI streaming state management using refs
   const [isAIAnswering, setIsAIAnswering] = useState<{ [questionId: string]: boolean }>({});
   const streamingRefs = React.useRef<{ [questionId: string]: {
     thinking: string;
@@ -134,7 +134,7 @@ const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     }
   }, [answers]);
 
-  const handleNewThread = () => {
+  const handlePrivateChat = () => {
     dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
   };
 
@@ -459,7 +459,7 @@ const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                   <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
                     <button
                       onClick={() => {
-                        handleNewThread();
+                        handlePrivateChat();
                         setShowNewThreadDropdown(false);
                       }}
                       className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center border-b border-gray-100"
@@ -492,6 +492,64 @@ const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                 </>
               )}
             </div>
+          </div>
+
+          <div className="flex-1 px-3">
+            <div className="mb-6">
+              <div className="text-xs text-gray-500 font-normal tracking-[0.60px] mb-2 px-3">
+                Navigation
+              </div>
+              <nav className="space-y-1">
+                <div 
+                  className="flex items-center px-3 py-2 rounded-md text-base text-gray-700 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
+                >
+                  <ArrowLeft className="w-5 h-4 mr-3" />
+                  Back to Forum
+                </div>
+                <div 
+                  className="flex items-center px-3 py-2 rounded-md text-base text-gray-700 hover:bg-gray-50 cursor-pointer"
+                  onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'private' })}
+                >
+                  <MessageSquare className="w-5 h-4 mr-3" />
+                  My Threads
+                </div>
+              </nav>
+            </div>
+          </div>
+
+          {/* User Profile */}
+          <div className="border-t p-4">
+            {isGuest ? (
+              <div className="text-center">
+                <div className="text-sm text-gray-600 mb-2">Guest Mode</div>
+                <Button
+                  onClick={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
+                  size="sm"
+                  className="w-full"
+                >
+                  Sign In
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center">
+                <Avatar className="w-8 h-8">
+                  <AvatarImage src={state.currentUser?.avatar} alt={state.currentUser?.name} />
+                  <AvatarFallback>{state.currentUser?.name?.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="ml-3 flex-1">
+                  <div className="text-sm font-normal text-gray-800">
+                    {state.currentUser?.name}
+                  </div>
+                  <button 
+                    onClick={onLogout}
+                    className="text-xs text-gray-500 hover:text-gray-700"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </aside>
         
@@ -536,7 +594,7 @@ const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
                 <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
                   <button
                     onClick={() => {
-                      handleNewThread();
+                      handlePrivateChat();
                       setShowNewThreadDropdown(false);
                     }}
                     className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center border-b border-gray-100"
@@ -630,7 +688,7 @@ const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
         </div>
       </aside>
 
-      {/* Main Content */}
+      {/* Main Content - Public Thread Discussion */}
       <main className="flex-1 flex flex-col">
         {/* Header */}
         <header className="bg-white border-b p-4">
@@ -957,7 +1015,7 @@ const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
             </Card>
           )}
 
-          {/* Scroll anchor - positioned at the very bottom */}
+          {/* Scroll anchor */}
           <div ref={messagesEndRef} style={{ height: '1px' }} />
         </div>
       </main>

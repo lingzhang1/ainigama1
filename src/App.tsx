@@ -5,7 +5,7 @@ import { AllowlistCheck } from './components/Auth/AllowlistCheck';
 import { LoginScreen } from './components/Auth/LoginScreen';
 import { ForumFeed } from './components/ForumFeed/ForumFeed';
 import { PrivateChat } from './components/PrivateChat/PrivateChat';
-import PublicThread from './components/PublicThread/PublicThread';
+import { PublicThread } from './components/PublicThread/PublicThread';
 import { User } from './types';
 
 const AppContent: React.FC = () => {
