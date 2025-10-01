@@ -67,7 +67,27 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     let messages: ChatMessage[] = [];
     let summaryAdded = false;
 
-    // System message explaining the multi-user thread structure
+
+    // Add all questions and their answers in chronological order
+    const sortedQuestions = [...thread.questions].sort((a, b) => 
+      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+
+    // Separate summary questions from regular questions
+    const summaryQuestions = sortedQuestions.filter(q => q.isSummary);
+    const regularQuestions = sortedQuestions.filter(q => !q.isSummary);
+
+    // Find the latest summary question to determine cutoff point
+    let cutoffTimestamp = 0;
+    let latestSummary = null;
+    
+    if (summaryQuestions.length > 0) {
+      latestSummary = summaryQuestions[summaryQuestions.length - 1];
+      cutoffTimestamp = new Date(latestSummary.timestamp).getTime();
+    }
+
+    // System message with summary awareness
+    const hasSummaries = summaryQuestions.length > 0;
     messages.push({
       role: 'system',
       content: `You are participating in a public discussion thread where multiple users can ask questions and provide answers. The thread creator can ask multiple questions, and each question can have multiple answers from different users and AI.
@@ -76,18 +96,27 @@ Structure:
 - Original User asks questions (Question 1, Question 2, etc.)
 - Multiple users and AI can provide answers to each question
 - You should acknowledge the community context and build upon previous answers when relevant
-- Address your response to the community, not just the original questioner`
+- Address your response to the community, not just the original questioner
+${hasSummaries ? '\nNote: This conversation includes summaries of previous discussions to manage context length. Use the summary information to understand the full context.' : ''}`
     });
 
-    // Add all questions and their answers in chronological order
-    const sortedQuestions = [...thread.questions].sort((a, b) => 
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    // Add all summary questions as context (these represent condensed previous conversations)
+    for (const summaryQuestion of summaryQuestions) {
+      messages.push({
+        role: 'assistant',
+        content: `Previous discussion summary: ${summaryQuestion.content.replace('**Thread Summary**: ', '')}`
+      });
+    }
+
+    // Add only questions and answers that occurred after the latest summary
+    const questionsToInclude = regularQuestions.filter(q => 
+      new Date(q.timestamp).getTime() > cutoffTimestamp
     );
 
     let questionNumber = 1;
     let targetQuestionNumber = 1;
 
-    for (const question of sortedQuestions) {
+    for (const question of questionsToInclude) {
       // Add the question
       messages.push({
         role: 'user',
@@ -123,7 +152,7 @@ Structure:
     }
 
     // Find the target question content
-    const targetQuestion = sortedQuestions.find(q => q.id === targetQuestionId);
+    const targetQuestion = [...summaryQuestions, ...regularQuestions].find(q => q.id === targetQuestionId);
     if (targetQuestion) {
       messages.push({
         role: 'user',
@@ -142,7 +171,7 @@ Structure:
         // Generate summary of the conversation
         const summary = await deepSeekService.summarizeConversation(messages);
         
-        // Create a summary question to prepend to the thread
+        // Create a summary question to replace previous conversations
         const summaryQuestion: Question = {
           id: uuidv4(),
           content: `**Thread Summary**: ${summary}`,
@@ -152,7 +181,7 @@ Structure:
           isSummary: true
         };
         
-        // Update thread state to include summary question
+        // Update thread state to include summary question (users won't see the content, just the AI response)
         setThread(prev => prev ? {
           ...prev,
           questions: [summaryQuestion, ...prev.questions],
@@ -180,7 +209,7 @@ Structure:
         messages = [
           {
             role: 'system',
-            content: `You are participating in a public discussion thread. Here is a summary of the previous discussion: ${summary}`
+            content: `You are participating in a public discussion thread where multiple users can ask questions and provide answers. This conversation includes a summary of previous discussions to manage context length. Use the summary information to understand the full context.\n\nPrevious discussion summary: ${summary}`
           },
           {
             role: 'user',
