@@ -168,8 +168,43 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
       console.warn('⚠️ Public thread context overflow detected. Summarizing...');
       
       try {
-        // Generate summary of the conversation
-        const summary = await deepSeekService.summarizeConversation(messages);
+        // Generate summary only of conversations since the last summary point
+        // Build messages for summarization (only content after latest summary)
+        const messagesToSummarize: ChatMessage[] = [];
+        
+        // Add only questions and answers that occurred after the latest summary
+        for (const question of questionsToInclude) {
+          // Add the question
+          messagesToSummarize.push({
+            role: 'user',
+            content: `[Question from ${thread.creator.name}]: ${question.content}`
+          });
+
+          // Add all answers for this question
+          const questionAnswers = answers[question.id] || [];
+          const sortedAnswers = [...questionAnswers].sort((a, b) => 
+            new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+          );
+
+          for (const answer of sortedAnswers) {
+            if (answer.isAI) {
+              messagesToSummarize.push({
+                role: 'assistant',
+                content: answer.content
+              });
+            } else {
+              messagesToSummarize.push({
+                role: 'user',
+                content: `[Answer from User${answer.userId?.slice(-4) || 'Unknown'}]: ${answer.content}`
+              });
+            }
+          }
+        }
+        
+        console.log(`📝 Summarizing ${messagesToSummarize.length} messages since last summary point`);
+        
+        // Generate summary of only the recent conversations
+        const summary = await deepSeekService.summarizeConversation(messagesToSummarize);
         
         // Create a summary question to replace previous conversations
         const summaryQuestion: Question = {
