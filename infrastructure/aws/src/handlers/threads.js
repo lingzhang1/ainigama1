@@ -4,9 +4,12 @@ const { tables, dbOperations, parseRequestBody } = require('../utils/db');
 
 // Get public threads
 exports.getThreads = async (event) => {
+  console.log('getThreads called with method:', event.httpMethod);
+  
   try {
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -101,6 +104,7 @@ exports.getThreads = async (event) => {
 
     console.log('Returning', transformedThreads.length, 'transformed threads');
 
+    console.log('Adding CORS headers to response');
     return addCorsHeaders({
       statusCode: 200,
       body: JSON.stringify({
@@ -111,6 +115,7 @@ exports.getThreads = async (event) => {
 
   } catch (error) {
     console.error('Get threads error:', error);
+    console.log('Adding CORS headers to error response');
     return addCorsHeaders({
       statusCode: 500,
       body: JSON.stringify({ 

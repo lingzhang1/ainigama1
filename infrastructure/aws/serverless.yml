@@ -118,6 +118,7 @@ functions:
   # REST API Functions
   getThreads:
     handler: src/handlers/api.getThreads
+    timeout: 30
     events:
       - http:
           path: /threads

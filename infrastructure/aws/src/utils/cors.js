@@ -11,6 +11,7 @@ const corsHeaders = {
 
 // Helper function to add CORS headers to all responses
 const addCorsHeaders = (response) => {
+  console.log('Adding CORS headers:', corsHeaders);
   return {
     ...response,
     headers: {
@@ -23,6 +24,7 @@ const addCorsHeaders = (response) => {
 
 // Handle preflight OPTIONS requests
 const handleOptionsRequest = () => {
+  console.log('Handling OPTIONS request with CORS headers');
   return addCorsHeaders({
     statusCode: 200,
     body: ''
