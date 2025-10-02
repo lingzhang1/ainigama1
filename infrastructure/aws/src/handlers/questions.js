@@ -5,8 +5,11 @@ const { tables, dbOperations, parseRequestBody } = require('../utils/db');
 // Add question to thread
 exports.addQuestion = async (event) => {
   try {
+    console.log('addQuestion called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -103,8 +106,11 @@ exports.addQuestion = async (event) => {
 // Add answer to question
 exports.addAnswer = async (event) => {
   try {
+    console.log('addAnswer called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -205,13 +211,11 @@ exports.addAnswer = async (event) => {
 // Get comments for a specific answer
 exports.getAnswerComments = async (event) => {
   try {
+    console.log('getAnswerComments called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
-      return handleOptionsRequest();
-    }
-
-    // Handle preflight OPTIONS request
-    if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -244,10 +248,9 @@ exports.getAnswerComments = async (event) => {
         content: item.content,
         timestamp: item.created_at || item.timestamp,
         userId: item.user_id,
-      return addCorsHeaders({
         parentId: item.parent_id || null,
-        body: JSON.stringify({ error: 'Answer ID is required' })
-      });
+        replies: []
+      };
       commentMap.set(comment.id, comment);
       
       if (!comment.parentId) {
@@ -282,8 +285,11 @@ exports.getAnswerComments = async (event) => {
 // Add comment to answer
 exports.addAnswerComment = async (event) => {
   try {
+    console.log('addAnswerComment called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -336,11 +342,11 @@ exports.addAnswerComment = async (event) => {
     };
 
     await dbOperations.put(tables.comments, comment);
-    for (const item of result.Items || []) {
+
     // Update answer interaction count
     await dbOperations.update(
       tables.answers,
-    const result = await dbOperations.query(
+      { id: answerId },
       'SET interaction_count = if_not_exists(interaction_count, :zero) + :one',
       {
         ':zero': 0,

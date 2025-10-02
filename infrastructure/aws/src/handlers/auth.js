@@ -6,8 +6,11 @@ const { tables, dbOperations, parseRequestBody } = require('../utils/db');
 // Check if user exists
 exports.checkUserExists = async (event) => {
   try {
+    console.log('checkUserExists called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -46,8 +49,11 @@ exports.checkUserExists = async (event) => {
 // User registration
 exports.registerUser = async (event) => {
   try {
+    console.log('registerUser called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -138,8 +144,11 @@ exports.registerUser = async (event) => {
 // User login
 exports.loginUser = async (event) => {
   try {
+    console.log('loginUser called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -209,8 +218,11 @@ exports.loginUser = async (event) => {
 // Check alias availability
 exports.checkAlias = async (event) => {
   try {
+    console.log('checkAlias called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -255,8 +267,11 @@ exports.checkAlias = async (event) => {
 // Get user by ID
 exports.getUserById = async (event) => {
   try {
+    console.log('getUserById called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 

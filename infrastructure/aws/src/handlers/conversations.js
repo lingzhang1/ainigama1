@@ -5,8 +5,11 @@ const { tables, dbOperations, parseRequestBody } = require('../utils/db');
 // Get user conversations
 exports.getUserConversations = async (event) => {
   try {
+    console.log('getUserConversations called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -51,8 +54,11 @@ exports.getUserConversations = async (event) => {
 // Get messages for a specific conversation
 exports.getMessages = async (event) => {
   try {
+    console.log('getMessages called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -95,8 +101,6 @@ exports.getMessages = async (event) => {
     }));
 
     console.log(`📥 Loaded ${messages.length} messages for conversation ${conversationId}`);
-    console.log(`🧠 Messages with thinking: ${messages.filter(m => m.thinking).length}`);
-    console.log(`📋 Message order: ${messages.map(m => `${m.sender}(${m.id.slice(-4)})`).join(' -> ')}`);
 
     return addCorsHeaders({
       statusCode: 200,
@@ -118,8 +122,11 @@ exports.getMessages = async (event) => {
 // Create new conversation
 exports.createNewConversation = async (event) => {
   try {
+    console.log('createNewConversation called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -169,8 +176,11 @@ exports.createNewConversation = async (event) => {
 // Save messages to conversation
 exports.saveMessages = async (event) => {
   try {
+    console.log('saveMessages called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -214,7 +224,7 @@ exports.saveMessages = async (event) => {
         // Use PUT with condition to prevent duplicates while maintaining order
         await dbOperations.put(tables.messages, messageItem);
 
-        console.log(`✅ Saved message ${message.id} (${message.sender}) to conversation ${conversationId} at ${messageItem.timestamp}`);
+        console.log(`✅ Saved message ${message.id} (${message.sender}) to conversation ${conversationId}`);
         savedCount++;
 
       } catch (messageError) {
@@ -269,8 +279,11 @@ exports.saveMessages = async (event) => {
 // Update conversation title
 exports.updateConversationTitle = async (event) => {
   try {
+    console.log('updateConversationTitle called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
@@ -335,21 +348,17 @@ exports.updateConversationTitle = async (event) => {
 // Delete conversation
 exports.deleteConversation = async (event) => {
   try {
+    console.log('deleteConversation called with method:', event.httpMethod);
+    
     // Handle preflight OPTIONS request
     if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
       return handleOptionsRequest();
     }
 
-    console.log('🗑️ AWS: Delete conversation handler called');
-    console.log('📋 Full event:', JSON.stringify(event, null, 2));
-    
     const { conversationId } = event.pathParameters || {};
     
-    console.log('🔍 Path parameters:', event.pathParameters);
-    console.log('🔍 Extracted conversationId:', conversationId);
-    
     if (!conversationId) {
-      console.log('❌ No conversationId provided');
       return addCorsHeaders({
         statusCode: 400,
         body: JSON.stringify({ error: 'Conversation ID is required' })
@@ -406,7 +415,6 @@ exports.deleteConversation = async (event) => {
 
   } catch (error) {
     console.error('Delete conversation error:', error);
-    console.error('Error stack:', error.stack);
     
     if (error.code === 'ConditionalCheckFailedException') {
       return addCorsHeaders({
@@ -419,8 +427,7 @@ exports.deleteConversation = async (event) => {
       statusCode: 500,
       body: JSON.stringify({ 
         error: 'Failed to delete conversation',
-        message: error.message,
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        message: error.message
       })
     });
   }
