@@ -103,8 +103,8 @@ exports.getThreads = async (event) => {
     }));
 
     console.log('Returning', transformedThreads.length, 'transformed threads');
-
     console.log('Adding CORS headers to response');
+    
     return addCorsHeaders({
       statusCode: 200,
       body: JSON.stringify({
