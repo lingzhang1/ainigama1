@@ -15,17 +15,6 @@ exports.getThreads = async (event) => {
     console.log('Getting threads with filter:', filter);
     
     // Use GSI for efficient public thread queries
-    const params = {
-      TableName: tables.threads,
-      IndexName: 'PublicThreadsIndex',
-      KeyConditionExpression: 'is_public = :isPublic',
-      ExpressionAttributeValues: {
-        ':isPublic': 'true'
-      },
-      ScanIndexForward: filter === 'recent' ? false : false, // Both use descending order
-      Limit: 20
-    };
-
     let result;
     try {
       result = await dbOperations.query(
@@ -43,7 +32,7 @@ exports.getThreads = async (event) => {
       result = await dbOperations.scan(
         tables.threads,
         'is_public = :isPublic',
-        { ':isPublic': true },
+        { ':isPublic': 'true' },
         50
       );
       console.log('Scan fallback successful, found', result.Items?.length || 0, 'threads');
@@ -52,22 +41,21 @@ exports.getThreads = async (event) => {
     let sortedItems = result.Items || [];
     console.log('Processing', sortedItems.length, 'threads');
     
-    // If we used scan (fallback), sort in memory
-    if (!params.IndexName || result.Items.length > 20) {
-      if (filter === 'trending') {
-        sortedItems = sortedItems.sort((a, b) => 
-          new Date(b.updated_at || b.updatedAt || 0).getTime() - 
-          new Date(a.updated_at || a.updatedAt || 0).getTime()
-        );
-      } else {
-        sortedItems = sortedItems.sort((a, b) => 
-          new Date(b.created_at || b.createdAt || 0).getTime() - 
-          new Date(a.created_at || a.createdAt || 0).getTime()
-        );
-      }
-      // Take only first 20 after sorting
-      sortedItems = sortedItems.slice(0, 20);
+    // Sort in memory based on filter
+    if (filter === 'trending') {
+      sortedItems = sortedItems.sort((a, b) => 
+        new Date(b.updated_at || b.updatedAt || 0).getTime() - 
+        new Date(a.updated_at || a.updatedAt || 0).getTime()
+      );
+    } else {
+      sortedItems = sortedItems.sort((a, b) => 
+        new Date(b.created_at || b.createdAt || 0).getTime() - 
+        new Date(a.created_at || a.createdAt || 0).getTime()
+      );
     }
+    
+    // Take only first 20 after sorting
+    sortedItems = sortedItems.slice(0, 20);
     
     // Get user information for each thread creator
     const transformedThreads = await Promise.all(sortedItems.map(async (thread) => {
