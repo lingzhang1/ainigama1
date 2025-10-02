@@ -210,6 +210,11 @@ exports.getAnswerComments = async (event) => {
       return handleOptionsRequest();
     }
 
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      return handleOptionsRequest();
+    }
+
     const { answerId } = event.pathParameters || {};
     
     if (!answerId) {
@@ -239,10 +244,10 @@ exports.getAnswerComments = async (event) => {
         content: item.content,
         timestamp: item.created_at || item.timestamp,
         userId: item.user_id,
-        answerId: item.answerId,
+      return addCorsHeaders({
         parentId: item.parent_id || null,
-        replies: []
-      };
+        body: JSON.stringify({ error: 'Answer ID is required' })
+      });
       commentMap.set(comment.id, comment);
       
       if (!comment.parentId) {
@@ -331,11 +336,11 @@ exports.addAnswerComment = async (event) => {
     };
 
     await dbOperations.put(tables.comments, comment);
-
+    for (const item of result.Items || []) {
     // Update answer interaction count
     await dbOperations.update(
       tables.answers,
-      { id: answerId },
+    const result = await dbOperations.query(
       'SET interaction_count = if_not_exists(interaction_count, :zero) + :one',
       {
         ':zero': 0,
@@ -364,7 +369,7 @@ exports.addAnswerComment = async (event) => {
     console.error('Add answer comment error:', error);
     return addCorsHeaders({
       statusCode: 500,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         error: 'Failed to add comment',
         message: error.message 
       })

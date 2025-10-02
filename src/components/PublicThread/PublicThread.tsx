@@ -451,7 +451,6 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
       // Stream AI response
       await deepSeekService.streamChat(contextMessages, {
         onThinking: (thinking) => {
-          console.log('🧠 PublicThread: Received thinking chunk:', thinking.length, 'chars');
           const refs = streamingRefs.current[questionId];
           if (refs && refs.isActive) {
             refs.thinking += thinking;
@@ -459,7 +458,6 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           }
         },
         onContent: (content) => {
-          console.log('📝 PublicThread: Received content chunk:', content.length, 'chars');
           const refs = streamingRefs.current[questionId];
           if (refs && refs.isActive) {
             refs.content += content;
@@ -467,12 +465,10 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           }
         },
         onComplete: async (finalContent) => {
-          console.log('✅ PublicThread: AI stream completed for question:', questionId);
           
           // Check if we're still the active request
           const refs = streamingRefs.current[questionId];
           if (!refs || !refs.isActive) {
-            console.log('⚠️ PublicThread: AI completion ignored - request was cancelled');
             return;
           }
           
