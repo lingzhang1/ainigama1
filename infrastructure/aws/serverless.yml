@@ -17,6 +17,7 @@ provider:
     DYNAMODB_TABLE_CONNECTIONS: ${self:service}-${self:provider.stage}-connections
     DEEPSEEK_API_KEY: ${env:DEEPSEEK_API_KEY, 'sk-0dcbd0d5eca74684919812e175de65b7'}
     NODE_ENV: ${self:provider.stage}
+    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
     WEBSOCKET_ENDPOINT: 
       Fn::Join:
         - ""
@@ -62,6 +63,37 @@ provider:
         - "arn:aws:execute-api:${self:provider.region}:*:**/@connections/*"
 
 functions:
+  # Test endpoint to verify Lambda is working
+  testHandler:
+    handler: src/handlers/test.testHandler
+    events:
+      - http:
+          path: /test
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /test
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
   # WebSocket API
   websocketConnect:
     handler: src/handlers/websocket.connect
