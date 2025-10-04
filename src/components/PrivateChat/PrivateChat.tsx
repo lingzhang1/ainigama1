@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Menu } from 'lucide-react';
 import { Message, PrivateConversation } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { useMobileDrawer } from '../../hooks/useMobileDrawer';
 import { deepSeekService, ChatMessage } from '../../services/deepseek';
 import { v4 as uuidv4 } from 'uuid';
 import { estimateTokens, countChatMessagesTokens, wouldExceedThreshold } from '../../utils/tokenCounter';
@@ -54,6 +56,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   // Refs for managing streaming and preventing race conditions
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isProcessingRef = useRef(false);
+
+  // Mobile drawer state
+  const { isOpen: isSidebarOpen, isMobile, toggle: toggleSidebar, close: closeSidebar } = useMobileDrawer();
   
   // Streaming state management using refs (to avoid state update issues)
   const streamingRef = useRef<{
@@ -821,22 +826,49 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   };
   return (
     <div className="flex w-full h-screen bg-gray-50">
+      {/* Mobile Header */}
+      {isMobile && currentConversation && (
+        <div className="fixed top-0 left-0 right-0 bg-white border-b z-30 px-4 py-3 flex items-center">
+          <button
+            onClick={toggleSidebar}
+            className="p-2 hover:bg-gray-100 rounded-lg mr-3"
+            aria-label="Toggle conversations"
+          >
+            <Menu className="w-6 h-6 text-gray-700" />
+          </button>
+          <h1 className="text-lg font-semibold text-gray-800 truncate">
+            {currentConversation.title || 'Private Conversation'}
+          </h1>
+        </div>
+      )}
+
+      {/* Sidebar Backdrop (Mobile) */}
+      {isSidebarOpen && isMobile && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={closeSidebar}
+        />
+      )}
+
       {/* Left Sidebar - Conversations List */}
       <ConversationSidebar
         conversations={conversations}
         currentConversationId={currentConversation?.id || null}
         currentUser={state.currentUser}
         isGuest={isGuest}
+        isOpen={isSidebarOpen}
+        isMobile={isMobile}
         onSelectConversation={setCurrentConversation}
         onNewConversation={handleNewConversation}
         onDeleteConversation={handleDeleteConversation}
         onGoToForum={handleGoToForum}
         onLogout={onLogout}
         onSignIn={handleSignIn}
+        onClose={closeSidebar}
       />
 
       {/* Main Chat Area */}
-      <main className="flex-1 flex flex-col">
+      <main className={`flex-1 flex flex-col ${isMobile && currentConversation ? 'mt-14' : ''}`}>
         {/* Context Warning Banner */}
         {showContextWarning && (
           <ConversationContextWarning

@@ -32,7 +32,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   onMakePublic
 }) => {
   return (
-    <header className="bg-white border-b p-4 flex items-center justify-between">
+    <header className="bg-white border-b p-4 flex items-center justify-between hidden md:flex">
       <div className="flex items-center">
         <Lock className="w-5 h-5 mr-2 text-gray-500" />
         <h3 className="text-lg font-medium text-gray-800">

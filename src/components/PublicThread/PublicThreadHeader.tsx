@@ -27,21 +27,22 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
 }) => {
   return (
     <header className="bg-white border-b p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-center md:space-x-4 gap-3 md:gap-0">
           <Button
             variant="ghost"
             size="sm"
             onClick={onBackToForum}
+            className="self-start"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Forum
           </Button>
           <div>
-            <h1 className="text-xl font-semibold text-gray-800">{thread.title}</h1>
-            <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+            <h1 className="text-lg md:text-xl font-semibold text-gray-800">{thread.title}</h1>
+            <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-500 mt-1">
               <div className="flex items-center">
-                <Avatar className="w-5 h-5 mr-2">
+                <Avatar className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2">
                   <AvatarImage src={thread.creator.avatar} />
                   <AvatarFallback>{thread.creator.name.charAt(0)}</AvatarFallback>
                 </Avatar>
@@ -55,25 +56,28 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
             </div>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onSortChange(sortOrder === 'newest' ? 'oldest' : 'newest')}
-            className="flex items-center gap-2"
+            className="flex items-center justify-center gap-2 w-full sm:w-auto"
           >
             <ArrowUpDown className="w-4 h-4" />
-            {sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}
+            <span className="hidden sm:inline">{sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}</span>
+            <span className="sm:hidden">{sortOrder === 'newest' ? 'Newest' : 'Oldest'}</span>
           </Button>
           {isGuest ? (
             <Button
               onClick={onSignIn}
               size="sm"
+              className="w-full sm:w-auto"
             >
-              Sign In to Participate
+              <span className="hidden sm:inline">Sign In to Participate</span>
+              <span className="sm:hidden">Sign In</span>
             </Button>
           ) : (
-            <Button onClick={onLogout} variant="ghost" size="sm">
+            <Button onClick={onLogout} variant="ghost" size="sm" className="w-full sm:w-auto">
               Sign Out
             </Button>
           )}

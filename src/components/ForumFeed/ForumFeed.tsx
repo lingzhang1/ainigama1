@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { SearchIcon, TrendingUpIcon, ClockIcon, PlusIcon, ChevronDown, Lock, Globe } from 'lucide-react';
-import { X, Loader2 } from 'lucide-react';
+import { Search as SearchIcon, TrendingUp as TrendingUpIcon, Clock as ClockIcon, Plus as PlusIcon, ChevronDown, Lock, Globe, Menu, X, Loader as Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -10,6 +9,7 @@ import { Badge } from '../ui/badge';
 import { Thread } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { formatDistanceToNow } from 'date-fns';
+import { useMobileDrawer } from '../../hooks/useMobileDrawer';
 
 interface ForumFeedProps {
   onLogout: () => void;
@@ -55,6 +55,8 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     question: ''
   });
   const [isCreatingThread, setIsCreatingThread] = useState(false);
+  const { isOpen: isLeftDrawerOpen, isMobile, toggle: toggleLeftDrawer, close: closeLeftDrawer } = useMobileDrawer();
+  const { isOpen: isRightDrawerOpen, toggle: toggleRightDrawer, close: closeRightDrawer } = useMobileDrawer();
 
   useEffect(() => {
     const loadThreads = async () => {
@@ -158,9 +160,56 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
 
   return (
     <div className="flex w-full h-screen bg-gray-50">
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b z-30 px-4 py-3 flex items-center justify-between">
+        <button
+          onClick={toggleLeftDrawer}
+          className="p-2 hover:bg-gray-100 rounded-lg"
+          aria-label="Toggle menu"
+        >
+          <Menu className="w-6 h-6 text-gray-700" />
+        </button>
+        <h1 className="text-lg font-semibold text-gray-800">MELON</h1>
+        <button
+          onClick={toggleRightDrawer}
+          className="p-2 hover:bg-gray-100 rounded-lg"
+          aria-label="Toggle suggestions"
+        >
+          <SearchIcon className="w-6 h-6 text-gray-700" />
+        </button>
+      </div>
+
+      {/* Left Sidebar Backdrop (Mobile) */}
+      {isLeftDrawerOpen && isMobile && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={closeLeftDrawer}
+        />
+      )}
+
       {/* Left Sidebar */}
-      <aside className="w-64 h-full bg-white border-r flex flex-col">
+      <aside className={`
+        w-64 h-full bg-white border-r flex flex-col
+        fixed md:relative
+        inset-y-0 left-0
+        z-50 md:z-auto
+        transform transition-transform duration-300 ease-in-out
+        ${isLeftDrawerOpen || !isMobile ? 'translate-x-0' : '-translate-x-full'}
+        md:translate-x-0
+      `}>
         <div className="p-4">
+          {/* Mobile Close Button */}
+          <div className="md:hidden flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-800">Menu</h2>
+            <button
+              onClick={closeLeftDrawer}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5 text-gray-700" />
+            </button>
+          </div>
+
           <div className="relative">
             <Button 
               onClick={() => setShowNewThreadDropdown(!showNewThreadDropdown)}
@@ -180,6 +229,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                   onClick={() => {
                     dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
                     setShowNewThreadDropdown(false);
+                    closeLeftDrawer();
                   }}
                   className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center border-b border-gray-100"
                 >
@@ -223,9 +273,12 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                 <SearchIcon className="w-5 h-4 mr-3" />
                 Home
               </div>
-              <div 
+              <div
                 className="flex items-center px-3 py-2 rounded-md text-base text-gray-700 hover:bg-gray-50 cursor-pointer"
-                onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'private' })}
+                onClick={() => {
+                  dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
+                  closeLeftDrawer();
+                }}
               >
                 <ClockIcon className="w-5 h-4 mr-3" />
                 My Threads
@@ -287,37 +340,37 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden">
+      <main className="flex-1 overflow-hidden mt-14 md:mt-0">
         {/* Header */}
         <header className="bg-white border-b p-4">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-normal text-gray-800">Knowledge Feed</h1>
-            <div className="flex gap-2">
+          <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between mb-4">
+            <h1 className="text-lg md:text-xl font-normal text-gray-800 hidden md:block">Knowledge Feed</h1>
+            <div className="flex gap-2 w-full md:w-auto">
               <Button
                 variant={state.feedFilter === 'recent' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'recent' })}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 flex-1 md:flex-none justify-center"
               >
                 <ClockIcon className="w-4 h-4" />
-                Recent
+                <span className="hidden sm:inline">Recent</span>
               </Button>
               <Button
                 variant={state.feedFilter === 'trending' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'trending' })}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 flex-1 md:flex-none justify-center"
               >
                 <TrendingUpIcon className="w-4 h-4" />
-                Trending
+                <span className="hidden sm:inline">Trending</span>
               </Button>
             </div>
           </div>
 
-          <div className="relative">
+          <div className="relative mt-4 md:mt-0">
             <SearchIcon className="absolute w-4 h-4 top-1/2 left-3 transform -translate-y-1/2 text-gray-400" />
             <Input
-              className="w-full pl-10"
+              className="w-full pl-10 h-12 md:h-10"
               placeholder="Search topics, questions, and answers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -326,7 +379,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         </header>
 
         {/* Thread List */}
-        <div className="p-6 overflow-y-auto h-full">
+        <div className="p-4 md:p-6 overflow-y-auto h-full">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -342,26 +395,30 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
           ) : (
           <div className="space-y-4">
             {filteredThreads.map((thread) => (
-              <Card 
-                key={thread.id} 
+              <Card
+                key={thread.id}
                 className="border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => handleThreadClick(thread.id)}
+                onClick={() => {
+                  handleThreadClick(thread.id);
+                  closeLeftDrawer();
+                  closeRightDrawer();
+                }}
               >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-lg font-normal text-gray-800 leading-7 flex-1 mr-4">
+                <CardContent className="p-3 md:p-4">
+                  <div className="flex items-start justify-between mb-2 md:mb-3">
+                    <h3 className="text-base md:text-lg font-normal text-gray-800 leading-6 md:leading-7 flex-1 mr-4">
                       {thread.title}
                     </h3>
                     {thread.category && (
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs">
+                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs flex-shrink-0">
                         {thread.category}
                       </Badge>
                     )}
                   </div>
 
-                  <div className="flex items-center text-sm text-gray-500 space-x-4">
+                  <div className="flex flex-wrap items-center text-xs md:text-sm text-gray-500 gap-2 md:gap-4">
                     <div className="flex items-center">
-                      <Avatar className="w-5 h-5 mr-2">
+                      <Avatar className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2">
                         <AvatarImage src={thread.creator.avatar} alt={thread.creator.name} />
                         <AvatarFallback>{thread.creator.name.charAt(0)}</AvatarFallback>
                       </Avatar>
@@ -509,9 +566,37 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         </div>
       )}
 
+      {/* Right Sidebar Backdrop (Mobile) */}
+      {isRightDrawerOpen && isMobile && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={closeRightDrawer}
+        />
+      )}
+
       {/* Right Sidebar */}
-      <aside className="w-72 h-full bg-white border-l overflow-y-auto">
+      <aside className={`
+        w-72 h-full bg-white border-l overflow-y-auto
+        fixed md:relative
+        inset-y-0 right-0
+        z-50 md:z-auto
+        transform transition-transform duration-300 ease-in-out
+        ${isRightDrawerOpen || !isMobile ? 'translate-x-0' : 'translate-x-full'}
+        md:translate-x-0
+        mt-14 md:mt-0
+      `}>
         <div className="p-4">
+          {/* Mobile Close Button */}
+          <div className="md:hidden flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-800">Suggestions</h2>
+            <button
+              onClick={closeRightDrawer}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+              aria-label="Close suggestions"
+            >
+              <X className="w-5 h-5 text-gray-700" />
+            </button>
+          </div>
           <div className="mb-6">
             <h2 className="text-sm font-normal text-gray-800 mb-4">
               Suggested Topics

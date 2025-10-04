@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, Globe, MessageSquare, Trash2 } from 'lucide-react';
+import { Lock, Globe, MessageSquare, Trash2, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { PrivateConversation, User } from '../../types';
@@ -24,12 +24,15 @@ interface ConversationSidebarProps {
   currentConversationId: string | null;
   currentUser: User | null;
   isGuest: boolean;
+  isOpen: boolean;
+  isMobile: boolean;
   onSelectConversation: (conversation: PrivateConversation) => void;
   onNewConversation: () => void;
   onDeleteConversation: (conversationId: string, e: React.MouseEvent) => void;
   onGoToForum: () => void;
   onLogout: () => void;
   onSignIn: () => void;
+  onClose: () => void;
 }
 
 export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
@@ -37,29 +40,53 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   currentConversationId,
   currentUser,
   isGuest,
+  isOpen,
+  isMobile,
   onSelectConversation,
   onNewConversation,
   onDeleteConversation,
   onGoToForum,
   onLogout,
-  onSignIn
+  onSignIn,
+  onClose
 }) => {
   return (
-    <aside className="w-80 h-full bg-white border-r flex flex-col">
+    <aside className={`
+      w-80 h-full bg-white border-r flex flex-col
+      fixed md:relative
+      inset-y-0 left-0
+      z-50 md:z-auto
+      transform transition-transform duration-300 ease-in-out
+      ${isOpen || !isMobile ? 'translate-x-0' : '-translate-x-full'}
+      md:translate-x-0
+    `}>
       {/* Header Section */}
       <div className="p-4 border-b">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-            <Lock className="w-5 h-5 mr-2" />
-            Private Chat
-            {isGuest && (
-              <span className="ml-2 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                Guest Mode
-              </span>
-            )}
-          </h2>
+          <div className="flex items-center">
+            {/* Mobile Close Button */}
+            <button
+              onClick={onClose}
+              className="md:hidden mr-3 p-2 hover:bg-gray-100 rounded-lg"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5 text-gray-700" />
+            </button>
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+              <Lock className="w-5 h-5 mr-2" />
+              Private Chat
+              {isGuest && (
+                <span className="ml-2 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                  Guest Mode
+                </span>
+              )}
+            </h2>
+          </div>
           <Button
-            onClick={onGoToForum}
+            onClick={() => {
+              onGoToForum();
+              onClose();
+            }}
             variant="ghost"
             size="sm"
             title="Go to Forum"
@@ -101,6 +128,10 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               } else {
                 // If clicking the same conversation, force a refresh
                 onSelectConversation({ ...conversation });
+              }
+              // Close drawer on mobile after selection
+              if (isMobile) {
+                onClose();
               }
             }}
           >
