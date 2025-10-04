@@ -117,7 +117,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         {conversations.map((conversation) => (
           <div
             key={conversation.id}
-            className={`p-4 border-b cursor-pointer hover:bg-gray-50 group relative ${
+            className={`p-4 md:p-3 border-b cursor-pointer hover:bg-gray-50 active:bg-gray-100 group relative transition-colors ${
               currentConversationId === conversation.id ? 'bg-blue-50 border-blue-200' : ''
             }`}
             onClick={() => {
@@ -150,11 +150,11 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50"
+                  className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity h-11 w-11 md:h-8 md:w-8 p-0 text-gray-400 hover:text-red-500 hover:bg-red-50 active:bg-red-100 flex-shrink-0"
                   onClick={(e) => onDeleteConversation(conversation.id, e)}
                   title="Delete conversation"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-5 w-5 md:h-4 md:w-4" />
                 </Button>
               )}
             </div>

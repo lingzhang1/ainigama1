@@ -4,6 +4,8 @@ import { Message, PrivateConversation } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useMobileDrawer } from '../../hooks/useMobileDrawer';
+import { useSwipeGesture } from '../../hooks/useSwipeGesture';
+import { FloatingActionButton } from '../ui/FloatingActionButton';
 import { deepSeekService, ChatMessage } from '../../services/deepseek';
 import { v4 as uuidv4 } from 'uuid';
 import { estimateTokens, countChatMessagesTokens, wouldExceedThreshold } from '../../utils/tokenCounter';
@@ -58,8 +60,18 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const isProcessingRef = useRef(false);
 
   // Mobile drawer state
-  const { isOpen: isSidebarOpen, isMobile, toggle: toggleSidebar, close: closeSidebar } = useMobileDrawer();
-  
+  const { isOpen: isSidebarOpen, isMobile, toggle: toggleSidebar, close: closeSidebar, open: openSidebar } = useMobileDrawer();
+
+  // Swipe gestures for mobile
+  useSwipeGesture({
+    onSwipeRight: () => {
+      if (isMobile && !isSidebarOpen && currentConversation) {
+        openSidebar();
+      }
+    },
+    enabled: isMobile && !isSidebarOpen && !!currentConversation,
+  });
+
   // Streaming state management using refs (to avoid state update issues)
   const streamingRef = useRef<{
     thinking: string;
@@ -991,6 +1003,15 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         onPublish={handlePublishConversation}
         defaultTitle={currentConversation?.title || "Relationship advice discussion"}
       />
+
+      {/* Floating Action Button - Mobile Only */}
+      {!currentConversation && (
+        <FloatingActionButton
+          onClick={handleNewConversation}
+          icon={<Menu className="w-6 h-6" />}
+          label="Chat"
+        />
+      )}
     </div>
   );
 };

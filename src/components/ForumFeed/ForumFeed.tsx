@@ -6,10 +6,12 @@ import { Textarea } from '../ui/textarea';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
+import { FloatingActionButton } from '../ui/FloatingActionButton';
 import { Thread } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { formatDistanceToNow } from 'date-fns';
 import { useMobileDrawer } from '../../hooks/useMobileDrawer';
+import { useSwipeGesture } from '../../hooks/useSwipeGesture';
 
 interface ForumFeedProps {
   onLogout: () => void;
@@ -55,8 +57,23 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     question: ''
   });
   const [isCreatingThread, setIsCreatingThread] = useState(false);
-  const { isOpen: isLeftDrawerOpen, isMobile, toggle: toggleLeftDrawer, close: closeLeftDrawer } = useMobileDrawer();
-  const { isOpen: isRightDrawerOpen, toggle: toggleRightDrawer, close: closeRightDrawer } = useMobileDrawer();
+  const { isOpen: isLeftDrawerOpen, isMobile, toggle: toggleLeftDrawer, close: closeLeftDrawer, open: openLeftDrawer } = useMobileDrawer();
+  const { isOpen: isRightDrawerOpen, toggle: toggleRightDrawer, close: closeRightDrawer, open: openRightDrawer } = useMobileDrawer();
+
+  // Swipe gestures for mobile
+  useSwipeGesture({
+    onSwipeRight: () => {
+      if (isMobile && !isLeftDrawerOpen) {
+        openLeftDrawer();
+      }
+    },
+    onSwipeLeft: () => {
+      if (isMobile && !isRightDrawerOpen) {
+        openRightDrawer();
+      }
+    },
+    enabled: isMobile && !isLeftDrawerOpen && !isRightDrawerOpen,
+  });
 
   useEffect(() => {
     const loadThreads = async () => {
@@ -340,9 +357,9 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden mt-14 md:mt-0">
-        {/* Header */}
-        <header className="bg-white border-b p-4">
+      <main className="flex-1 overflow-hidden mt-14 md:mt-0 flex flex-col">
+        {/* Header - Sticky on scroll */}
+        <header className="bg-white border-b p-4 sticky top-14 md:top-0 z-20 shadow-sm">
           <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between mb-4">
             <h1 className="text-lg md:text-xl font-normal text-gray-800 hidden md:block">Knowledge Feed</h1>
             <div className="flex gap-2 w-full md:w-auto">
@@ -379,7 +396,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         </header>
 
         {/* Thread List */}
-        <div className="p-4 md:p-6 overflow-y-auto h-full">
+        <div className="p-4 md:p-6 overflow-y-auto flex-1">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -636,6 +653,13 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
           </div>
         </div>
       </aside>
+
+      {/* Floating Action Button - Mobile Only */}
+      <FloatingActionButton
+        onClick={() => setShowNewThreadDropdown(!showNewThreadDropdown)}
+        icon={<PlusIcon className="w-6 h-6" />}
+        label="New"
+      />
     </div>
   );
 };
