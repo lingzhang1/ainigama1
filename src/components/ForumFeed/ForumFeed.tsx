@@ -75,6 +75,13 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     enabled: isMobile && !isLeftDrawerOpen && !isRightDrawerOpen,
   });
 
+  // Close dropdown when drawer closes
+  useEffect(() => {
+    if (!isLeftDrawerOpen && showNewThreadDropdown) {
+      setShowNewThreadDropdown(false);
+    }
+  }, [isLeftDrawerOpen, showNewThreadDropdown]);
+
   useEffect(() => {
     const loadThreads = async () => {
       try {
@@ -656,7 +663,15 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
 
       {/* Floating Action Button - Mobile Only */}
       <FloatingActionButton
-        onClick={() => setShowNewThreadDropdown(!showNewThreadDropdown)}
+        onClick={() => {
+          if (isMobile) {
+            openLeftDrawer();
+            // Open the dropdown menu after a brief delay to allow drawer to open
+            setTimeout(() => {
+              setShowNewThreadDropdown(true);
+            }, 300);
+          }
+        }}
         icon={<PlusIcon className="w-6 h-6" />}
         label="New"
       />
