@@ -7,6 +7,7 @@ import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { FloatingActionButton } from '../ui/FloatingActionButton';
+import { NewThreadModal } from './NewThreadModal';
 import { Thread } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { formatDistanceToNow } from 'date-fns';
@@ -50,6 +51,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showNewThreadDropdown, setShowNewThreadDropdown] = useState(false);
+  const [showNewThreadModal, setShowNewThreadModal] = useState(false);
   const [showPublicThreadModal, setShowPublicThreadModal] = useState(false);
   const [publicThreadForm, setPublicThreadForm] = useState({
     title: '',
@@ -663,17 +665,26 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
 
       {/* Floating Action Button - Mobile Only */}
       <FloatingActionButton
-        onClick={() => {
-          if (isMobile) {
-            openLeftDrawer();
-            // Open the dropdown menu after a brief delay to allow drawer to open
-            setTimeout(() => {
-              setShowNewThreadDropdown(true);
-            }, 300);
-          }
-        }}
+        onClick={() => setShowNewThreadModal(true)}
         icon={<PlusIcon className="w-6 h-6" />}
         label="New"
+      />
+
+      {/* New Thread Selection Modal */}
+      <NewThreadModal
+        isOpen={showNewThreadModal}
+        onClose={() => setShowNewThreadModal(false)}
+        onSelectPrivateChat={() => {
+          dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
+        }}
+        onSelectPublicThread={() => {
+          if (isGuest) {
+            dispatch({ type: 'SET_GUEST_MODE', payload: false });
+          } else {
+            setShowPublicThreadModal(true);
+          }
+        }}
+        isGuest={isGuest}
       />
     </div>
   );
