@@ -50,12 +50,12 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <Card className="w-full max-w-lg mx-4 bg-white">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-lg bg-white max-h-[90vh] overflow-y-auto">
         <CardContent className="p-0">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b">
-            <h3 className="text-xl font-semibold text-gray-900">Publish to Community</h3>
+          <div className="flex items-center justify-between p-4 md:p-6 border-b sticky top-0 bg-white z-10">
+            <h3 className="text-lg md:text-xl font-semibold text-gray-900">Publish to Community</h3>
             <Button 
               variant="ghost" 
               size="sm"
@@ -67,7 +67,7 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
           </div>
 
           {/* Content */}
-          <div className="p-6 space-y-6">
+          <div className="p-4 md:p-6 space-y-4 md:space-y-6">
             <div>
               <p className="text-gray-600 text-sm leading-relaxed">
                 Share this conversation with the community to get diverse perspectives and additional insights from other users.
@@ -93,10 +93,10 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
               <label className="text-sm font-medium text-gray-700">
                 Category
               </label>
-              <select 
+              <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full h-11 md:h-9 px-3 py-2 border border-gray-300 rounded-md text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
               >
                 <option value="General">General</option>
                 <option value="Relationships">Relationships</option>
@@ -108,16 +108,16 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
             </div>
 
             {/* Privacy Notice */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-start space-x-3">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4">
+              <div className="flex items-start gap-2 md:gap-3">
                 <div className="flex-shrink-0">
-                  <Globe className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <Globe className="h-4 w-4 md:h-5 md:w-5 text-blue-600 mt-0.5" />
                 </div>
-                <div className="text-sm">
+                <div className="text-xs md:text-sm">
                   <p className="text-blue-800 font-medium mb-1">
                     This will be public
                   </p>
-                  <p className="text-blue-700">
+                  <p className="text-blue-700 leading-relaxed">
                     Your conversation will be visible to all community members. Others can add answers and engage in discussions.
                   </p>
                 </div>
@@ -126,17 +126,17 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end space-x-3 p-6 border-t bg-gray-50">
-            <Button 
-              onClick={onClose} 
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 md:gap-3 p-4 md:p-6 border-t bg-gray-50 sticky bottom-0">
+            <Button
+              onClick={onClose}
               variant="outline"
-              className="px-4 py-2"
+              className="w-full sm:w-auto order-2 sm:order-1"
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handlePublish} 
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+            <Button
+              onClick={handlePublish}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white order-1 sm:order-2"
               disabled={!title.trim()}
             >
               Publish Thread

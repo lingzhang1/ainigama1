@@ -47,9 +47,9 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
   };
 
   return (
-    <div className="border-l-2 border-gray-100 pl-4">
-      <div className="flex items-start space-x-3">
-        <Avatar className="w-6 h-6">
+    <div className="border-l-2 border-gray-100 pl-3 md:pl-4">
+      <div className="flex items-start gap-2 md:gap-3">
+        <Avatar className="w-6 h-6 flex-shrink-0">
           {answer.isAI ? (
             <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
               <span className="text-white text-xs font-bold">AI</span>
@@ -61,9 +61,9 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
             </>
           )}
         </Avatar>
-        <div className="flex-1">
-          <div className="flex items-center space-x-2 mb-2">
-            <span className="font-medium text-gray-700">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mb-2">
+            <span className="font-medium text-gray-700 text-sm md:text-base">
               {answer.isAI ? 'AI Assistant' : getUserDisplayName(answer.userId)}
             </span>
             {answer.isPinned && (
@@ -73,17 +73,17 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
               {formatDistanceToNow(answer.timestamp)} ago
             </span>
           </div>
-          
+
           {/* Show AI thinking process if available */}
           {answer.isAI && answer.thinking && (
-            <div className="mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-              <div className="flex items-center mb-2">
-                <Brain className="w-4 h-4 text-gray-500 mr-2" />
+            <div className="mb-2 md:mb-3 p-2 md:p-3 bg-gray-50 border border-gray-200 rounded-lg">
+              <div className="flex items-center mb-1.5 md:mb-2">
+                <Brain className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-500 mr-1.5 md:mr-2 flex-shrink-0" />
                 <span className="text-xs font-medium text-gray-600">
                   AI Thought Process
                 </span>
               </div>
-              <div className="text-xs text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded">
+              <div className="text-xs text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded leading-relaxed break-words overflow-wrap-anywhere">
                 {answer.thinking}
               </div>
             </div>

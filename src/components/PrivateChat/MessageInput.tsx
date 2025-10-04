@@ -45,28 +45,30 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   };
 
   return (
-    <div className="bg-white border-t p-4">
-      <div className="flex space-x-2">
+    <div className="bg-white border-t p-3 md:p-4">
+      <div className="flex gap-2 md:gap-3 items-end">
         <Textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           onKeyPress={handleKeyPress}
           onInput={handleInput}
-          className="flex-1 min-h-[40px] max-h-[120px] resize-none"
+          className="flex-1 min-h-[48px] md:min-h-[44px] max-h-[120px] resize-none"
           rows={1}
           style={{
             height: 'auto',
-            minHeight: '40px',
+            minHeight: '48px',
             maxHeight: '120px'
           }}
           disabled={isDisabled}
         />
-        <Button 
-          onClick={onSend} 
+        <Button
+          onClick={onSend}
           disabled={!value.trim() || isDisabled}
+          size="icon"
+          className="flex-shrink-0"
         >
-          <Send className="w-4 h-4" />
+          <Send className="w-4 h-4 md:w-5 md:h-5" />
         </Button>
       </div>
     </div>
