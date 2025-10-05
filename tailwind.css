@@ -241,4 +241,99 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  /* Mobile Browser Cursor and Touch Interaction Fixes */
+
+  /* Ensure proper touch behavior on all interactive elements */
+  button,
+  a,
+  input,
+  textarea,
+  select,
+  [role="button"],
+  [onclick],
+  [tabindex]:not([tabindex="-1"]) {
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    -webkit-touch-callout: none;
+  }
+
+  /* Fix for input elements to allow text selection */
+  input,
+  textarea {
+    cursor: text;
+    touch-action: auto;
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* Ensure clickable elements show pointer cursor */
+  a,
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+
+  /* Prevent text selection on buttons but allow on content */
+  button,
+  [role="button"] {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Fix for disabled elements */
+  button:disabled,
+  input:disabled,
+  textarea:disabled,
+  select:disabled {
+    cursor: not-allowed;
+    touch-action: none;
+  }
+
+  /* Ensure body and html allow proper scrolling */
+  html,
+  body {
+    touch-action: pan-y pinch-zoom;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Fix for iOS Safari specific issues */
+  @supports (-webkit-touch-callout: none) {
+    /* iOS-specific fixes */
+    input,
+    textarea,
+    button,
+    select {
+      font-size: 16px; /* Prevents zoom on focus in iOS */
+    }
+  }
+
+  /* Remove default button styles that might interfere */
+  button {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+
+  /* Ensure SVGs inside interactive elements don't block clicks */
+  button svg,
+  a svg,
+  [role="button"] svg {
+    pointer-events: none;
+  }
+
+  /* Touch feedback for mobile devices */
+  .touch-active {
+    opacity: 0.7;
+    transform: scale(0.98);
+    transition: opacity 0.15s ease, transform 0.15s ease;
+  }
+
+  /* Fix for elements that shouldn't have cursor pointer */
+  [role="presentation"],
+  [role="none"],
+  .no-cursor {
+    cursor: default;
+  }
 }

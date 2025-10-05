@@ -9,14 +9,22 @@ import { ForumFeed } from './components/ForumFeed/ForumFeed';
 import { PrivateChat } from './components/PrivateChat/PrivateChat';
 import { PublicThread } from './components/PublicThread/PublicThread';
 import { User } from './types';
+import { initializeMobileTouchHandlers } from './utils/touchHandler';
 
 const AppContent: React.FC = () => {
   const { state, dispatch } = useAppContext();
   const [isAllowlistApproved, setIsAllowlistApproved] = React.useState(false);
   const [isCheckingAllowlist, setIsCheckingAllowlist] = React.useState(true);
-  
+
   // Initialize WebSocket connection
   useWebSocket(state.currentUser?.id || '');
+
+  // Initialize mobile touch handlers on mount
+  React.useEffect(() => {
+    // Initialize touch handlers for mobile compatibility
+    initializeMobileTouchHandlers();
+    console.log('✅ Mobile touch handlers initialized');
+  }, []);
 
   // Check allowlist approval on mount
   React.useEffect(() => {
