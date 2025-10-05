@@ -366,10 +366,10 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-hidden mt-14 md:mt-0 flex flex-col">
+      <main className="flex-1 overflow-hidden md:mt-0 flex flex-col">
         {/* Header - Sticky on scroll */}
         <header className="bg-white border-b p-4 sticky top-14 md:top-0 z-20 shadow-sm">
-          <div className="flex flex-col space-y-4 md:space-y-0 md:flex-row md:items-center md:justify-between mb-4">
+          <div className="flex flex-col space-y-3 md:space-y-0 md:flex-row md:items-center md:justify-between mb-3 md:mb-4">
             <h1 className="text-lg md:text-xl font-normal text-gray-800 hidden md:block">Knowledge Feed</h1>
             <div className="flex gap-2 w-full md:w-auto">
               <Button
@@ -393,7 +393,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
             </div>
           </div>
 
-          <div className="relative mt-4 md:mt-0">
+          <div className="relative">
             <SearchIcon className="absolute w-4 h-4 top-1/2 left-3 transform -translate-y-1/2 text-gray-400" />
             <Input
               className="w-full pl-10 h-12 md:h-10"
@@ -405,7 +405,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         </header>
 
         {/* Thread List */}
-        <div className="p-4 md:p-6 overflow-y-auto flex-1">
+        <div className="p-4 md:p-6 overflow-y-auto flex-1 mt-14">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>

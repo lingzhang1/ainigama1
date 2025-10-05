@@ -61,13 +61,13 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
             variant="outline"
             size="sm"
             onClick={() => onSortChange(sortOrder === 'newest' ? 'oldest' : 'newest')}
-            className="flex items-center justify-center gap-2 w-full sm:w-auto"
+            className="flex items-center justify-center gap-1.5 w-full sm:w-auto h-8 text-xs px-3"
           >
-            <ArrowUpDown className="w-4 h-4" />
+            <ArrowUpDown className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">{sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}</span>
             <span className="sm:hidden">{sortOrder === 'newest' ? 'Newest' : 'Oldest'}</span>
           </Button>
-          {isGuest ? (
+          {isGuest && (
             <Button
               onClick={onSignIn}
               size="sm"
@@ -75,10 +75,6 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
             >
               <span className="hidden sm:inline">Sign In to Participate</span>
               <span className="sm:hidden">Sign In</span>
-            </Button>
-          ) : (
-            <Button onClick={onLogout} variant="ghost" size="sm" className="w-full sm:w-auto">
-              Sign Out
             </Button>
           )}
         </div>
