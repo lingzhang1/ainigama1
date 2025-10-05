@@ -187,7 +187,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   return (
     <div className="flex w-full h-screen bg-gray-50">
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b z-30 px-4 py-3 flex items-center justify-between">
+      <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b z-30 px-4 py-3 flex items-center justify-between pointer-events-auto">
         <button
           onClick={toggleLeftDrawer}
           className="p-2 hover:bg-gray-100 rounded-lg"
@@ -437,11 +437,22 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
             {filteredThreads.map((thread) => (
               <Card
                 key={thread.id}
-                className="border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+                className="border border-gray-200 hover:shadow-md transition-shadow cursor-pointer touch-manipulation"
                 onClick={() => {
                   handleThreadClick(thread.id);
                   closeLeftDrawer();
                   closeRightDrawer();
+                }}
+                onTouchEnd={(e) => {
+                  // Ensure touch events work on mobile
+                  e.preventDefault();
+                  handleThreadClick(thread.id);
+                  closeLeftDrawer();
+                  closeRightDrawer();
+                }}
+                style={{ 
+                  touchAction: 'manipulation',
+                  WebkitTapHighlightColor: 'rgba(0, 0, 0, 0.1)'
                 }}
               >
                 <CardContent className="p-3 md:p-4">
@@ -643,7 +654,14 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
             </h2>
             <div className="space-y-2">
               {suggestedTopics.map((topic, index) => (
-                <div key={index} className="bg-gray-50 rounded-md p-3 hover:bg-gray-100 cursor-pointer">
+                <div 
+                  key={index} 
+                  className="bg-gray-50 rounded-md p-3 hover:bg-gray-100 cursor-pointer touch-manipulation"
+                  style={{ 
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'rgba(0, 0, 0, 0.1)'
+                  }}
+                >
                   <div className="text-sm text-gray-800">{topic}</div>
                 </div>
               ))}
@@ -658,9 +676,13 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
               {popularQuestions.map((item, index) => (
                 <div
                   key={index}
-                  className={`py-4 hover:bg-gray-50 cursor-pointer px-2 rounded ${
+                  className={`py-4 hover:bg-gray-50 cursor-pointer px-2 rounded touch-manipulation ${
                     index < popularQuestions.length - 1 ? 'border-b border-gray-100' : ''
                   }`}
+                  style={{ 
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'rgba(0, 0, 0, 0.1)'
+                  }}
                 >
                   <div className="text-sm text-gray-800 leading-5 mb-2">
                     {item.question}
