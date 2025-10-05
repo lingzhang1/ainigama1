@@ -54,6 +54,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const [conversationSummary, setConversationSummary] = useState<string | null>(null);
   const [showContextWarning, setShowContextWarning] = useState(false);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
+  const [lastUserQuestion, setLastUserQuestion] = useState<string | null>(null);
   
   // Refs for managing streaming and preventing race conditions
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -273,6 +274,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     if (currentTokenCount > CONTEXT_OVERFLOW_THRESHOLD) {
       console.warn('⚠️ Private chat context overflow detected. Triggering summarization.');
       
+      // Store the user's last question for later answering
+      setLastUserQuestion(newMessage.trim());
+      
       // Release processing lock immediately since we're not calling AI
       isProcessingRef.current = false;
       
@@ -299,12 +303,14 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         isGuest ? [conversationWithSystemMessage] : prev.map(c => c.id === conversationWithSystemMessage.id ? conversationWithSystemMessage : c)
       );
       
-      // Generate summary asynchronously
+      // Generate summary asynchronously (exclude the last user message)
       try {
-        const summary = await deepSeekService.summarizeConversation(chatMessagesForTokenCount);
+        // Remove the last user message from the summary to avoid duplication
+        const messagesForSummary = chatMessagesForTokenCount.slice(0, -1);
+        const summary = await deepSeekService.summarizeConversation(messagesForSummary);
         setConversationSummary(summary);
         setIsGeneratingSummary(false);
-        console.log('✅ Summary generated successfully');
+        console.log('✅ Summary generated successfully (excluding last user message)');
       } catch (error) {
         console.error('❌ Summarization failed:', error);
         setIsGeneratingSummary(false);
@@ -757,77 +763,273 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   };
 
   /**
+   * Handle AI response to user's question with summary context
+   */
+  const handleAIResponse = async (conversation: PrivateConversation, userQuestion: string, summary: string) => {
+    try {
+      // First, add the user's question to the conversation
+      const userMessage: Message = {
+        id: uuidv4(),
+        content: userQuestion,
+        timestamp: new Date(),
+        sender: 'user'
+      };
+
+      const conversationWithUserMessage = {
+        ...conversation,
+        messages: [...conversation.messages, userMessage],
+        updatedAt: new Date()
+      };
+
+      // Update the conversation state
+      setCurrentConversation(conversationWithUserMessage);
+      setConversations(prev => 
+        isGuest ? [conversationWithUserMessage] : prev.map(c => c.id === conversationWithUserMessage.id ? conversationWithUserMessage : c)
+      );
+
+      // Build context with summary and user's question
+      const contextMessages: ChatMessage[] = [
+        {
+          role: 'system',
+          content: `You are a helpful AI assistant. Here's a summary of the previous conversation: ${summary}\n\nNow the user is asking: "${userQuestion}"\n\nPlease provide a helpful response based on both the summary context and the current question.`
+        },
+        {
+          role: 'user',
+          content: userQuestion
+        }
+      ];
+
+      // Initialize streaming for this response
+      streamingRef.current = {
+        thinking: '',
+        content: '',
+        isTyping: true,
+        isActive: true,
+        thinkingElement: null,
+        contentElement: null,
+        streamingContainer: null,
+      };
+
+      // Show streaming UI
+      const showStreamingUI = () => {
+        const container = streamingRef.current?.streamingContainer;
+        if (container) {
+          container.style.display = 'block';
+        }
+      };
+
+      const updateStreamingDisplay = () => {
+        showStreamingUI();
+        if (streamingRef.current?.thinkingElement) {
+          streamingRef.current.thinkingElement.textContent = streamingRef.current.thinking;
+        }
+        if (streamingRef.current?.contentElement) {
+          streamingRef.current.contentElement.textContent = streamingRef.current.content;
+        }
+        // Auto-scroll to bottom
+        if (messagesEndRef.current) {
+          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
+      };
+
+      // Stream AI response
+      await deepSeekService.streamChat(contextMessages, {
+        onThinking: (thinking) => {
+          if (streamingRef.current?.isTyping) {
+            streamingRef.current.thinking += thinking;
+            updateStreamingDisplay();
+          }
+        },
+        onContent: (content) => {
+          if (streamingRef.current?.isTyping) {
+            streamingRef.current.content += content;
+            updateStreamingDisplay();
+          }
+        },
+        onComplete: async (finalContent) => {
+          // Mark as not typing and hide streaming UI
+          if (streamingRef.current) {
+            streamingRef.current.isTyping = false;
+            const container = streamingRef.current.streamingContainer;
+            if (container) {
+              container.style.display = 'none';
+            }
+          }
+
+          // Create AI message
+          const aiMessage: Message = {
+            id: uuidv4(),
+            content: finalContent,
+            timestamp: new Date(),
+            sender: 'ai',
+            thinking: streamingRef.current?.thinking || undefined
+          };
+
+          // Update conversation with AI response
+          const finalConversation = {
+            ...conversationWithUserMessage,
+            messages: [...conversationWithUserMessage.messages, aiMessage],
+            updatedAt: new Date()
+          };
+
+          setCurrentConversation(finalConversation);
+          setConversations(prev => 
+            isGuest ? [finalConversation] : prev.map(c => c.id === finalConversation.id ? finalConversation : c)
+          );
+
+          // Save to backend if not guest
+          if (!isGuest) {
+            if (ws.socket?.connected) {
+              ws.socket.emit('save_conversation', {
+                conversationId: finalConversation.id,
+                messages: finalConversation.messages
+              });
+            } else {
+              // Fallback: save via REST API
+              const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+              fetch(`${apiUrl}/save-messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  conversationId: finalConversation.id,
+                  messages: finalConversation.messages
+                })
+              }).catch(apiError => {
+                console.error('Failed to save AI response via API:', apiError);
+              });
+            }
+          } else {
+            // For guest users, update the conversations list
+            setConversations([finalConversation]);
+          }
+
+          console.log('✅ AI response completed for user\'s question after summary');
+        },
+        onError: (error) => {
+          console.error('AI streaming error in summary response:', error);
+          if (streamingRef.current) {
+            streamingRef.current.isTyping = false;
+            const container = streamingRef.current.streamingContainer;
+            if (container) {
+              container.style.display = 'none';
+            }
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Failed to generate AI response after summary:', error);
+    }
+  };
+
+  /**
    * Handle starting a new conversation with summary context
    */
   const handleStartNewConversationWithSummary = async (summary: string) => {
     try {
-      // Create a new conversation first
-      await handleNewConversation();
+      console.log('🚀 Starting new conversation with summary...');
       
-      // Wait a bit for the new conversation to be set
-      setTimeout(() => {
-        setCurrentConversation(prev => {
-          if (!prev) {
-            console.error('No current conversation after creating new one');
-            return null;
-          }
+      // Store the question to answer before clearing state
+      const questionToAnswer = lastUserQuestion;
+      
+      // Clear the warning state first
+      setConversationSummary(null);
+      setShowContextWarning(false);
+      setIsGeneratingSummary(false);
+      setLastUserQuestion(null);
+      
+      // Create a new conversation with summary message directly
+      const aiSummaryMessage: Message = {
+        id: uuidv4(),
+        content: `Here's a summary of our previous discussion: ${summary}`,
+        timestamp: new Date(),
+        sender: 'ai'
+      };
 
-          const aiSummaryMessage: Message = {
-            id: uuidv4(),
-            content: `Here's a summary of our previous discussion: ${summary}`,
-            timestamp: new Date(),
-            sender: 'ai'
-          };
+      let newConversation: PrivateConversation;
 
-          const userContinuationMessage: Message = {
-            id: uuidv4(),
-            content: "Based on this summary, let's continue our discussion.",
-            timestamp: new Date(),
-            sender: 'user'
-          };
+      if (isGuest) {
+        // For guest users, create a temporary conversation
+        newConversation = {
+          id: `guest-${Date.now()}`,
+          userId: 'guest',
+          messages: [aiSummaryMessage],
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          title: 'Continued Discussion'
+        };
+        setCurrentConversation(newConversation);
+        setConversations([newConversation]);
+      } else {
+        // For authenticated users, create via API
+        if (!state.currentUser?.id) {
+          console.error('No current user for creating conversation');
+          return;
+        }
 
-          const newMessages = [aiSummaryMessage, userContinuationMessage];
-
-          // Update the new conversation with these messages
-          const updatedNewConversation = {
-            ...prev,
-            messages: newMessages,
-            updatedAt: new Date(),
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+        const response = await fetch(`${apiUrl}/new-conversation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: state.currentUser.id,
             title: 'Continued Discussion'
+          })
+        });
+        
+        if (response.ok) {
+          const createdConversation = await response.json();
+          newConversation = {
+            ...createdConversation,
+            messages: [aiSummaryMessage],
+            updatedAt: new Date()
           };
 
-          // Persist these initial messages to the backend
-          if (ws.socket?.connected && !isGuest) {
-            console.log('💾 Saving summary continuation messages to backend');
+          // Update conversations list
+          setConversations(prev => [newConversation, ...prev].sort((a, b) => 
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+          ));
+          setCurrentConversation(newConversation);
+
+          // Save the summary message to backend
+          if (ws.socket?.connected) {
+            console.log('💾 Saving summary message to backend via WebSocket');
             ws.socket.emit('save_conversation', {
-              conversationId: updatedNewConversation.id,
-              messages: newMessages
+              conversationId: newConversation.id,
+              messages: [aiSummaryMessage]
             });
-          } else if (!isGuest) {
-            // Fallback: save via REST API if WebSocket is not available
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+          } else {
+            // Fallback: save via REST API
             fetch(`${apiUrl}/save-messages`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                conversationId: updatedNewConversation.id,
-                messages: newMessages
+                conversationId: newConversation.id,
+                messages: [aiSummaryMessage]
               })
             }).catch(apiError => {
-              console.error('Failed to save initial summary messages via API:', apiError);
+              console.error('Failed to save summary message via API:', apiError);
             });
           }
-
-          return updatedNewConversation;
-        });
-
-        // Clear the warning state
-        setConversationSummary(null);
-        setShowContextWarning(false);
-        setIsGeneratingSummary(false);
+        } else {
+          console.error('Failed to create new conversation');
+          return;
+        }
+      }
+      
+      console.log('✅ Successfully started new conversation with summary');
+      
+      // If we have a stored question, automatically answer it
+      if (questionToAnswer) {
+        console.log('🤖 Auto-answering user\'s last question after summary');
         
-        console.log('✅ Successfully started new conversation with summary');
-      }, 100); // Small delay to ensure new conversation is set
+        // Small delay to ensure conversation is fully set in UI
+        setTimeout(() => {
+          handleAIResponse(newConversation, questionToAnswer, summary);
+        }, 300);
+      }
       
     } catch (error) {
       console.error('Failed to start new conversation with summary:', error);

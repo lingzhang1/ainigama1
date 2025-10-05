@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Thread, Question, Answer, Comment, User } from '../../types';
 import { useAppContext } from '../../context/AppContext';
@@ -33,6 +33,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   
   // AI streaming state management using refs (like PrivateChat)
   const [isAIAnswering, setIsAIAnswering] = useState<{ [questionId: string]: boolean }>({});
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const streamingRefs = React.useRef<{ [questionId: string]: {
     thinking: string;
     content: string;
@@ -55,6 +56,27 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
       console.error('Failed to fetch user info:', error);
     }
     return null;
+  };
+
+  // Helper function to get user name by ID
+  const getUserName = (userId: string): string => {
+    // Check current user first
+    if (state.currentUser?.id === userId) {
+      return state.currentUser.name;
+    }
+    
+    // Check thread creator
+    if (thread?.creator.id === userId) {
+      return thread.creator.name;
+    }
+    
+    // Check users state
+    if (users[userId]) {
+      return users[userId].name;
+    }
+    
+    // Fallback to truncated ID
+    return `User${userId.slice(-4)}`;
   };
 
   // Get current thread ID from state
@@ -140,16 +162,18 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
             content: answer.content
           });
         } else {
-          // For user answers, we need to get user info
+          // For user answers, use actual user names for consistency
           messages.push({
             role: 'user',
-            content: `[Answer from User${answer.userId?.slice(-4) || 'Unknown'}]: ${answer.content}`
+            content: `[Answer from ${getUserName(answer.userId)}]: ${answer.content}`
           });
         }
       }
 
       questionNumber++;
     }
+
+    console.log('messages', messages);
 
     // Find the target question content
     const targetQuestion = [...summaryQuestions, ...regularQuestions].find(q => q.id === targetQuestionId);
@@ -166,6 +190,9 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
 
     if (currentTokenCount > CONTEXT_OVERFLOW_THRESHOLD) {
       console.warn('⚠️ Public thread context overflow detected. Summarizing...');
+      
+      // Show notification that AI is summarizing
+      setIsSummarizing(true);
       
       try {
         // Generate summary only of conversations since the last summary point
@@ -195,11 +222,13 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
             } else {
               messagesToSummarize.push({
                 role: 'user',
-                content: `[Answer from User${answer.userId?.slice(-4) || 'Unknown'}]: ${answer.content}`
+                content: `[Answer from ${getUserName(answer.userId)}]: ${answer.content}`
               });
             }
           }
         }
+
+        console.log('messagesToSummarize', messagesToSummarize);
         
         console.log(`📝 Summarizing ${messagesToSummarize.length} messages since last summary point`);
         
@@ -258,6 +287,9 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
       } catch (error) {
         console.error('❌ Failed to summarize thread context:', error);
         // Continue with original messages if summarization fails
+      } finally {
+        // Hide summarization notification
+        setIsSummarizing(false);
       }
     }
 
@@ -485,7 +517,7 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
             id: uuidv4(),
             content: finalContent,
             timestamp: new Date(),
-            userId: null,
+            userId: 'ai-system',
             questionId: questionId,
             isPinned: true,
             isAI: true,
@@ -511,7 +543,7 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 content: finalContent,
-                userId: null,
+                userId: 'ai-system',
                 isAI: true,
                 isPinned: true,
                 thinking: finalThinking || undefined
@@ -695,6 +727,19 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           onLogout={onLogout}
           onSignIn={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
         />
+
+        {/* Summarization Notification */}
+        {isSummarizing && (
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-6 mt-4 rounded-md">
+            <div className="flex items-center">
+              <Loader2 className="w-5 h-5 text-blue-600 animate-spin mr-3" />
+              <div>
+                <p className="text-blue-800 font-medium">AI is summarizing conversation</p>
+                <p className="text-blue-600 text-sm">Processing previous messages to maintain context...</p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Thread Content */}
         <div className="flex-1 overflow-y-auto p-6">
