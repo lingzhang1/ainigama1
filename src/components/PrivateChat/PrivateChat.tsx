@@ -924,6 +924,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
   /**
    * Handle starting a new conversation with summary context
+   * New Conversation:
+   *├── AI: "Here's a summary of our previous discussion: [summary]"
+   *├── User: "[user's last question]"
+   *└── AI: "[AI's response using summary context]"
    */
   const handleStartNewConversationWithSummary = async (summary: string) => {
     try {
@@ -931,6 +935,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       
       // Store the question to answer before clearing state
       const questionToAnswer = lastUserQuestion;
+      
+      // Get the original conversation title for the new conversation
+      const originalTitle = currentConversation?.title || 'Discussion';
+      const newTitle = `Continued: ${originalTitle}`;
       
       // Clear the warning state first
       setConversationSummary(null);
@@ -956,7 +964,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           messages: [aiSummaryMessage],
           createdAt: new Date(),
           updatedAt: new Date(),
-          title: 'Continued Discussion'
+          title: newTitle
         };
         setCurrentConversation(newConversation);
         setConversations([newConversation]);
@@ -975,7 +983,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           },
           body: JSON.stringify({
             userId: state.currentUser.id,
-            title: 'Continued Discussion'
+            title: newTitle
           })
         });
         
