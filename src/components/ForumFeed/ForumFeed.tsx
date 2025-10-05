@@ -295,12 +295,26 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
               Main
             </div>
             <nav className="space-y-1">
-              <div className="flex items-center px-3 py-2 rounded-md text-base bg-gray-100 text-gray-700">
+              <div
+                className={`flex items-center px-3 py-2 rounded-md text-base cursor-pointer ${
+                  state.viewMode === 'forum'
+                    ? 'bg-gray-100 text-gray-700'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+                onClick={() => {
+                  dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' });
+                  closeLeftDrawer();
+                }}
+              >
                 <SearchIcon className="w-5 h-4 mr-3" />
                 Home
               </div>
               <div
-                className="flex items-center px-3 py-2 rounded-md text-base text-gray-700 hover:bg-gray-50 cursor-pointer"
+                className={`flex items-center px-3 py-2 rounded-md text-base cursor-pointer ${
+                  state.viewMode === 'private'
+                    ? 'bg-gray-100 text-gray-700'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
                 onClick={() => {
                   dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
                   closeLeftDrawer();
