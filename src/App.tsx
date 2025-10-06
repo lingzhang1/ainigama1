@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { useWebSocket } from './hooks/useWebSocket';
@@ -8,6 +8,7 @@ import { LoginScreen } from './components/Auth/LoginScreen';
 import { ForumFeed } from './components/ForumFeed/ForumFeed';
 import { PrivateChat } from './components/PrivateChat/PrivateChat';
 import { PublicThread } from './components/PublicThread/PublicThread';
+import { UserCenter } from './components/UserCenter/UserCenter';
 import { User } from './types';
 import { initializeMobileTouchHandlers } from './utils/touchHandler';
 
@@ -72,6 +73,8 @@ const AppContent: React.FC = () => {
         return <PrivateChat onLogout={handleLogout} />;
       case 'public-thread':
         return <PublicThread onLogout={handleLogout} />;
+      case 'user-center':
+        return <UserCenter onBack={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })} />;
       case 'forum':
       default:
         return <ForumFeed onLogout={handleLogout} />;

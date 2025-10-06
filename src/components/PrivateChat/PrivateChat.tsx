@@ -1107,6 +1107,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         onLogout={onLogout}
         onSignIn={handleSignIn}
         onClose={closeSidebar}
+        onGoToUserCenter={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'user-center' })}
       />
 
       {/* Main Chat Area */}

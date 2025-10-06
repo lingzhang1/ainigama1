@@ -1,8 +1,8 @@
 import React from 'react';
-import { Lock, Globe, MessageSquare, Trash2, X } from 'lucide-react';
+import { Lock, Globe, MessageSquare, Trash2, X, User } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { PrivateConversation, User } from '../../types';
+import { PrivateConversation, User as UserType } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 
 /**
@@ -22,7 +22,7 @@ import { formatDistanceToNow } from 'date-fns';
 interface ConversationSidebarProps {
   conversations: PrivateConversation[];
   currentConversationId: string | null;
-  currentUser: User | null;
+  currentUser: UserType | null;
   isGuest: boolean;
   isOpen: boolean;
   isMobile: boolean;
@@ -33,6 +33,7 @@ interface ConversationSidebarProps {
   onLogout: () => void;
   onSignIn: () => void;
   onClose: () => void;
+  onGoToUserCenter: () => void;
 }
 
 export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
@@ -48,7 +49,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onGoToForum,
   onLogout,
   onSignIn,
-  onClose
+  onClose,
+  onGoToUserCenter
 }) => {
   return (
     <aside className={`
@@ -185,12 +187,21 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               <div className="text-sm font-normal text-gray-800">
                 {currentUser?.name}
               </div>
-              <button 
-                onClick={onLogout}
-                className="text-xs text-gray-500 hover:text-gray-700"
-              >
-                Sign Out
-              </button>
+              <div className="flex items-center space-x-3">
+                <button 
+                  onClick={onGoToUserCenter}
+                  className="text-xs text-green-600 hover:text-green-700 flex items-center space-x-1"
+                >
+                  <User className="w-3 h-3" />
+                  <span>User Center</span>
+                </button>
+                <button 
+                  onClick={onLogout}
+                  className="text-xs text-gray-500 hover:text-gray-700"
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
           </div>
         )}

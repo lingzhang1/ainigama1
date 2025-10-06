@@ -1,29 +1,33 @@
 import React from 'react';
-import { ArrowLeft, Clock, ArrowUpDown } from 'lucide-react';
+import { ArrowLeft, Clock, ArrowUpDown, User } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { Thread } from '../../types';
+import { Thread, User as UserType } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 
 interface PublicThreadHeaderProps {
   thread: Thread;
   sortOrder: 'newest' | 'oldest';
   isGuest: boolean;
+  currentUser: UserType | null;
   onBackToForum: () => void;
   onSortChange: (order: 'newest' | 'oldest') => void;
   onLogout: () => void;
   onSignIn: () => void;
+  onGoToUserCenter: () => void;
 }
 
 export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
   thread,
   sortOrder,
   isGuest,
+  currentUser,
   onBackToForum,
   onSortChange,
   onLogout,
-  onSignIn
+  onSignIn,
+  onGoToUserCenter
 }) => {
   return (
     <header className="bg-white border-b p-4">
@@ -67,6 +71,24 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
             <span className="hidden sm:inline">{sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}</span>
             <span className="sm:hidden">{sortOrder === 'newest' ? 'Newest' : 'Oldest'}</span>
           </Button>
+          
+          {/* User section */}
+          {currentUser && !isGuest && (
+            <div className="flex items-center space-x-2">
+              <Avatar className="w-6 h-6">
+                <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
+                <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <button
+                onClick={onGoToUserCenter}
+                className="text-xs text-green-600 hover:text-green-700 flex items-center space-x-1"
+              >
+                <User className="w-3 h-3" />
+                <span>User Center</span>
+              </button>
+            </div>
+          )}
+          
           {isGuest && (
             <Button
               onClick={onSignIn}

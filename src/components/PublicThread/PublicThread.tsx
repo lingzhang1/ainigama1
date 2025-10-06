@@ -855,10 +855,12 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           thread={thread}
           sortOrder={sortOrder}
           isGuest={isGuest}
+          currentUser={state.currentUser}
           onBackToForum={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
           onSortChange={setSortOrder}
           onLogout={onLogout}
           onSignIn={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
+          onGoToUserCenter={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'user-center' })}
         />
 
         {/* Summarization Notification */}
