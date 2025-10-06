@@ -372,7 +372,18 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           streamingRef.current.thinkingElement.textContent = streamingRef.current.thinking;
         }
         if (streamingRef.current.contentElement) {
-          streamingRef.current.contentElement.textContent = streamingRef.current.content;
+          // For streaming content, we'll use innerHTML to support basic markdown formatting
+          // This is a simplified approach for real-time streaming
+          const formattedContent = streamingRef.current.content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">$1</code>')
+            .replace(/^### (.*$)/gim, '<h3 class="text-sm font-medium mb-1 mt-2">$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2 class="text-sm font-semibold mb-1 mt-2">$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1 class="text-base font-bold mb-2 mt-3">$1</h1>')
+            .replace(/^- (.*$)/gim, '<li class="ml-2">$1</li>')
+            .replace(/\n/g, '<br>');
+          streamingRef.current.contentElement.innerHTML = formattedContent;
         }
         // Auto-scroll
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -383,14 +394,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       // Stream AI response using DeepSeek service
       await deepSeekService.streamChat(chatMessages, {
         onThinking: (thinking) => {
-          console.log('🧠 Received thinking chunk:', thinking.length, 'chars');
           if (streamingRef.current.isActive) {
             streamingRef.current.thinking += thinking;
             updateStreamingDisplay();
           }
         },
         onContent: (content) => {
-          console.log('📝 Received content chunk:', content.length, 'chars');
           if (streamingRef.current.isActive) {
             // Mark as typing when content starts streaming
             if (!streamingRef.current.isTyping) {
@@ -824,7 +833,18 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           streamingRef.current.thinkingElement.textContent = streamingRef.current.thinking;
         }
         if (streamingRef.current?.contentElement) {
-          streamingRef.current.contentElement.textContent = streamingRef.current.content;
+          // For streaming content, we'll use innerHTML to support basic markdown formatting
+          // This is a simplified approach for real-time streaming
+          const formattedContent = streamingRef.current.content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">$1</code>')
+            .replace(/^### (.*$)/gim, '<h3 class="text-sm font-medium mb-1 mt-2">$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2 class="text-sm font-semibold mb-1 mt-2">$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1 class="text-base font-bold mb-2 mt-3">$1</h1>')
+            .replace(/^- (.*$)/gim, '<li class="ml-2">$1</li>')
+            .replace(/\n/g, '<br>');
+          streamingRef.current.contentElement.innerHTML = formattedContent;
         }
         // Auto-scroll to bottom
         if (messagesEndRef.current) {
@@ -1174,10 +1194,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                           </div>
                         </div>
                       </div>
-                      <div className="text-sm whitespace-pre-wrap">
+                      <div className="text-sm">
                         <div 
                           ref={(el) => { streamingRef.current.contentElement = el; }}
-                          className="min-h-[1em] text-gray-800"
+                          className="min-h-[1em] text-gray-800 prose prose-sm max-w-none"
                         />
                         <span className="animate-pulse text-blue-500">▋</span>
                       </div>

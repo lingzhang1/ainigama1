@@ -152,7 +152,32 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
               </ReactMarkdown>
             </div>
           ) : (
-            <p className="text-gray-700 leading-relaxed mb-3">{answer.content}</p>
+            <div className="text-gray-700 leading-relaxed mb-3 prose prose-sm max-w-none">
+              <ReactMarkdown
+                components={{
+                  h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0" {...props} />,
+                  h2: ({node, ...props}) => <h2 className="text-base font-semibold mb-2 mt-3 first:mt-0" {...props} />,
+                  h3: ({node, ...props}) => <h3 className="text-sm font-medium mb-2 mt-3 first:mt-0" {...props} />,
+                  p: ({node, ...props}) => <p className="mb-3 last:mb-0" {...props} />,
+                  ul: ({node, ...props}) => <ul className="list-disc list-inside mb-3 space-y-1" {...props} />,
+                  ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-3 space-y-1" {...props} />,
+                  li: ({node, ...props}) => <li className="ml-2" {...props} />,
+                  code: ({node, inline, ...props}) => 
+                    inline ? (
+                      <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-gray-800" {...props} />
+                    ) : (
+                      <code className="block bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />
+                    ),
+                  pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />,
+                  blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-3" {...props} />,
+                  strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                  em: ({node, ...props}) => <em className="italic" {...props} />,
+                  a: ({node, ...props}) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />
+                }}
+              >
+                {answer.content}
+              </ReactMarkdown>
+            </div>
           )}
           
           {/* Comment Icon */}
@@ -220,7 +245,7 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
               </div>
 
               {/* Content */}
-              <div className="text-xs text-gray-800 whitespace-pre-wrap">
+              <div className="text-xs text-gray-800">
                 <div className="flex items-center mb-1">
                   <span className="text-xs font-medium text-gray-600">Comment</span>
                   <div className="ml-2">
@@ -237,7 +262,7 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
                       streamingRefs.current[answer.id].contentElement = el;
                     }
                   }}
-                  className="min-h-[1em] text-gray-800"
+                  className="min-h-[1em] text-gray-800 prose prose-xs max-w-none"
                 />
                 <span className="animate-pulse text-blue-500">▋</span>
               </div>

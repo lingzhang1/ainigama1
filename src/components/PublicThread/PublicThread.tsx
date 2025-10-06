@@ -521,7 +521,18 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           refs.thinkingElement.textContent = refs.thinking;
         }
         if (refs.contentElement) {
-          refs.contentElement.textContent = refs.content;
+          // For streaming content, we'll use innerHTML to support basic markdown formatting
+          // This is a simplified approach for real-time streaming
+          const formattedContent = refs.content
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">$1</code>')
+            .replace(/^### (.*$)/gim, '<h3 class="text-xs font-medium mb-1 mt-2">$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2 class="text-xs font-semibold mb-1 mt-2">$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1 class="text-sm font-bold mb-2 mt-3">$1</h1>')
+            .replace(/^- (.*$)/gim, '<li class="ml-1">$1</li>')
+            .replace(/\n/g, '<br>');
+          refs.contentElement.innerHTML = formattedContent;
         }
         // Auto-scroll to bottom
         if (messagesEndRef.current) {

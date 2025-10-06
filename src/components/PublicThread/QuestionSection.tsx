@@ -191,7 +191,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
           </div>
 
           {/* Content */}
-          <div className="text-sm text-gray-800 whitespace-pre-wrap">
+          <div className="text-sm text-gray-800">
             <div className="flex items-center mb-2">
               <span className="text-xs font-medium text-gray-600">Response</span>
               <div className="ml-2">
@@ -208,7 +208,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
                   streamingRefs.current[question.id].contentElement = el;
                 }
               }}
-              className="min-h-[1em] text-gray-800"
+              className="min-h-[1em] text-gray-800 prose prose-sm max-w-none"
             />
             <span className="animate-pulse text-blue-500">▋</span>
           </div>

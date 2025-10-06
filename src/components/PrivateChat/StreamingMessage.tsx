@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Avatar } from '../ui/avatar';
 import { Brain, Loader2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
 
 /**
  * StreamingMessage Component
@@ -65,8 +66,31 @@ export const StreamingMessage: React.FC<StreamingMessageProps> = ({
           {content && (
             <Card className="bg-white border-gray-200">
               <CardContent className="p-3">
-                <div className="text-sm whitespace-pre-wrap">
-                  {content}
+                <div className="text-sm leading-relaxed break-words overflow-wrap-anywhere prose prose-sm max-w-none">
+                  <ReactMarkdown
+                    components={{
+                      h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0" {...props} />,
+                      h2: ({node, ...props}) => <h2 className="text-base font-semibold mb-2 mt-3 first:mt-0" {...props} />,
+                      h3: ({node, ...props}) => <h3 className="text-sm font-medium mb-2 mt-3 first:mt-0" {...props} />,
+                      p: ({node, ...props}) => <p className="mb-3 last:mb-0" {...props} />,
+                      ul: ({node, ...props}) => <ul className="list-disc list-inside mb-3 space-y-1" {...props} />,
+                      ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-3 space-y-1" {...props} />,
+                      li: ({node, ...props}) => <li className="ml-2" {...props} />,
+                      code: ({node, inline, ...props}) => 
+                        inline ? (
+                          <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-gray-800" {...props} />
+                        ) : (
+                          <code className="block bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />
+                        ),
+                      pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />,
+                      blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-3" {...props} />,
+                      strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                      em: ({node, ...props}) => <em className="italic" {...props} />,
+                      a: ({node, ...props}) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />
+                    }}
+                  >
+                    {content}
+                  </ReactMarkdown>
                   {!isComplete && content && <span className="animate-pulse">|</span>}
                 </div>
               </CardContent>
