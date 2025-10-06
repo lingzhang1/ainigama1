@@ -69,5 +69,5 @@ export interface PrivateConversation {
   title?: string;
 }
 
-export type ViewMode = 'forum' | 'private' | 'public-thread' | 'user-center';
+export type ViewMode = 'forum' | 'private' | 'public-thread' | 'user-center' | 'account';
 export type FeedFilter = 'recent' | 'trending';

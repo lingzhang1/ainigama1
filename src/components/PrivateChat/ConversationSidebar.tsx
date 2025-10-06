@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, Globe, MessageSquare, Trash2, X, User } from 'lucide-react';
+import { Lock, Globe, MessageSquare, Trash2, X, User, Settings } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { PrivateConversation, User as UserType } from '../../types';
@@ -34,6 +34,7 @@ interface ConversationSidebarProps {
   onSignIn: () => void;
   onClose: () => void;
   onGoToUserCenter: () => void;
+  onGoToAccount: () => void;
 }
 
 export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
@@ -50,7 +51,8 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onLogout,
   onSignIn,
   onClose,
-  onGoToUserCenter
+  onGoToUserCenter,
+  onGoToAccount
 }) => {
   return (
     <aside className={`
@@ -187,7 +189,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               <div className="text-sm font-normal text-gray-800">
                 {currentUser?.name}
               </div>
-              <div className="flex items-center space-x-3">
+              <div className="flex flex-col space-y-2">
                 <button 
                   onClick={onGoToUserCenter}
                   className="text-xs text-green-600 hover:text-green-700 flex items-center space-x-1"
@@ -196,10 +198,17 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                   <span>User Center</span>
                 </button>
                 <button 
-                  onClick={onLogout}
-                  className="text-xs text-gray-500 hover:text-gray-700"
+                  onClick={onGoToAccount}
+                  className="text-xs text-blue-600 hover:text-blue-700 flex items-center space-x-1"
                 >
-                  Sign Out
+                  <Settings className="w-3 h-3" />
+                  <span>Account Management</span>
+                </button>
+                <button 
+                  onClick={onLogout}
+                  className="text-xs text-gray-500 hover:text-gray-700 flex items-center space-x-1"
+                >
+                  <span>Sign Out</span>
                 </button>
               </div>
             </div>

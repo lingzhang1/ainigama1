@@ -1,0 +1,1404 @@
+{
+  "/Users/yungao/ainigama1/infrastructure/aws/serverless.yml": {
+    "versionFramework": "4.20.2",
+    "servicePath": "/Users/yungao/ainigama1/infrastructure/aws/serverless.yml",
+    "serviceConfigFileName": "serverless.yml",
+    "service": {
+      "service": "ainigama-backend",
+      "provider": {
+        "name": "aws",
+        "runtime": "nodejs18.x",
+        "region": "us-east-1",
+        "stage": "dev",
+        "timeout": 30,
+        "environment": {
+          "DYNAMODB_TABLE_USERS": "${self:service}-${self:provider.stage}-users",
+          "DYNAMODB_TABLE_CONVERSATIONS": "${self:service}-${self:provider.stage}-conversations",
+          "DYNAMODB_TABLE_THREADS": "${self:service}-${self:provider.stage}-threads",
+          "DYNAMODB_TABLE_MESSAGES": "${self:service}-${self:provider.stage}-messages",
+          "DYNAMODB_TABLE_QUESTIONS": "${self:service}-${self:provider.stage}-questions",
+          "DYNAMODB_TABLE_ANSWERS": "${self:service}-${self:provider.stage}-answers",
+          "DYNAMODB_TABLE_COMMENTS": "${self:service}-${self:provider.stage}-comments",
+          "DYNAMODB_TABLE_CONNECTIONS": "${self:service}-${self:provider.stage}-connections",
+          "DEEPSEEK_API_KEY": "<REDACTED>",
+          "NODE_ENV": "${self:provider.stage}",
+          "AWS_NODEJS_CONNECTION_REUSE_ENABLED": 1,
+          "WEBSOCKET_ENDPOINT": {
+            "Fn::Join": [
+              "",
+              [
+                "https://",
+                {
+                  "Ref": "WebsocketsApi"
+                },
+                ".execute-api.",
+                "${self:provider.region}",
+                ".amazonaws.com/",
+                "${self:provider.stage}"
+              ]
+            ]
+          }
+        },
+        "iamRoleStatements": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "dynamodb:Query",
+              "dynamodb:Scan",
+              "dynamodb:GetItem",
+              "dynamodb:PutItem",
+              "dynamodb:UpdateItem",
+              "dynamodb:DeleteItem",
+              "dynamodb:BatchWriteItem",
+              "dynamodb:BatchGetItem"
+            ],
+            "Resource": [
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_USERS}",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONVERSATIONS}",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONVERSATIONS}/index/UserIdIndex",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_THREADS}",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_THREADS}/index/PublicThreadsIndex",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_MESSAGES}",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_MESSAGES}/index/ConversationIdIndex",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_QUESTIONS}",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_QUESTIONS}/index/ThreadIdIndex",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_ANSWERS}",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_ANSWERS}/index/QuestionIdIndexV2",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_COMMENTS}",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_COMMENTS}/index/AnswerIdIndex",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONNECTIONS}",
+              "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONNECTIONS}/index/UserIdIndex"
+            ]
+          },
+          {
+            "Effect": "Allow",
+            "Action": [
+              "execute-api:ManageConnections"
+            ],
+            "Resource": [
+              "arn:aws:execute-api:${self:provider.region}:*:**/@connections/*"
+            ]
+          }
+        ]
+      },
+      "functions": {
+        "testHandler": {
+          "handler": "src/handlers/test.testHandler",
+          "events": [
+            {
+              "http": {
+                "path": "/test",
+                "method": "get",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/test",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "websocketConnect": {
+          "handler": "src/handlers/websocket.connect",
+          "events": [
+            {
+              "websocket": {
+                "route": "$connect"
+              }
+            }
+          ]
+        },
+        "websocketDisconnect": {
+          "handler": "src/handlers/websocket.disconnect",
+          "events": [
+            {
+              "websocket": {
+                "route": "$disconnect"
+              }
+            }
+          ]
+        },
+        "websocketDefault": {
+          "handler": "src/handlers/websocket.default",
+          "events": [
+            {
+              "websocket": {
+                "route": "$default"
+              }
+            }
+          ]
+        },
+        "websocketAuthenticate": {
+          "handler": "src/handlers/websocket.authenticate",
+          "events": [
+            {
+              "websocket": {
+                "route": "authenticate"
+              }
+            }
+          ]
+        },
+        "saveConversation": {
+          "handler": "src/handlers/privateChat.saveConversation",
+          "events": [
+            {
+              "websocket": {
+                "route": "save_conversation"
+              }
+            }
+          ]
+        },
+        "joinThread": {
+          "handler": "src/handlers/publicThread.joinThread",
+          "events": [
+            {
+              "websocket": {
+                "route": "join_thread"
+              }
+            }
+          ]
+        },
+        "addAnswer": {
+          "handler": "src/handlers/publicThread.addAnswer",
+          "events": [
+            {
+              "websocket": {
+                "route": "add_answer"
+              }
+            }
+          ]
+        },
+        "addComment": {
+          "handler": "src/handlers/publicThread.addComment",
+          "events": [
+            {
+              "websocket": {
+                "route": "add_comment"
+              }
+            }
+          ]
+        },
+        "getThreads": {
+          "handler": "src/handlers/api.getThreads",
+          "timeout": 30,
+          "events": [
+            {
+              "http": {
+                "path": "/threads",
+                "method": "get",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/threads",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "createThread": {
+          "handler": "src/handlers/api.createThread",
+          "events": [
+            {
+              "http": {
+                "path": "/threads",
+                "method": "post",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/threads",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "getThread": {
+          "handler": "src/handlers/api.getThread",
+          "events": [
+            {
+              "http": {
+                "path": "/threads/{threadId}",
+                "method": "get",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/threads/{threadId}",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "getThreadAnswers": {
+          "handler": "src/handlers/api.getThreadAnswers",
+          "events": [
+            {
+              "http": {
+                "path": "/threads/{threadId}/answers",
+                "method": "get",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/threads/{threadId}/answers",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "getUserConversations": {
+          "handler": "src/handlers/api.getUserConversations",
+          "events": [
+            {
+              "http": {
+                "path": "/user-conversations/{userId}",
+                "method": "get",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/user-conversations/{userId}",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "saveMessages": {
+          "handler": "src/handlers/api.saveMessages",
+          "events": [
+            {
+              "http": {
+                "path": "/save-messages",
+                "method": "post",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/save-messages",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "getMessages": {
+          "handler": "src/handlers/api.getMessages",
+          "events": [
+            {
+              "http": {
+                "path": "/messages/{conversationId}",
+                "method": "get",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/messages/{conversationId}",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "createNewConversation": {
+          "handler": "src/handlers/api.createNewConversation",
+          "events": [
+            {
+              "http": {
+                "path": "/new-conversation",
+                "method": "post",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/new-conversation",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "updateConversationTitle": {
+          "handler": "src/handlers/api.updateConversationTitle",
+          "events": [
+            {
+              "http": {
+                "path": "/conversations/{conversationId}/title",
+                "method": "put",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/conversations/{conversationId}/title",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "deleteConversation": {
+          "handler": "src/handlers/api.deleteConversation",
+          "timeout": 30,
+          "events": [
+            {
+              "http": {
+                "path": "/conversations/{conversationId}",
+                "method": "delete",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ]
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/conversations/{conversationId}",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "addQuestion": {
+          "handler": "src/handlers/api.addQuestion",
+          "events": [
+            {
+              "http": {
+                "path": "/threads/{threadId}/questions",
+                "method": "post",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/threads/{threadId}/questions",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "addAnswerToQuestion": {
+          "handler": "src/handlers/api.addAnswer",
+          "events": [
+            {
+              "http": {
+                "path": "/questions/{questionId}/answers",
+                "method": "post",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/questions/{questionId}/answers",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "getAnswerComments": {
+          "handler": "src/handlers/api.getAnswerComments",
+          "events": [
+            {
+              "http": {
+                "path": "/answers/{answerId}/comments",
+                "method": "get",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/answers/{answerId}/comments",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "addAnswerComment": {
+          "handler": "src/handlers/api.addAnswerComment",
+          "events": [
+            {
+              "http": {
+                "path": "/answers/{answerId}/comments",
+                "method": "post",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/answers/{answerId}/comments",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "checkUserExists": {
+          "handler": "src/handlers/api.checkUserExists",
+          "events": [
+            {
+              "http": {
+                "path": "/check-user-exists",
+                "method": "post",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/check-user-exists",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "registerUser": {
+          "handler": "src/handlers/api.registerUser",
+          "events": [
+            {
+              "http": {
+                "path": "/register",
+                "method": "post",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/register",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "loginUser": {
+          "handler": "src/handlers/api.loginUser",
+          "events": [
+            {
+              "http": {
+                "path": "/login",
+                "method": "post",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/login",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "updatePassword": "<REDACTED>",
+        "checkAlias": {
+          "handler": "src/handlers/api.checkAlias",
+          "events": [
+            {
+              "http": {
+                "path": "/check-alias/{alias}",
+                "method": "get",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/check-alias/{alias}",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        },
+        "getUserById": {
+          "handler": "src/handlers/api.getUserById",
+          "events": [
+            {
+              "http": {
+                "path": "/users/{userId}",
+                "method": "get",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            },
+            {
+              "http": {
+                "path": "/users/{userId}",
+                "method": "options",
+                "cors": {
+                  "origin": "*",
+                  "headers": [
+                    "Content-Type",
+                    "X-Amz-Date",
+                    "Authorization",
+                    "X-Api-Key",
+                    "X-Amz-Security-Token"
+                  ],
+                  "allowCredentials": "<REDACTED>",
+                  "maxAge": 86400
+                }
+              }
+            }
+          ]
+        }
+      },
+      "resources": {
+        "Resources": {
+          "ConnectionsTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:service}-${self:provider.stage}-connections",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "connectionId",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "userId",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "connectionId",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "UserIdIndex",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "userId",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST",
+              "TimeToLiveSpecification": {
+                "AttributeName": "ttl",
+                "Enabled": true
+              }
+            }
+          },
+          "UsersTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.DYNAMODB_TABLE_USERS}",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          },
+          "ConversationsTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.DYNAMODB_TABLE_CONVERSATIONS}",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "userId",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "UserIdIndex",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "userId",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          },
+          "ThreadsTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.DYNAMODB_TABLE_THREADS}",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "is_public",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "updated_at",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "PublicThreadsIndex",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "is_public",
+                      "KeyType": "HASH"
+                    },
+                    {
+                      "AttributeName": "updated_at",
+                      "KeyType": "RANGE"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          },
+          "QuestionsTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.DYNAMODB_TABLE_QUESTIONS}",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "thread_id",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "ThreadIdIndex",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "thread_id",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          },
+          "MessagesTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.DYNAMODB_TABLE_MESSAGES}",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "conversationId",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "ConversationIdIndex",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "conversationId",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          },
+          "AnswersTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.DYNAMODB_TABLE_ANSWERS}",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "question_id",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "QuestionIdIndexV2",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "question_id",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          },
+          "CommentsTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "${self:provider.environment.DYNAMODB_TABLE_COMMENTS}",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "answerId",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "AnswerIdIndex",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "answerId",
+                      "KeyType": "HASH"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          },
+          "CognitoUserPool": {
+            "Type": "AWS::Cognito::UserPool",
+            "Properties": {
+              "UserPoolName": "${self:service}-${self:provider.stage}-user-pool",
+              "UsernameAttributes": [
+                "email"
+              ],
+              "AutoVerifiedAttributes": [
+                "email"
+              ],
+              "Policies": {
+                "PasswordPolicy": "<REDACTED>"
+              }
+            }
+          },
+          "CognitoUserPoolClient": {
+            "Type": "AWS::Cognito::UserPoolClient",
+            "Properties": {
+              "ClientName": "${self:service}-${self:provider.stage}-user-pool-client",
+              "UserPoolId": {
+                "Ref": "CognitoUserPool"
+              },
+              "ExplicitAuthFlows": [
+                "ADMIN_NO_SRP_AUTH"
+              ],
+              "GenerateSecret": "<REDACTED>"
+            }
+          }
+        }
+      },
+      "plugins": [
+        "serverless-offline"
+      ]
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "nodejs18.x",
+      "region": "us-east-1",
+      "stage": "dev",
+      "timeout": 30,
+      "environment": {
+        "DYNAMODB_TABLE_USERS": "${self:service}-${self:provider.stage}-users",
+        "DYNAMODB_TABLE_CONVERSATIONS": "${self:service}-${self:provider.stage}-conversations",
+        "DYNAMODB_TABLE_THREADS": "${self:service}-${self:provider.stage}-threads",
+        "DYNAMODB_TABLE_MESSAGES": "${self:service}-${self:provider.stage}-messages",
+        "DYNAMODB_TABLE_QUESTIONS": "${self:service}-${self:provider.stage}-questions",
+        "DYNAMODB_TABLE_ANSWERS": "${self:service}-${self:provider.stage}-answers",
+        "DYNAMODB_TABLE_COMMENTS": "${self:service}-${self:provider.stage}-comments",
+        "DYNAMODB_TABLE_CONNECTIONS": "${self:service}-${self:provider.stage}-connections",
+        "DEEPSEEK_API_KEY": "<REDACTED>",
+        "NODE_ENV": "${self:provider.stage}",
+        "AWS_NODEJS_CONNECTION_REUSE_ENABLED": 1,
+        "WEBSOCKET_ENDPOINT": {
+          "Fn::Join": [
+            "",
+            [
+              "https://",
+              {
+                "Ref": "WebsocketsApi"
+              },
+              ".execute-api.",
+              "${self:provider.region}",
+              ".amazonaws.com/",
+              "${self:provider.stage}"
+            ]
+          ]
+        }
+      },
+      "iamRoleStatements": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "dynamodb:Query",
+            "dynamodb:Scan",
+            "dynamodb:GetItem",
+            "dynamodb:PutItem",
+            "dynamodb:UpdateItem",
+            "dynamodb:DeleteItem",
+            "dynamodb:BatchWriteItem",
+            "dynamodb:BatchGetItem"
+          ],
+          "Resource": [
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_USERS}",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONVERSATIONS}",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONVERSATIONS}/index/UserIdIndex",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_THREADS}",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_THREADS}/index/PublicThreadsIndex",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_MESSAGES}",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_MESSAGES}/index/ConversationIdIndex",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_QUESTIONS}",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_QUESTIONS}/index/ThreadIdIndex",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_ANSWERS}",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_ANSWERS}/index/QuestionIdIndexV2",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_COMMENTS}",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_COMMENTS}/index/AnswerIdIndex",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONNECTIONS}",
+            "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONNECTIONS}/index/UserIdIndex"
+          ]
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "execute-api:ManageConnections"
+          ],
+          "Resource": [
+            "arn:aws:execute-api:${self:provider.region}:*:**/@connections/*"
+          ]
+        }
+      ]
+    },
+    "error": {
+      "message": "You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".",
+      "stack": "Error: You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".\n    at Authentication.getAuthenticatedData (file:///Users/yungao/.serverless/releases/4.20.2/package/dist/sf-core.js:708:10911)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async Authentication.authenticate (file:///Users/yungao/.serverless/releases/4.20.2/package/dist/sf-core.js:710:22266)\n    at async TraditionalRunner.resolveVariablesAndAuthenticate (file:///Users/yungao/.serverless/releases/4.20.2/package/dist/sf-core.js:714:2379)\n    at async TraditionalRunner.run (file:///Users/yungao/.serverless/releases/4.20.2/package/dist/sf-core.js:1333:27914)\n    at async route (file:///Users/yungao/.serverless/releases/4.20.2/package/dist/sf-core.js:1508:2878)\n    at async Object.run (file:///Users/yungao/.serverless/releases/4.20.2/package/dist/sf-core.js:1509:3661)\n    at async run2 (file:///Users/yungao/.serverless/releases/4.20.2/package/dist/sf-core.js:1509:4815)"
+    },
+    "serviceRawFile": "service: ainigama-backend\n\nprovider:\n  name: aws\n  runtime: nodejs18.x\n  region: us-east-1\n  stage: ${opt:stage, 'dev'}\n  timeout: 30\n  environment:\n    DYNAMODB_TABLE_USERS: ${self:service}-${self:provider.stage}-users\n    DYNAMODB_TABLE_CONVERSATIONS: ${self:service}-${self:provider.stage}-conversations\n    DYNAMODB_TABLE_THREADS: ${self:service}-${self:provider.stage}-threads\n    DYNAMODB_TABLE_MESSAGES: ${self:service}-${self:provider.stage}-messages\n    DYNAMODB_TABLE_QUESTIONS: ${self:service}-${self:provider.stage}-questions\n    DYNAMODB_TABLE_ANSWERS: ${self:service}-${self:provider.stage}-answers\n    DYNAMODB_TABLE_COMMENTS: ${self:service}-${self:provider.stage}-comments\n    DYNAMODB_TABLE_CONNECTIONS: ${self:service}-${self:provider.stage}-connections\n    DEEPSEEK_API_KEY: ${env:DEEPSEEK_API_KEY, 'sk-0dcbd0d5eca74684919812e175de65b7'}\n    NODE_ENV: ${self:provider.stage}\n    AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1\n    WEBSOCKET_ENDPOINT: \n      Fn::Join:\n        - \"\"\n        - - \"https://\"\n          - Ref: WebsocketsApi\n          - \".execute-api.\"\n          - ${self:provider.region}\n          - \".amazonaws.com/\"\n          - ${self:provider.stage}\n  \n  iamRoleStatements:\n    - Effect: Allow\n      Action:\n        - dynamodb:Query\n        - dynamodb:Scan\n        - dynamodb:GetItem\n        - dynamodb:PutItem\n        - dynamodb:UpdateItem\n        - dynamodb:DeleteItem\n        - dynamodb:BatchWriteItem\n        - dynamodb:BatchGetItem\n      Resource:\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_USERS}\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONVERSATIONS}\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONVERSATIONS}/index/UserIdIndex\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_THREADS}\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_THREADS}/index/PublicThreadsIndex\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_MESSAGES}\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_MESSAGES}/index/ConversationIdIndex\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_QUESTIONS}\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_QUESTIONS}/index/ThreadIdIndex\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_ANSWERS}\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_ANSWERS}/index/QuestionIdIndexV2\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_COMMENTS}\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_COMMENTS}/index/AnswerIdIndex\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONNECTIONS}\"\n        - \"arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONNECTIONS}/index/UserIdIndex\"\n\n    - Effect: Allow\n      Action:\n        - execute-api:ManageConnections\n      Resource:\n        - \"arn:aws:execute-api:${self:provider.region}:*:**/@connections/*\"\n\nfunctions:\n  # Test endpoint to verify Lambda is working\n  testHandler:\n    handler: src/handlers/test.testHandler\n    events:\n      - http:\n          path: /test\n          method: get\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /test\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  # WebSocket API\n  websocketConnect:\n    handler: src/handlers/websocket.connect\n    events:\n      - websocket:\n          route: $connect\n  \n  websocketDisconnect:\n    handler: src/handlers/websocket.disconnect\n    events:\n      - websocket:\n          route: $disconnect\n  \n  websocketDefault:\n    handler: src/handlers/websocket.default\n    events:\n      - websocket:\n          route: $default\n\n  # Authentication handler\n  websocketAuthenticate:\n    handler: src/handlers/websocket.authenticate\n    events:\n      - websocket:\n          route: authenticate\n\n  # Private Chat API\n  # Save conversation handler\n  saveConversation:\n    handler: src/handlers/privateChat.saveConversation\n    events:\n      - websocket:\n          route: save_conversation\n\n  # Public Thread API\n  joinThread:\n    handler: src/handlers/publicThread.joinThread\n    events:\n      - websocket:\n          route: join_thread\n  \n  addAnswer:\n    handler: src/handlers/publicThread.addAnswer\n    events:\n      - websocket:\n          route: add_answer\n  \n  addComment:\n    handler: src/handlers/publicThread.addComment\n    events:\n      - websocket:\n          route: add_comment\n\n  # REST API Functions\n  getThreads:\n    handler: src/handlers/api.getThreads\n    timeout: 30\n    events:\n      - http:\n          path: /threads\n          method: get\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /threads\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  createThread:\n    handler: src/handlers/api.createThread\n    events:\n      - http:\n          path: /threads\n          method: post\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /threads\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  getThread:\n    handler: src/handlers/api.getThread\n    events:\n      - http:\n          path: /threads/{threadId}\n          method: get\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /threads/{threadId}\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  getThreadAnswers:\n    handler: src/handlers/api.getThreadAnswers\n    events:\n      - http:\n          path: /threads/{threadId}/answers\n          method: get\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /threads/{threadId}/answers\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  getUserConversations:\n    handler: src/handlers/api.getUserConversations\n    events:\n      - http:\n          path: /user-conversations/{userId}\n          method: get\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /user-conversations/{userId}\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  saveMessages:\n    handler: src/handlers/api.saveMessages\n    events:\n      - http:\n          path: /save-messages\n          method: post\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /save-messages\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  getMessages:\n    handler: src/handlers/api.getMessages\n    events:\n      - http:\n          path: /messages/{conversationId}\n          method: get\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /messages/{conversationId}\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  createNewConversation:\n    handler: src/handlers/api.createNewConversation\n    events:\n      - http:\n          path: /new-conversation\n          method: post\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /new-conversation\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  updateConversationTitle:\n    handler: src/handlers/api.updateConversationTitle\n    events:\n      - http:\n          path: /conversations/{conversationId}/title\n          method: put\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /conversations/{conversationId}/title\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  deleteConversation:\n    handler: src/handlers/api.deleteConversation\n    timeout: 30\n    events:\n      - http:\n          path: /conversations/{conversationId}\n          method: delete\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n      - http:\n          path: /conversations/{conversationId}\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  addQuestion:\n    handler: src/handlers/api.addQuestion\n    events:\n      - http:\n          path: /threads/{threadId}/questions\n          method: post\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /threads/{threadId}/questions\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  addAnswerToQuestion:\n    handler: src/handlers/api.addAnswer\n    events:\n      - http:\n          path: /questions/{questionId}/answers\n          method: post\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /questions/{questionId}/answers\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  getAnswerComments:\n    handler: src/handlers/api.getAnswerComments\n    events:\n      - http:\n          path: /answers/{answerId}/comments\n          method: get\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /answers/{answerId}/comments\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  addAnswerComment:\n    handler: src/handlers/api.addAnswerComment\n    events:\n      - http:\n          path: /answers/{answerId}/comments\n          method: post\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /answers/{answerId}/comments\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  checkUserExists:\n    handler: src/handlers/api.checkUserExists\n    events:\n      - http:\n          path: /check-user-exists\n          method: post\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /check-user-exists\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  registerUser:\n    handler: src/handlers/api.registerUser\n    events:\n      - http:\n          path: /register\n          method: post\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /register\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  loginUser:\n    handler: src/handlers/api.loginUser\n    events:\n      - http:\n          path: /login\n          method: post\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /login\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  updatePassword:\n    handler: src/handlers/api.updatePassword\n    events:\n      - http:\n          path: /update-password\n          method: post\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /update-password\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  checkAlias:\n    handler: src/handlers/api.checkAlias\n    events:\n      - http:\n          path: /check-alias/{alias}\n          method: get\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /check-alias/{alias}\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\n  getUserById:\n    handler: src/handlers/api.getUserById\n    events:\n      - http:\n          path: /users/{userId}\n          method: get\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n      - http:\n          path: /users/{userId}\n          method: options\n          cors:\n            origin: '*'\n            headers:\n              - Content-Type\n              - X-Amz-Date\n              - Authorization\n              - X-Api-Key\n              - X-Amz-Security-Token\n            allowCredentials: false\n            maxAge: 86400\n\nresources:\n  Resources:\n    # WebSocket Connections Table\n    ConnectionsTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:service}-${self:provider.stage}-connections\n        AttributeDefinitions:\n          - AttributeName: connectionId\n            AttributeType: S\n          - AttributeName: userId\n            AttributeType: S\n        KeySchema:\n          - AttributeName: connectionId\n            KeyType: HASH\n        GlobalSecondaryIndexes:\n          - IndexName: UserIdIndex\n            KeySchema:\n              - AttributeName: userId\n                KeyType: HASH\n            Projection:\n              ProjectionType: ALL\n        BillingMode: PAY_PER_REQUEST\n        TimeToLiveSpecification:\n          AttributeName: ttl\n          Enabled: true\n\n    # DynamoDB Tables\n    UsersTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.DYNAMODB_TABLE_USERS}\n        AttributeDefinitions:\n          - AttributeName: id\n            AttributeType: S\n        KeySchema:\n          - AttributeName: id\n            KeyType: HASH\n        BillingMode: PAY_PER_REQUEST\n\n    ConversationsTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.DYNAMODB_TABLE_CONVERSATIONS}\n        AttributeDefinitions:\n          - AttributeName: id\n            AttributeType: S\n          - AttributeName: userId\n            AttributeType: S\n        KeySchema:\n          - AttributeName: id\n            KeyType: HASH\n        GlobalSecondaryIndexes:\n          - IndexName: UserIdIndex\n            KeySchema:\n              - AttributeName: userId\n                KeyType: HASH\n            Projection:\n              ProjectionType: ALL\n        BillingMode: PAY_PER_REQUEST\n\n    ThreadsTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.DYNAMODB_TABLE_THREADS}\n        AttributeDefinitions:\n          - AttributeName: id\n            AttributeType: S\n          - AttributeName: is_public\n            AttributeType: S\n          - AttributeName: updated_at\n            AttributeType: S\n        KeySchema:\n          - AttributeName: id\n            KeyType: HASH\n        GlobalSecondaryIndexes:\n          - IndexName: PublicThreadsIndex\n            KeySchema:\n              - AttributeName: is_public\n                KeyType: HASH\n              - AttributeName: updated_at\n                KeyType: RANGE\n            Projection:\n              ProjectionType: ALL\n        BillingMode: PAY_PER_REQUEST\n\n    QuestionsTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.DYNAMODB_TABLE_QUESTIONS}\n        AttributeDefinitions:\n          - AttributeName: id\n            AttributeType: S\n          - AttributeName: thread_id\n            AttributeType: S\n        KeySchema:\n          - AttributeName: id\n            KeyType: HASH\n        GlobalSecondaryIndexes:\n          - IndexName: ThreadIdIndex\n            KeySchema:\n              - AttributeName: thread_id\n                KeyType: HASH\n            Projection:\n              ProjectionType: ALL\n        BillingMode: PAY_PER_REQUEST\n\n    MessagesTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.DYNAMODB_TABLE_MESSAGES}\n        AttributeDefinitions:\n          - AttributeName: id\n            AttributeType: S\n          - AttributeName: conversationId\n            AttributeType: S\n        KeySchema:\n          - AttributeName: id\n            KeyType: HASH\n        GlobalSecondaryIndexes:\n          - IndexName: ConversationIdIndex\n            KeySchema:\n              - AttributeName: conversationId\n                KeyType: HASH\n            Projection:\n              ProjectionType: ALL\n        BillingMode: PAY_PER_REQUEST\n\n    AnswersTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.DYNAMODB_TABLE_ANSWERS}\n        AttributeDefinitions:\n          - AttributeName: id\n            AttributeType: S\n          - AttributeName: question_id\n            AttributeType: S\n        KeySchema:\n          - AttributeName: id\n            KeyType: HASH\n        GlobalSecondaryIndexes:\n          - IndexName: QuestionIdIndexV2\n            KeySchema:\n              - AttributeName: question_id\n                KeyType: HASH\n            Projection:\n              ProjectionType: ALL\n        BillingMode: PAY_PER_REQUEST\n\n    CommentsTable:\n      Type: AWS::DynamoDB::Table\n      Properties:\n        TableName: ${self:provider.environment.DYNAMODB_TABLE_COMMENTS}\n        AttributeDefinitions:\n          - AttributeName: id\n            AttributeType: S\n          - AttributeName: answerId\n            AttributeType: S\n        KeySchema:\n          - AttributeName: id\n            KeyType: HASH\n        GlobalSecondaryIndexes:\n          - IndexName: AnswerIdIndex\n            KeySchema:\n              - AttributeName: answerId\n                KeyType: HASH\n            Projection:\n              ProjectionType: ALL\n        BillingMode: PAY_PER_REQUEST\n\n    # Cognito User Pool\n    CognitoUserPool:\n      Type: AWS::Cognito::UserPool\n      Properties:\n        UserPoolName: ${self:service}-${self:provider.stage}-user-pool\n        UsernameAttributes:\n          - email\n        AutoVerifiedAttributes:\n          - email\n        Policies:\n          PasswordPolicy:\n            MinimumLength: 8\n            RequireUppercase: false\n            RequireLowercase: false\n            RequireNumbers: false\n            RequireSymbols: false\n\n    CognitoUserPoolClient:\n      Type: AWS::Cognito::UserPoolClient\n      Properties:\n        ClientName: ${self:service}-${self:provider.stage}-user-pool-client\n        UserPoolId:\n          Ref: CognitoUserPool\n        ExplicitAuthFlows:\n          - ADMIN_NO_SRP_AUTH\n        GenerateSecret: false\n\nplugins:\n  - serverless-offline",
+    "command": [
+      "deploy"
+    ],
+    "options": {},
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  }
+}

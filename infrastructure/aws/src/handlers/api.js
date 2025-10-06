@@ -12,6 +12,7 @@ module.exports = {
   loginUser: auth.loginUser,
   checkAlias: auth.checkAlias,
   getUserById: auth.getUserById,
+  updatePassword: auth.updatePassword,
 
   // Thread handlers
   getThreads: threads.getThreads,

@@ -658,6 +658,36 @@ functions:
             allowCredentials: false
             maxAge: 86400
 
+  updatePassword:
+    handler: src/handlers/api.updatePassword
+    events:
+      - http:
+          path: /update-password
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /update-password
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
   checkAlias:
     handler: src/handlers/api.checkAlias
     events:

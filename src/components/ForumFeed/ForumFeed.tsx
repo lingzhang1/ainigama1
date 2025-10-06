@@ -367,16 +367,22 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
               <div className="text-sm font-normal text-gray-800">
                 {state.currentUser?.name}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-1">
                 <button 
                   onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'user-center' })}
-                  className="text-xs text-green-600 hover:text-green-800"
+                  className="text-xs text-green-600 hover:text-green-800 text-left"
                 >
                   User Center
                 </button>
                 <button 
+                  onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'account' })}
+                  className="text-xs text-blue-600 hover:text-blue-800 text-left"
+                >
+                  Account Management
+                </button>
+                <button 
                   onClick={onLogout}
-                  className="text-xs text-gray-500 hover:text-gray-700"
+                  className="text-xs text-gray-500 hover:text-gray-700 text-left"
                 >
                   Sign Out
                 </button>

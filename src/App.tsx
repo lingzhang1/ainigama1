@@ -9,6 +9,7 @@ import { ForumFeed } from './components/ForumFeed/ForumFeed';
 import { PrivateChat } from './components/PrivateChat/PrivateChat';
 import { PublicThread } from './components/PublicThread/PublicThread';
 import { UserCenter } from './components/UserCenter/UserCenter';
+import { AccountManagement } from './components/Account/AccountManagement';
 import { User } from './types';
 import { initializeMobileTouchHandlers } from './utils/touchHandler';
 
@@ -75,6 +76,8 @@ const AppContent: React.FC = () => {
         return <PublicThread onLogout={handleLogout} />;
       case 'user-center':
         return <UserCenter onBack={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })} />;
+      case 'account':
+        return <AccountManagement onBack={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })} />;
       case 'forum':
       default:
         return <ForumFeed onLogout={handleLogout} />;
