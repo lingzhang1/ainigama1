@@ -41,19 +41,19 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-yellow-50 flex flex-col font-handwriting">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50 flex flex-col font-handwriting">
       {/* Header */}
       <header className="bg-white border-b px-4 md:px-6 py-3 md:py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-yellow-400 rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-r from-green-400 to-green-600 rounded-lg flex items-center justify-center">
               <MessageSquare className="w-5 h-5 text-white" />
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-green-600">MELON</h1>
+            <h1 className="text-2xl md:text-3xl font-bold text-green-600">Foliage</h1>
           </div>
           <Button
             onClick={() => setShowAuthModal(true)}
-            className="bg-gradient-to-r from-green-400 to-yellow-400 hover:from-green-500 hover:to-yellow-500 text-white text-sm md:text-base"
+            className="bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white text-sm md:text-base"
             size="sm"
           >
             Sign In
@@ -65,10 +65,23 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
       <main className="flex-1 flex items-center justify-center px-4 md:px-6 py-6 md:py-4">
         <div className="max-w-4xl mx-auto text-center">
           <div className="mb-6 md:mb-4">
-            <h1 className="text-xl md:text-3xl font-bold text-green-700 mb-3 md:mb-2 leading-tight">
-              <span className="text-2xl md:text-4xl text-green-800 font-normal">M</span><span style={{fontFamily: 'Comic Sans MS, cursive', fontWeight: 'normal'}}>indful </span><span className="text-2xl md:text-4xl text-green-800 font-normal">E</span><span style={{fontFamily: 'Comic Sans MS, cursive', fontWeight: 'normal'}}>xploration for </span><span className="text-2xl md:text-4xl text-green-800 font-normal">L</span><span style={{fontFamily: 'Comic Sans MS, cursive', fontWeight: 'normal'}}>istening, </span><span className="text-2xl md:text-4xl text-green-800 font-normal">O</span><span style={{fontFamily: 'Comic Sans MS, cursive', fontWeight: 'normal'}}>penness, </span><span className="text-2xl md:text-4xl text-green-800 font-normal">N</span><span style={{fontFamily: 'Comic Sans MS, cursive', fontWeight: 'normal'}}>urturing</span>
-            </h1>
-            <h2 className="text-lg md:text-2xl font-medium text-green-600 mb-3 leading-tight" style={{fontFamily: 'Comic Sans MS, cursive', fontWeight: 'bold'}}>
+            <div className="text-center mb-6 md:mb-4">
+              <div className="flex justify-center items-center space-x-2 mb-4">
+                <div className="flex items-center space-x-1">
+                  <span className="text-3xl md:text-5xl font-bold text-green-800" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>F</span>
+                  <span className="text-3xl md:text-5xl font-bold text-green-800" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>O</span>
+                  <span className="text-3xl md:text-5xl font-bold text-green-800" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>L</span>
+                  <span className="text-3xl md:text-5xl font-bold text-green-800" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>I</span>
+                  <span className="text-3xl md:text-5xl font-bold text-green-800" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>A</span>
+                  <span className="text-3xl md:text-5xl font-bold text-green-800" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>G</span>
+                  <span className="text-3xl md:text-5xl font-bold text-green-800" style={{fontFamily: 'system-ui, -apple-system, sans-serif'}}>E</span>
+                </div>
+              </div>
+              <h1 className="text-lg md:text-2xl font-medium text-green-600 mb-3 leading-tight" style={{fontFamily: 'Comic Sans MS, cursive', fontWeight: 'bold'}}>
+                <span className="text-green-800 font-bold">F</span><span>ind </span><span className="text-green-800 font-bold">O</span><span>penness, </span><span className="text-green-800 font-bold">L</span><span>isten, </span><span className="text-green-800 font-bold">I</span><span>ntegrate, </span><span className="text-green-800 font-bold">A</span><span>nd </span><span className="text-green-800 font-bold">G</span><span>row </span><span className="text-green-800 font-bold">E</span><span>ndlessly</span>
+              </h1>
+            </div>
+            <h2 className="text-lg md:text-2xl text-green-600" style={{fontFamily: 'system-ui, -apple-system, sans-serif', fontWeight: '500', letterSpacing: '0.05em'}}>
               AI-Powered Knowledge Platform
             </h2>
           </div>
@@ -77,7 +90,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
             <Button
               onClick={() => setShowAuthModal(true)}
               size="lg"
-              className="bg-gradient-to-r from-green-400 to-yellow-400 hover:from-green-500 hover:to-yellow-500 text-white px-6 md:px-8 py-3 md:py-4 h-auto"
+              className="bg-gradient-to-r from-green-400 to-green-600 hover:from-green-500 hover:to-green-700 text-white px-6 md:px-8 py-3 md:py-4 h-auto"
             >
               Sign In / Sign Up
             </Button>
@@ -95,7 +108,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mt-8">
             {features.map((feature, index) => (
               <div key={index} className="bg-white rounded-lg p-5 md:p-6 shadow-sm border border-green-200 hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-green-100 to-yellow-100 rounded-lg flex items-center justify-center mb-3 md:mb-4 mx-auto">
+                <div className="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-r from-green-100 to-green-200 rounded-lg flex items-center justify-center mb-3 md:mb-4 mx-auto">
                   <feature.icon className="w-5 h-5 md:w-6 md:h-6 text-green-600" />
                 </div>
                 <h3 className="text-base md:text-lg font-bold text-green-700 mb-2 md:mb-3 whitespace-pre-line">
@@ -114,9 +127,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gradient-to-r from-green-50 to-yellow-50 border-t border-green-200 px-4 md:px-6 py-3 md:py-4">
+      <footer className="bg-white border-t border-green-200 px-4 md:px-6 py-3 md:py-4">
         <div className="max-w-6xl mx-auto text-center text-xs md:text-sm text-green-600 font-medium" style={{fontFamily: 'Orbitron, monospace'}}>
-          <p>&copy; 2025 Melon. All rights reserved.</p>
+          <p>&copy; 2025 Foliage. All rights reserved.</p>
         </div>
       </footer>
 
