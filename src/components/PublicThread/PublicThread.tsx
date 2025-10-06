@@ -137,9 +137,28 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
     }
 
     // Add only questions and answers that occurred after the latest summary
-    const questionsToInclude = regularQuestions.filter(q => 
+    // BUT if we're looking for a specific answer, we need to include its question regardless of timestamp
+    let questionsToInclude = regularQuestions.filter(q => 
       new Date(q.timestamp).getTime() > cutoffTimestamp
     );
+    
+    // If we're looking for a specific answer or question, make sure it's included regardless of summary cutoff
+    if (targetType === 'answer') {
+      const targetAnswerQuestionId = Object.values(answers).flat().find(a => a.id === targetId)?.questionId;
+      if (targetAnswerQuestionId) {
+        const targetQuestion = regularQuestions.find(q => q.id === targetAnswerQuestionId);
+        if (targetQuestion && !questionsToInclude.find(q => q.id === targetAnswerQuestionId)) {
+          console.log('🔧 Including target answer question despite summary cutoff:', targetAnswerQuestionId);
+          questionsToInclude = [targetQuestion, ...questionsToInclude];
+        }
+      }
+    } else if (targetType === 'question') {
+      const targetQuestion = regularQuestions.find(q => q.id === targetId);
+      if (targetQuestion && !questionsToInclude.find(q => q.id === targetId)) {
+        console.log('🔧 Including target question despite summary cutoff:', targetId);
+        questionsToInclude = [targetQuestion, ...questionsToInclude];
+      }
+    }
 
     let questionNumber = 1;
     let targetQuestionNumber = 1;
@@ -184,9 +203,10 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
       questionNumber++;
     }
 
-    console.log('messages', messages);
 
     // Find the target content and add appropriate context
+    console.log('🎯 Building final prompt:', { targetType, targetId, targetAnswer: targetAnswer?.id });
+    
     if (targetType === 'question') {
       const targetQuestion = [...summaryQuestions, ...regularQuestions].find(q => q.id === targetId);
       if (targetQuestion) {
@@ -195,8 +215,14 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           role: 'user',
           content: finalPrompt
         });
+        console.log('✅ Added question prompt:', finalPrompt);
+      } else {
+        console.log('❌ Target question not found:', targetId);
       }
-    } else if (targetType === 'answer' && targetAnswer) {
+    } else if (targetType === 'answer') {
+      console.log('🔍 Looking for target answer:', { targetId, targetAnswer: targetAnswer?.id, hasTargetAnswer: !!targetAnswer });
+      
+      if (targetAnswer) {
         const targetQuestion = [...summaryQuestions, ...regularQuestions].find(q => q.id === targetAnswer.questionId);
         if (targetQuestion) {
           const questionNum = questionsToInclude.findIndex(q => q.id === targetAnswer.questionId) + 1;
@@ -205,8 +231,18 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
             role: 'user',
             content: finalPrompt
           });
+          console.log('✅ Added answer prompt:', finalPrompt);
+        } else {
+          console.log('❌ Target question for answer not found:', targetAnswer.questionId);
         }
+      } else {
+        console.log('❌ Target answer not found:', targetId);
+        console.log('📋 Available answers:', Object.keys(answers));
+        console.log('📋 All answers:', Object.values(answers).flat().map(a => ({ id: a.id, questionId: a.questionId })));
+      }
     }
+
+    console.log('messages', messages);
 
     // Check for context overflow
     const currentTokenCount = countChatMessagesTokens(messages);
@@ -306,15 +342,28 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         ];
 
         // Add specific context based on target type
+        console.log('🎯 Summarization path - Building final prompt:', { targetType, targetId, targetAnswer: targetAnswer?.id, currentTargetQuestion: currentTargetQuestion?.id });
+        
         if (targetType === 'question' && currentTargetQuestion) {
+          const finalPrompt = `Please provide your answer to the following question:\n\n"${currentTargetQuestion.content}"\n\nThis is a question in the discussion thread.`;
           messages.push({
             role: 'user',
-            content: `Please provide your answer to the following question:\n\n"${currentTargetQuestion.content}"\n\nThis is a question in the discussion thread.`
+            content: finalPrompt
           });
+          console.log('✅ Summarization: Added question prompt:', finalPrompt);
         } else if (targetType === 'answer' && targetAnswer && currentTargetQuestion) {
+          const finalPrompt = `Please provide your comment on the following answer:\n\nOriginal Question: "${currentTargetQuestion.content}"\n\nAnswer to comment on: "${targetAnswer.content}"\n\nPlease analyze and comment on this specific answer.`;
           messages.push({
             role: 'user',
-            content: `Please provide your comment on the following answer:\n\nOriginal Question: "${currentTargetQuestion.content}"\n\nAnswer to comment on: "${targetAnswer.content}"\n\nPlease analyze and comment on this specific answer.`
+            content: finalPrompt
+          });
+          console.log('✅ Summarization: Added answer prompt:', finalPrompt);
+        } else {
+          console.log('❌ Summarization: Missing required data:', { 
+            hasTargetAnswer: !!targetAnswer, 
+            hasCurrentTargetQuestion: !!currentTargetQuestion,
+            targetType,
+            targetId 
           });
         }
         
@@ -559,23 +608,6 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
       } else {
         console.log('📝 No custom prompt provided, using default context');
       }
-
-      // Stream AI response
-      console.log('🚀 Sending to AI service:', {
-        targetId,
-        targetType,
-        totalMessages: finalMessages.length,
-        hasCustomPrompt: !!customPrompt,
-        finalTokenCount: countChatMessagesTokens(finalMessages)
-      });
-      
-      // Log complete message content for debugging
-      console.log('📋 Complete AI context:', finalMessages.map((msg, index) => ({
-        index,
-        role: msg.role,
-        content: msg.content,
-        contentLength: msg.content.length
-      })));
       
       await deepSeekService.streamChat(finalMessages, {
         onThinking: (thinking) => {
