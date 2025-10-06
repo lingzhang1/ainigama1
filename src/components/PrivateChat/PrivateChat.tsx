@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu } from 'lucide-react';
+import { Menu, Globe } from 'lucide-react';
 import { Message, PrivateConversation } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -1068,8 +1068,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   };
   return (
     <div className="flex w-full h-screen bg-gray-50">
-      {/* Mobile Header */}
-      {isMobile && currentConversation && (
+      {/* Mobile Header - Only show when sidebar is closed */}
+      {isMobile && currentConversation && !isSidebarOpen && (
         <div className="fixed top-0 left-0 right-0 bg-white border-b z-30 px-4 py-3 flex items-center">
           <button
             onClick={toggleSidebar}
@@ -1078,9 +1078,21 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           >
             <Menu className="w-6 h-6 text-gray-700" />
           </button>
-          <h1 className="text-lg font-semibold text-gray-800 truncate">
+          <h1 className="text-lg font-semibold text-gray-800 truncate flex-1 min-w-0">
             {currentConversation.title || 'Private Conversation'}
           </h1>
+          
+          {/* Mobile Publish Button */}
+          <button
+            onClick={handleMakePublic}
+            disabled={currentConversation.messages.length === 0 || isGuest}
+            className="ml-2 p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+          >
+            <Globe className="w-4 h-4 text-gray-600" />
+            <span className="text-sm font-medium text-gray-700">
+              {isGuest ? 'Sign In' : 'Publish'}
+            </span>
+          </button>
         </div>
       )}
 
@@ -1112,7 +1124,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       />
 
       {/* Main Chat Area */}
-      <main className={`flex-1 flex flex-col ${isMobile && currentConversation ? 'mt-14' : ''}`}>
+      <main className={`flex-1 flex flex-col ${isMobile && currentConversation && !isSidebarOpen ? 'pt-14' : ''}`}>
         {/* Context Warning Banner */}
         {showContextWarning && (
           <ConversationContextWarning
@@ -1125,15 +1137,17 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         
         {currentConversation ? (
           <>
-            {/* Chat Header */}
-            <ChatHeader
-              conversationTitle={currentConversation.title || 'Private Conversation'}
-              showThinking={showThinking}
-              canPublish={currentConversation.messages.length > 0}
-              isGuest={isGuest}
-              onToggleThinking={() => setShowThinking(!showThinking)}
-              onMakePublic={handleMakePublic}
-            />
+            {/* Chat Header - Hidden on mobile since we show buttons in mobile header */}
+            <div className="hidden md:block">
+              <ChatHeader
+                conversationTitle={currentConversation.title || 'Private Conversation'}
+                showThinking={showThinking}
+                canPublish={currentConversation.messages.length > 0}
+                isGuest={isGuest}
+                onToggleThinking={() => setShowThinking(!showThinking)}
+                onMakePublic={handleMakePublic}
+              />
+            </div>
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
