@@ -270,10 +270,10 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         };
         
         // Update thread state to include summary question (users won't see the content, just the AI response)
+        // Note: Don't increment questionCount for summary questions as they're hidden from UI
         setThread(prev => prev ? {
           ...prev,
-          questions: [summaryQuestion, ...prev.questions],
-          questionCount: prev.questionCount + 1
+          questions: [summaryQuestion, ...prev.questions]
         } : null);
         
         // Persist summary question to backend
@@ -794,14 +794,17 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
     }
   };
 
-  // Sort questions based on timestamp
+  // Sort questions based on timestamp (exclude summary questions from UI)
+  // Summary questions are used for AI context but hidden from user interface
   const getSortedQuestions = () => {
     if (!thread) return [];
-    return [...thread.questions].sort((a, b) => {
-      const timeA = new Date(a.timestamp).getTime();
-      const timeB = new Date(b.timestamp).getTime();
-      return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
-    });
+    return [...thread.questions]
+      .filter(question => !question.isSummary) // Hide summary questions from UI - they're only for AI context
+      .sort((a, b) => {
+        const timeA = new Date(a.timestamp).getTime();
+        const timeB = new Date(b.timestamp).getTime();
+        return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+      });
   };
 
   if (isLoading) {
