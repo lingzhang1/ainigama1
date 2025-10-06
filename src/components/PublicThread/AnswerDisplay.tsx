@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { MessageCircle, Brain } from 'lucide-react';
+import { MessageCircle, Brain, Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Answer, User } from '../../types';
+import { AskAIPromptModal } from './AskAIPromptModal';
 import { formatDistanceToNow } from 'date-fns';
 
 interface AnswerDisplayProps {
@@ -14,6 +15,10 @@ interface AnswerDisplayProps {
   users: { [userId: string]: User };
   commentCount: number;
   onOpenComments: (answerId: string) => void;
+  onAskAI: (targetId: string, targetType: 'question' | 'answer', customPrompt?: string) => void;
+  isGuest: boolean;
+  isAIAnswering: boolean;
+  streamingRefs?: React.MutableRefObject<any>;
 }
 
 export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
@@ -22,8 +27,18 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
   currentUser,
   users,
   commentCount,
-  onOpenComments
+  onOpenComments,
+  onAskAI,
+  isGuest,
+  isAIAnswering,
+  streamingRefs
 }) => {
+  const [showAskAIModal, setShowAskAIModal] = useState(false);
+
+  const handleAskAIPrompt = (customPrompt: string) => {
+    onAskAI(answer.id, 'answer', customPrompt);
+  };
+
   const getUserDisplayName = (userId: string | null): string => {
     if (!userId) return 'Unknown User';
     
@@ -62,16 +77,35 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
           )}
         </Avatar>
         <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-1.5 md:gap-2 mb-2">
-            <span className="font-medium text-gray-700 text-sm md:text-base">
-              {answer.isAI ? 'AI Assistant' : getUserDisplayName(answer.userId)}
-            </span>
-            {answer.isPinned && (
-              <Badge variant="secondary" className="text-xs">Pinned</Badge>
+          <div className="flex flex-wrap items-center justify-between gap-1.5 md:gap-2 mb-2">
+            <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+              <span className="font-medium text-gray-700 text-sm md:text-base">
+                {answer.isAI ? 'AI Assistant' : getUserDisplayName(answer.userId)}
+              </span>
+              {answer.isPinned && (
+                <Badge variant="secondary" className="text-xs">Pinned</Badge>
+              )}
+              <span className="text-xs text-gray-500">
+                {formatDistanceToNow(answer.timestamp)} ago
+              </span>
+            </div>
+            {/* Ask AI Button for non-AI answers */}
+            {!answer.isAI && !isGuest && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAskAIModal(true)}
+                disabled={isAIAnswering}
+                className="flex items-center space-x-1 text-xs"
+              >
+                {isAIAnswering ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Brain className="w-3 h-3" />
+                )}
+                <span>Ask AI</span>
+              </Button>
             )}
-            <span className="text-xs text-gray-500">
-              {formatDistanceToNow(answer.timestamp)} ago
-            </span>
           </div>
 
           {/* Show AI thinking process if available */}
@@ -135,8 +169,92 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
               </span>
             </Button>
           </div>
+
+          {/* AI Streaming Response for Comments - Only for non-AI answers */}
+          {!answer.isAI && streamingRefs && (
+            <div 
+              ref={(el) => { 
+                if (streamingRefs.current[answer.id]) {
+                  streamingRefs.current[answer.id].streamingContainer = el;
+                }
+              }}
+              className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg"
+              style={{ display: 'none' }}
+            >
+              <div className="flex items-center space-x-2 mb-2">
+                <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                  <span className="text-white text-xs font-bold">AI</span>
+                </div>
+                <span className="font-medium text-blue-800 text-sm">AI is commenting...</span>
+                <div className="flex space-x-1">
+                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
+              </div>
+              
+              {/* Thinking Process */}
+              <div className="mb-2">
+                <div className="flex items-center mb-1">
+                  <Brain className="w-3 h-3 text-gray-500 mr-1" />
+                  <span className="text-xs font-medium text-gray-600">Thinking</span>
+                  <div className="ml-2">
+                    <div className="flex space-x-1">
+                      <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-700 whitespace-pre-wrap font-mono bg-gray-100 p-2 rounded">
+                  <div 
+                    ref={(el) => { 
+                      if (streamingRefs.current[answer.id]) {
+                        streamingRefs.current[answer.id].thinkingElement = el;
+                      }
+                    }}
+                    className="min-h-[1em]"
+                  />
+                  <span className="animate-pulse text-blue-500">▋</span>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="text-xs text-gray-800 whitespace-pre-wrap">
+                <div className="flex items-center mb-1">
+                  <span className="text-xs font-medium text-gray-600">Comment</span>
+                  <div className="ml-2">
+                    <div className="flex space-x-1">
+                      <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    </div>
+                  </div>
+                </div>
+                <div 
+                  ref={(el) => { 
+                    if (streamingRefs.current[answer.id]) {
+                      streamingRefs.current[answer.id].contentElement = el;
+                    }
+                  }}
+                  className="min-h-[1em] text-gray-800"
+                />
+                <span className="animate-pulse text-blue-500">▋</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+      
+      {/* Ask AI Prompt Modal */}
+      <AskAIPromptModal
+        isOpen={showAskAIModal}
+        onClose={() => setShowAskAIModal(false)}
+        onSubmit={handleAskAIPrompt}
+        targetType="answer"
+        targetContent={answer.content}
+        isLoading={isAIAnswering}
+      />
     </div>
   );
 };

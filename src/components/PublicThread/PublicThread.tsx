@@ -83,8 +83,13 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const currentThreadId = state.currentThreadId;
 
   // Build context for AI with proper multi-user structure and overflow handling
-  const buildThreadContextForAI = async (targetQuestionId: string): Promise<{ messages: ChatMessage[], summaryAdded: boolean }> => {
-    if (!thread) return { messages: [], summaryAdded: false };
+  const buildThreadContextForAI = async (targetId: string, targetType: 'question' | 'answer' = 'question'): Promise<{ messages: ChatMessage[], summaryAdded: boolean }> => {
+    console.log('🔍 Building AI context for:', { targetId, targetType });
+    
+    if (!thread) {
+      console.log('❌ No thread available for context building');
+      return { messages: [], summaryAdded: false };
+    }
 
     let messages: ChatMessage[] = [];
     let summaryAdded = false;
@@ -119,6 +124,7 @@ Structure:
 - Multiple users and AI can provide answers to each question
 - You should acknowledge the community context and build upon previous answers when relevant
 - Address your response to the community, not just the original questioner
+- Always clearly identify which question you are responding to
 ${hasSummaries ? '\nNote: This conversation includes summaries of previous discussions to manage context length. Use the summary information to understand the full context.' : ''}`
     });
 
@@ -137,6 +143,7 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
 
     let questionNumber = 1;
     let targetQuestionNumber = 1;
+    let targetAnswer: Answer | null = null;
 
     for (const question of questionsToInclude) {
       // Add the question
@@ -145,7 +152,7 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         content: `[Question ${questionNumber} from ${thread.creator.name}]: ${question.content}`
       });
 
-      if (question.id === targetQuestionId) {
+      if (question.id === targetId && targetType === 'question') {
         targetQuestionNumber = questionNumber;
       }
 
@@ -156,6 +163,10 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
       );
 
       for (const answer of sortedAnswers) {
+        if (answer.id === targetId && targetType === 'answer') {
+          targetAnswer = answer;
+        }
+
         if (answer.isAI) {
           messages.push({
             role: 'assistant',
@@ -175,13 +186,26 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
 
     console.log('messages', messages);
 
-    // Find the target question content
-    const targetQuestion = [...summaryQuestions, ...regularQuestions].find(q => q.id === targetQuestionId);
-    if (targetQuestion) {
-      messages.push({
-        role: 'user',
-        content: `Now please provide your answer to Question ${targetQuestionNumber}: "${targetQuestion.content}"`
-      });
+    // Find the target content and add appropriate context
+    if (targetType === 'question') {
+      const targetQuestion = [...summaryQuestions, ...regularQuestions].find(q => q.id === targetId);
+      if (targetQuestion) {
+        const finalPrompt = `Please provide your answer to the following question:\n\n"${targetQuestion.content}"\n\nThis is Question ${targetQuestionNumber} in the discussion thread.`;
+        messages.push({
+          role: 'user',
+          content: finalPrompt
+        });
+      }
+    } else if (targetType === 'answer' && targetAnswer) {
+        const targetQuestion = [...summaryQuestions, ...regularQuestions].find(q => q.id === targetAnswer.questionId);
+        if (targetQuestion) {
+          const questionNum = questionsToInclude.findIndex(q => q.id === targetAnswer.questionId) + 1;
+          const finalPrompt = `Please provide your comment on the following answer to Question ${questionNum}:\n\nOriginal Question: "${targetQuestion.content}"\n\nAnswer to comment on: "${targetAnswer.content}"\n\nPlease analyze and comment on this specific answer.`;
+          messages.push({
+            role: 'user',
+            content: finalPrompt
+          });
+        }
     }
 
     // Check for context overflow
@@ -270,16 +294,29 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         }
         
         // Replace messages with summarized context
+        const currentTargetQuestion = targetType === 'question' 
+          ? [...summaryQuestions, ...regularQuestions].find(q => q.id === targetId)
+          : targetAnswer ? [...summaryQuestions, ...regularQuestions].find(q => q.id === targetAnswer.questionId) : null;
+          
         messages = [
           {
             role: 'system',
             content: `You are participating in a public discussion thread where multiple users can ask questions and provide answers. This conversation includes a summary of previous discussions to manage context length. Use the summary information to understand the full context.\n\nPrevious discussion summary: ${summary}`
-          },
-          {
-            role: 'user',
-            content: `Based on this summary and the current question, please provide your answer to: "${targetQuestion?.content}"`
           }
         ];
+
+        // Add specific context based on target type
+        if (targetType === 'question' && currentTargetQuestion) {
+          messages.push({
+            role: 'user',
+            content: `Please provide your answer to the following question:\n\n"${currentTargetQuestion.content}"\n\nThis is a question in the discussion thread.`
+          });
+        } else if (targetType === 'answer' && targetAnswer && currentTargetQuestion) {
+          messages.push({
+            role: 'user',
+            content: `Please provide your comment on the following answer:\n\nOriginal Question: "${currentTargetQuestion.content}"\n\nAnswer to comment on: "${targetAnswer.content}"\n\nPlease analyze and comment on this specific answer.`
+          });
+        }
         
         summaryAdded = true;
         console.log('✅ Context summarized and reduced for AI processing');
@@ -293,11 +330,23 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
       }
     }
 
+    console.log('✅ Final context built:', {
+      totalMessages: messages.length,
+      summaryAdded,
+      finalTokenCount: countChatMessagesTokens(messages),
+      messagesPreview: messages.map((msg, index) => ({
+        index,
+        role: msg.role,
+        contentLength: msg.content.length,
+        contentPreview: msg.content.substring(0, 100) + '...'
+      }))
+    });
+
     return { messages, summaryAdded };
   };
 
   // WebSocket hooks for real-time updates
-  const { addAnswer, addComment } = usePublicThread(
+  const { } = usePublicThread(
     currentThreadId || '',
     (answer: Answer) => {
       setAnswers(prev => ({
@@ -344,7 +393,7 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         }
 
         // Load comments for each answer
-        const allAnswers = Object.values(answersData).flat();
+        const allAnswers = Object.values(answersData).flat() as Answer[];
         for (const answer of allAnswers) {
           try {
             const commentsResponse = await fetch(`${apiUrl}/answers/${answer.id}/comments`);
@@ -389,7 +438,7 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         
         // Fetch user info for all unique user IDs
         const userPromises = Array.from(userIds).map(async (userId) => {
-          if (!users[userId] && userId !== state.currentUser?.id && userId !== threadResponse?.creator?.id) {
+          if (!users[userId] && userId !== state.currentUser?.id && userId !== thread?.creator?.id) {
             const userInfo = await fetchUserInfo(userId);
             return { userId, userInfo };
           }
@@ -419,20 +468,20 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
   }, [currentThreadId]);
 
   // Handle AI answer generation
-  const handleAskAI = async (questionId: string) => {
+  const handleAskAI = async (targetId: string, targetType: 'question' | 'answer', customPrompt?: string) => {
     if (isGuest) return; // Guests can't use AI
     
-    // Prevent multiple simultaneous AI requests for the same question
-    if (isAIAnswering[questionId]) {
-      console.log('⚠️ AI already answering question:', questionId);
+    // Prevent multiple simultaneous AI requests for the same target
+    if (isAIAnswering[targetId]) {
+      console.log('⚠️ AI already answering:', targetId);
       return;
     }
     
     try {
-      setIsAIAnswering(prev => ({ ...prev, [questionId]: true }));
+      setIsAIAnswering(prev => ({ ...prev, [targetId]: true }));
       
-      // Initialize streaming refs for this question
-      streamingRefs.current[questionId] = {
+      // Initialize streaming refs for this target
+      streamingRefs.current[targetId] = {
         thinking: '',
         content: '',
         isActive: true,
@@ -441,33 +490,33 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         streamingContainer: null,
       };
 
-      // Build context for this specific question
-      const { messages: contextMessages, summaryAdded } = await buildThreadContextForAI(questionId);
+      // Build context for this specific target
+      const { messages: contextMessages, summaryAdded } = await buildThreadContextForAI(targetId, targetType);
       
       if (summaryAdded) {
         console.log('📝 Using summarized context for AI response');
       }
 
       // Show streaming UI via DOM manipulation
-      const showStreamingUI = (questionId: string) => {
-        const container = streamingRefs.current[questionId]?.streamingContainer;
+      const showStreamingUI = (targetId: string) => {
+        const container = streamingRefs.current[targetId]?.streamingContainer;
         if (container) {
           container.style.display = 'block';
         }
       };
 
-      const hideStreamingUI = (questionId: string) => {
-        const container = streamingRefs.current[questionId]?.streamingContainer;
+      const hideStreamingUI = (targetId: string) => {
+        const container = streamingRefs.current[targetId]?.streamingContainer;
         if (container) {
           container.style.display = 'none';
         }
       };
 
-      const updateStreamingDisplay = (questionId: string) => {
-        const refs = streamingRefs.current[questionId];
+      const updateStreamingDisplay = (targetId: string) => {
+        const refs = streamingRefs.current[targetId];
         if (!refs) return;
         
-        showStreamingUI(questionId);
+        showStreamingUI(targetId);
         if (refs.thinkingElement) {
           refs.thinkingElement.textContent = refs.thinking;
         }
@@ -480,108 +529,178 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         }
       };
 
+      // Add custom prompt to context if provided
+      let finalMessages = contextMessages;
+      if (customPrompt) {
+        finalMessages = [
+          ...contextMessages,
+          {
+            role: 'user' as const,
+            content: customPrompt
+          }
+        ];
+        console.log('📝 Custom prompt added:', {
+          customPrompt,
+          promptLength: customPrompt.length,
+          totalMessagesBeforePrompt: contextMessages.length,
+          totalMessagesAfterPrompt: finalMessages.length
+        });
+      } else {
+        console.log('📝 No custom prompt provided, using default context');
+      }
+
       // Stream AI response
-      await deepSeekService.streamChat(contextMessages, {
+      console.log('🚀 Sending to AI service:', {
+        targetId,
+        targetType,
+        totalMessages: finalMessages.length,
+        hasCustomPrompt: !!customPrompt,
+        finalTokenCount: countChatMessagesTokens(finalMessages)
+      });
+      
+      // Log complete message content for debugging
+      console.log('📋 Complete AI context:', finalMessages.map((msg, index) => ({
+        index,
+        role: msg.role,
+        content: msg.content,
+        contentLength: msg.content.length
+      })));
+      
+      await deepSeekService.streamChat(finalMessages, {
         onThinking: (thinking) => {
-          const refs = streamingRefs.current[questionId];
+          const refs = streamingRefs.current[targetId];
           if (refs && refs.isActive) {
             refs.thinking += thinking;
-            updateStreamingDisplay(questionId);
+            updateStreamingDisplay(targetId);
           }
         },
         onContent: (content) => {
-          const refs = streamingRefs.current[questionId];
+          const refs = streamingRefs.current[targetId];
           if (refs && refs.isActive) {
             refs.content += content;
-            updateStreamingDisplay(questionId);
+            updateStreamingDisplay(targetId);
           }
         },
         onComplete: async (finalContent) => {
           
           // Check if we're still the active request
-          const refs = streamingRefs.current[questionId];
+          const refs = streamingRefs.current[targetId];
           if (!refs || !refs.isActive) {
             return;
           }
           
           // Mark as inactive and hide streaming UI
           refs.isActive = false;
-          hideStreamingUI(questionId);
+          hideStreamingUI(targetId);
           
           // Capture the thinking process
           const finalThinking = refs.thinking;
           console.log('🧠 PublicThread: Captured thinking for persistence:', finalThinking.length, 'chars');
           
-          // Create AI answer
-          const aiAnswer: Answer = {
-            id: uuidv4(),
-            content: finalContent,
-            timestamp: new Date(),
-            userId: 'ai-system',
-            questionId: questionId,
-            isPinned: true,
-            isAI: true,
-            interactionCount: 0,
-            thinking: finalThinking || undefined // Include thinking in the answer object
-          };
+          if (targetType === 'question') {
+            // Create AI answer for questions
+            const aiAnswer: Answer = {
+              id: uuidv4(),
+              content: finalContent,
+              timestamp: new Date(),
+              userId: 'ai-system',
+              questionId: targetId,
+              isPinned: true,
+              isAI: true,
+              interactionCount: 0,
+              thinking: finalThinking || undefined
+            };
 
-          console.log('🎉 AI answer completed for question:', questionId);
-          console.log('🧠 Final thinking length:', finalThinking?.length || 0);
-          console.log('💬 Final content length:', finalContent.length);
+            console.log('🎉 AI answer completed for question:', targetId);
 
-          // Add to local state immediately
-          setAnswers(prev => ({
-            ...prev,
-            [questionId]: [...(prev[questionId] || []), aiAnswer]
-          }));
+            // Add to local state immediately
+            setAnswers(prev => ({
+              ...prev,
+              [targetId]: [...(prev[targetId] || []), aiAnswer]
+            }));
 
-          // Save to backend
-          try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-            await fetch(`${apiUrl}/questions/${questionId}/answers`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                content: finalContent,
-                userId: 'ai-system',
-                isAI: true,
-                isPinned: true,
-                thinking: finalThinking || undefined
-              })
-            });
-          } catch (error) {
-            console.error('Failed to save AI answer:', error);
+            // Save to backend
+            try {
+              const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+              await fetch(`${apiUrl}/questions/${targetId}/answers`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  content: finalContent,
+                  userId: 'ai-system',
+                  isAI: true,
+                  isPinned: true,
+                  thinking: finalThinking || undefined
+                })
+              });
+            } catch (error) {
+              console.error('Failed to save AI answer:', error);
+            }
+          } else if (targetType === 'answer') {
+            // Create AI comment for answers
+            const aiComment: Comment = {
+              id: uuidv4(),
+              content: finalContent,
+              timestamp: new Date(),
+              userId: 'ai-system',
+              answerId: targetId,
+              parentId: undefined
+            };
+
+            console.log('🎉 AI comment completed for answer:', targetId);
+
+            // Add to local state immediately
+            setComments(prev => ({
+              ...prev,
+              [targetId]: [...(prev[targetId] || []), aiComment]
+            }));
+
+            // Save to backend
+            try {
+              const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+              await fetch(`${apiUrl}/answers/${targetId}/comments`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  content: finalContent,
+                  userId: 'ai-system',
+                  thinking: finalThinking || undefined
+                })
+              });
+            } catch (error) {
+              console.error('Failed to save AI comment:', error);
+            }
           }
 
           // Clear streaming state
-          setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
+          setIsAIAnswering(prev => ({ ...prev, [targetId]: false }));
           
           // Clean up streaming refs
-          if (streamingRefs.current[questionId]) {
-            delete streamingRefs.current[questionId];
+          if (streamingRefs.current[targetId]) {
+            delete streamingRefs.current[targetId];
           }
         },
         onError: (error) => {
           console.error('AI streaming error:', error);
           
           // Clean up on error
-          setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
-          hideStreamingUI(questionId);
+          setIsAIAnswering(prev => ({ ...prev, [targetId]: false }));
+          hideStreamingUI(targetId);
           
-          if (streamingRefs.current[questionId]) {
-            streamingRefs.current[questionId].isActive = false;
-            delete streamingRefs.current[questionId];
+          if (streamingRefs.current[targetId]) {
+            streamingRefs.current[targetId].isActive = false;
+            delete streamingRefs.current[targetId];
           }
         }
       });
 
     } catch (error) {
       console.error('Failed to get AI answer:', error);
-      setIsAIAnswering(prev => ({ ...prev, [questionId]: false }));
+      setIsAIAnswering(prev => ({ ...prev, [targetId]: false }));
       
-      if (streamingRefs.current[questionId]) {
-        streamingRefs.current[questionId].isActive = false;
-        delete streamingRefs.current[questionId];
+      if (streamingRefs.current[targetId]) {
+        streamingRefs.current[targetId].isActive = false;
+        delete streamingRefs.current[targetId];
       }
     }
   };

@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { Question, Answer, User, Comment } from '../../types';
 import { AnswerDisplay } from './AnswerDisplay';
+import { AskAIPromptModal } from './AskAIPromptModal';
 import { formatDistanceToNow } from 'date-fns';
 
 interface QuestionSectionProps {
@@ -23,7 +24,7 @@ interface QuestionSectionProps {
   isAIAnswering: boolean;
   streamingRefs: React.MutableRefObject<any>;
   onAddAnswer: (questionId: string, content: string) => void;
-  onAskAI: (questionId: string) => void;
+  onAskAI: (targetId: string, targetType: 'question' | 'answer', customPrompt?: string) => void;
   onOpenComments: (answerId: string) => void;
 }
 
@@ -46,12 +47,17 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
 }) => {
   const [newAnswer, setNewAnswer] = useState('');
   const [expandedAnswerInput, setExpandedAnswerInput] = useState(false);
+  const [showAskAIModal, setShowAskAIModal] = useState(false);
 
   const handleAddAnswer = () => {
     if (!newAnswer.trim()) return;
     onAddAnswer(question.id, newAnswer.trim());
     setNewAnswer('');
     setExpandedAnswerInput(false);
+  };
+
+  const handleAskAIPrompt = (customPrompt: string) => {
+    onAskAI(question.id, 'question', customPrompt);
   };
 
   return (
@@ -65,19 +71,38 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
               <AvatarFallback>{threadCreator.name.charAt(0)}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
-              <div className="flex items-center space-x-2 mb-2">
-                <span className="font-medium text-gray-800">
-                  {question.isSummary ? 'AI System' : threadCreator.name}
-                </span>
-                <Badge variant="outline" className="text-xs">
-                  {question.isSummary 
-                    ? 'Summary' 
-                    : `Question ${sortOrder === 'newest' ? totalQuestions - questionIndex : questionIndex + 1}`
-                  }
-                </Badge>
-                <span className="text-xs text-gray-500">
-                  {formatDistanceToNow(question.timestamp)} ago
-                </span>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium text-gray-800">
+                    {question.isSummary ? 'AI System' : threadCreator.name}
+                  </span>
+                  <Badge variant="outline" className="text-xs">
+                    {question.isSummary 
+                      ? 'Summary' 
+                      : `Question ${sortOrder === 'newest' ? totalQuestions - questionIndex : questionIndex + 1}`
+                    }
+                  </Badge>
+                  <span className="text-xs text-gray-500">
+                    {formatDistanceToNow(question.timestamp)} ago
+                  </span>
+                </div>
+                {/* Ask AI Button for non-summary questions */}
+                {!question.isSummary && !isGuest && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowAskAIModal(true)}
+                    disabled={isAIAnswering}
+                    className="flex items-center space-x-1 text-xs"
+                  >
+                    {isAIAnswering ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Brain className="w-3 h-3" />
+                    )}
+                    <span>Ask AI</span>
+                  </Button>
+                )}
               </div>
               <div className={`text-gray-800 leading-relaxed ${question.isSummary ? 'bg-blue-50 border border-blue-200 rounded-lg p-3' : ''}`}>
                 {question.isSummary ? (
@@ -109,6 +134,10 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
               users={users}
               commentCount={(comments[answer.id] || []).length}
               onOpenComments={onOpenComments}
+              onAskAI={onAskAI}
+              isGuest={isGuest}
+              isAIAnswering={isAIAnswering}
+              streamingRefs={streamingRefs}
             />
           ))}
         </div>
@@ -188,22 +217,8 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
         {/* Add Answer Section */}
         {!question.isSummary && (
           <div className="mt-6 pt-4 border-t border-gray-100">
-            <div className="flex items-center justify-between mb-4">
+            <div className="mb-4">
               <h4 className="font-medium text-gray-700">Add Your Answer</h4>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => onAskAI(question.id)}
-                disabled={isAIAnswering || isGuest}
-                className="flex items-center space-x-2"
-              >
-                {isAIAnswering ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Brain className="w-4 h-4" />
-                )}
-                <span>{isAIAnswering ? 'AI Thinking...' : isGuest ? 'Sign In to Ask AI' : 'Ask AI'}</span>
-              </Button>
             </div>
             
             {!isGuest && (
@@ -250,6 +265,16 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
           </div>
         )}
       </CardContent>
+      
+      {/* Ask AI Prompt Modal */}
+      <AskAIPromptModal
+        isOpen={showAskAIModal}
+        onClose={() => setShowAskAIModal(false)}
+        onSubmit={handleAskAIPrompt}
+        targetType="question"
+        targetContent={question.content}
+        isLoading={isAIAnswering}
+      />
     </Card>
   );
 };
