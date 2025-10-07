@@ -5,7 +5,7 @@ import { Textarea } from '../ui/textarea';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { Question, Answer, User, Comment } from '../../types';
+import { Question, Answer, User } from '../../types';
 import { AnswerDisplay } from './AnswerDisplay';
 import { AskAIPromptModal } from './AskAIPromptModal';
 import { formatDistanceToNow } from 'date-fns';
@@ -19,13 +19,14 @@ interface QuestionSectionProps {
   threadCreator: User;
   currentUser: User | null;
   users: { [userId: string]: User };
-  comments: { [answerId: string]: Comment[] };
+  // comments: { [answerId: string]: Comment[] }; // No longer needed since commentCount is in answer data
   isGuest: boolean;
   isAIAnswering: boolean;
   streamingRefs: React.MutableRefObject<any>;
   onAddAnswer: (questionId: string, content: string) => void;
   onAskAI: (targetId: string, targetType: 'question' | 'answer', customPrompt?: string) => void;
   onOpenComments: (answerId: string) => void;
+  onLikeAnswer: (answerId: string) => void;
 }
 
 export const QuestionSection: React.FC<QuestionSectionProps> = ({
@@ -37,13 +38,13 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
   threadCreator,
   currentUser,
   users,
-  comments,
   isGuest,
   isAIAnswering,
   streamingRefs,
   onAddAnswer,
   onAskAI,
-  onOpenComments
+  onOpenComments,
+  onLikeAnswer
 }) => {
   const [newAnswer, setNewAnswer] = useState('');
   const [expandedAnswerInput, setExpandedAnswerInput] = useState(false);
@@ -132,8 +133,10 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
               threadCreator={threadCreator}
               currentUser={currentUser}
               users={users}
-              commentCount={(comments[answer.id] || []).length}
+              commentCount={answer.commentCount || 0}
+              isLiked={answer.isLiked || false}
               onOpenComments={onOpenComments}
+              onLike={onLikeAnswer}
               onAskAI={onAskAI}
               isGuest={isGuest}
               isAIAnswering={isAIAnswering}

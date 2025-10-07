@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
+import { CompactMetricDisplay } from '../ui/MetricDisplay';
 import { useAppContext } from '../../context/AppContext';
 import { MessageSquare, Users, ArrowLeft, Calendar, Eye, MessageCircle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
@@ -20,6 +21,8 @@ interface UserPost {
     views: number;
     replies: number;
     likes: number;
+    saves: number;
+    shares: number;
   };
   status: 'published' | 'draft' | 'archived';
   threadId?: string;
@@ -107,7 +110,7 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
             title: conv.title || 'Private Conversation',
             content: 'Private conversation with AI',
             createdAt: new Date(conv.created_at || conv.createdAt || new Date()),
-            stats: { views: 0, replies: 0, likes: 0 },
+            stats: { views: 0, replies: 0, likes: 0, saves: 0, shares: 0 },
             status: 'published',
             threadId: conv.id  // For conversations, the ID is the conversation ID
           })),
@@ -117,7 +120,7 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
             title: thread.title,
             content: thread.title,
             createdAt: new Date(thread.created_at || thread.createdAt || new Date()),
-            stats: { views: 0, replies: 0, likes: 0 },
+            stats: { views: 0, replies: 0, likes: 0, saves: 0, shares: 0 },
             status: 'published',
             threadId: thread.id  // For threads, the ID is the thread ID
           })),
@@ -127,7 +130,7 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
             title: question.content.substring(0, 50) + (question.content.length > 50 ? '...' : ''),
             content: question.content,
             createdAt: new Date(question.createdAt),
-            stats: { views: 0, replies: 0, likes: 0 },
+            stats: { views: 0, replies: 0, likes: 0, saves: 0, shares: 0 },
             status: 'published',
             threadId: question.threadId || question.id
           })),
@@ -140,7 +143,9 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
             stats: { 
               views: 0, 
               replies: 0, 
-              likes: answer.interactionCount || 0 
+              likes: answer.likeCount || 0,
+              saves: answer.saveCount || 0,
+              shares: answer.shareCount || 0
             },
             status: 'published',
             threadId: answer.threadId || answer.id
@@ -311,6 +316,22 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
               <div className="text-sm text-gray-600">Total Likes</div>
             </CardContent>
           </Card>
+          <Card className="bg-white">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-green-800">
+                {userPosts.reduce((sum, post) => sum + post.stats.saves, 0)}
+              </div>
+              <div className="text-sm text-green-600">Total Saves</div>
+            </CardContent>
+          </Card>
+          <Card className="bg-white">
+            <CardContent className="p-4 text-center">
+              <div className="text-2xl font-bold text-green-800">
+                {userPosts.reduce((sum, post) => sum + post.stats.shares, 0)}
+              </div>
+              <div className="text-sm text-green-600">Total Shares</div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Filter Tabs */}
@@ -382,20 +403,15 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
                   <p className="text-gray-600 mb-4 line-clamp-2">{post.content}</p>
                   
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 text-sm text-gray-500">
-                      <div className="flex items-center space-x-1">
-                        <Eye className="w-4 h-4" />
-                        <span>{post.stats.views}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <MessageCircle className="w-4 h-4" />
-                        <span>{post.stats.replies}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <span>❤️</span>
-                        <span>{post.stats.likes}</span>
-                      </div>
-                    </div>
+                    <CompactMetricDisplay
+                      views={post.stats.views}
+                      likes={post.stats.likes}
+                      saves={post.stats.saves}
+                      shares={post.stats.shares}
+                      comments={post.stats.replies}
+                      disabled={true}
+                      size="sm"
+                    />
                     
                     <div className="flex space-x-2">
                       <Button 

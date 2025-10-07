@@ -12,6 +12,10 @@ import { PublicThreadHeader } from './PublicThreadHeader';
 import { QuestionSection } from './QuestionSection';
 import { NewQuestionInput } from './NewQuestionInput';
 import { CommentPanel } from './CommentPanel';
+import { ThreadMetricDisplay } from '../ui/MetricDisplay';
+// import { ContentMetricDisplay } from '../ui/MetricDisplay';
+import { ShareModal } from '../ui/ShareModal';
+import { metricsService } from '../../services/metrics';
 
 interface PublicThreadProps {
   onLogout: () => void;
@@ -29,6 +33,10 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [commentPanelOpen, setCommentPanelOpen] = useState<string | null>(null);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [contentInteractions, setContentInteractions] = useState<{
+    [key: string]: {isLiked: boolean, isSaved: boolean}
+  }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // AI streaming state management using refs (like PrivateChat)
@@ -302,7 +310,10 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           timestamp: new Date(),
           userId: 'ai-system',
           threadId: thread.id,
-          isSummary: true
+          isSummary: true,
+          likeCount: 0,
+          saveCount: 0,
+          shareCount: 0
         };
         
         // Update thread state to include summary question (users won't see the content, just the AI response)
@@ -431,6 +442,28 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         if (threadResponse.ok) {
           const threadData = await threadResponse.json();
           setThread(threadData);
+          
+          // Load user interaction states for the thread if user is authenticated
+          if (state.currentUser?.id) {
+            try {
+              const likesResponse = await metricsService.getLikes('thread', currentThreadId, state.currentUser.id);
+              const savesResponse = await metricsService.getUserSaves(state.currentUser.id);
+              
+              // Check if thread is liked or saved
+              const threadKey = `thread_${currentThreadId}`;
+              setContentInteractions(prev => ({
+                ...prev,
+                [threadKey]: {
+                  isLiked: likesResponse.isLiked || false,
+                  isSaved: savesResponse.saves?.some((save: any) => 
+                    save.contentType === 'thread' && save.contentId === currentThreadId
+                  ) || false
+                }
+              }));
+            } catch (error) {
+              console.error('Failed to load user interaction states:', error);
+            }
+          }
         }
 
         // Load answers for the thread
@@ -439,6 +472,26 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         if (answersResponse.ok) {
           answersData = await answersResponse.json();
           setAnswers(answersData);
+          
+          // Load user interaction states for answers if user is authenticated
+          if (state.currentUser?.id) {
+            const allAnswers = Object.values(answersData).flat() as Answer[];
+            for (const answer of allAnswers) {
+              try {
+                const answerLikesResponse = await metricsService.getLikes('answer', answer.id, state.currentUser.id);
+                const answerKey = `answer_${answer.id}`;
+                setContentInteractions(prev => ({
+                  ...prev,
+                  [answerKey]: {
+                    isLiked: answerLikesResponse.isLiked || false,
+                    isSaved: prev[answerKey]?.isSaved || false // We'll load saves separately
+                  }
+                }));
+              } catch (error) {
+                console.error('Failed to load answer interaction states:', error);
+              }
+            }
+          }
         }
 
         // Load comments for each answer
@@ -452,6 +505,25 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
                 ...prev,
                 [answer.id]: commentsData
               }));
+              
+              // Load user interaction states for comments if user is authenticated
+              if (state.currentUser?.id) {
+                for (const comment of commentsData) {
+                  try {
+                    const commentLikesResponse = await metricsService.getLikes('comment', comment.id, state.currentUser.id);
+                    const commentKey = `comment_${comment.id}`;
+                    setContentInteractions(prev => ({
+                      ...prev,
+                      [commentKey]: {
+                        isLiked: commentLikesResponse.isLiked || false,
+                        isSaved: prev[commentKey]?.isSaved || false // We'll load saves separately
+                      }
+                    }));
+                  } catch (error) {
+                    console.error('Failed to load comment interaction states:', error);
+                  }
+                }
+              }
             }
           } catch (error) {
             console.error('Failed to load comments for answer:', answer.id, error);
@@ -651,7 +723,11 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
               isPinned: true,
               isAI: true,
               interactionCount: 0,
-              thinking: finalThinking || undefined
+              commentCount: 0,
+              thinking: finalThinking || undefined,
+              likeCount: 0,
+              saveCount: 0,
+              shareCount: 0
             };
 
             console.log('🎉 AI answer completed for question:', targetId);
@@ -687,7 +763,10 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
               timestamp: new Date(),
               userId: 'ai-system',
               answerId: targetId,
-              parentId: undefined
+              parentId: undefined,
+              likeCount: 0,
+              saveCount: 0,
+              shareCount: 0
             };
 
             console.log('🎉 AI comment completed for answer:', targetId);
@@ -837,6 +916,122 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
     }
   };
 
+  // ==================== METRIC INTERACTION HANDLERS ====================
+
+  const handleLikeContent = async (contentType: 'thread' | 'question' | 'answer' | 'comment', contentId: string) => {
+    if (!state.currentUser?.id) return;
+    
+    const key = `${contentType}_${contentId}`;
+    const currentInteraction = contentInteractions[key];
+    const newIsLiked = !currentInteraction?.isLiked;
+    
+    try {
+      await metricsService.toggleLike(contentType as any, contentId, state.currentUser.id, newIsLiked ? 'like' : 'unlike');
+      
+      setContentInteractions(prev => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          isLiked: newIsLiked
+        }
+      }));
+      
+      // Update local state based on content type
+      if (contentType === 'thread' && thread) {
+        setThread(prev => prev ? {
+          ...prev,
+          likeCount: newIsLiked ? prev.likeCount + 1 : Math.max(0, prev.likeCount - 1)
+        } : null);
+      }
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+    }
+  };
+
+  const handleSaveContent = async (contentType: 'thread' | 'question' | 'answer' | 'comment', contentId: string) => {
+    if (!state.currentUser?.id) return;
+    
+    const key = `${contentType}_${contentId}`;
+    const currentInteraction = contentInteractions[key];
+    const newIsSaved = !currentInteraction?.isSaved;
+    
+    try {
+      await metricsService.toggleSave(contentType, contentId, state.currentUser.id, newIsSaved ? 'save' : 'unsave');
+      
+      setContentInteractions(prev => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          isSaved: newIsSaved
+        }
+      }));
+      
+      // Update local state
+      if (contentType === 'thread' && thread) {
+        setThread(prev => prev ? {
+          ...prev,
+          saveCount: newIsSaved ? prev.saveCount + 1 : Math.max(0, prev.saveCount - 1)
+        } : null);
+      }
+    } catch (error) {
+      console.error('Failed to toggle save:', error);
+    }
+  };
+
+  const handleShareContent = async (contentType: 'thread' | 'question' | 'answer' | 'comment', contentId: string) => {
+    try {
+      await metricsService.copyAndTrackShare(contentType, contentId, state.currentUser?.id);
+      
+      // Update local state
+      if (contentType === 'thread' && thread) {
+        setThread(prev => prev ? {
+          ...prev,
+          shareCount: prev.shareCount + 1
+        } : null);
+      }
+    } catch (error) {
+      console.error('Failed to share content:', error);
+    }
+  };
+
+  const handleLikeAnswer = async (answerId: string) => {
+    if (!state.currentUser?.id) return;
+    
+    const key = `answer_${answerId}`;
+    const currentInteraction = contentInteractions[key];
+    const newIsLiked = !currentInteraction?.isLiked;
+    
+    try {
+      await metricsService.toggleLike('answer', answerId, state.currentUser.id, newIsLiked ? 'like' : 'unlike');
+      
+      setContentInteractions(prev => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          isLiked: newIsLiked
+        }
+      }));
+      
+      // Update local state for the specific answer
+      setAnswers(prev => {
+        const updatedAnswers = { ...prev };
+        Object.keys(updatedAnswers).forEach(questionId => {
+          updatedAnswers[questionId] = updatedAnswers[questionId].map(answer => 
+            answer.id === answerId 
+              ? {
+                  ...answer,
+                  likeCount: newIsLiked ? answer.likeCount + 1 : Math.max(0, answer.likeCount - 1)
+                }
+              : answer
+          );
+        });
+        return updatedAnswers;
+      });
+    } catch (error) {
+      console.error('Failed to toggle answer like:', error);
+    }
+  };
+
   // Sort questions based on timestamp (exclude summary questions from UI)
   // Summary questions are used for AI context but hidden from user interface
   const getSortedQuestions = () => {
@@ -894,6 +1089,29 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           onSignIn={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
         />
 
+        {/* Thread Metrics */}
+        <div className="px-6 py-4 bg-white border-b border-gray-200">
+          <ThreadMetricDisplay
+            views={thread.viewCount || 0}
+            likes={thread.likeCount || 0}
+            saves={thread.saveCount || 0}
+            shares={thread.shareCount || 0}
+            comments={(thread.answerCount || 0) + (thread.commentCount || 0)}
+            isLiked={contentInteractions[`thread_${thread.id}`]?.isLiked || false}
+            isSaved={contentInteractions[`thread_${thread.id}`]?.isSaved || false}
+            onLike={() => handleLikeContent('thread', thread.id)}
+            onSave={() => handleSaveContent('thread', thread.id)}
+            onShare={() => {
+              setShareModalOpen(true);
+              handleShareContent('thread', thread.id);
+            }}
+            disabled={!state.currentUser?.id}
+            size="md"
+            showLabels={true}
+            spacing="normal"
+          />
+        </div>
+
         {/* Summarization Notification */}
         {isSummarizing && (
           <div className="bg-green-50 border-l-4 border-green-400 p-4 mx-6 mt-4 rounded-md">
@@ -932,13 +1150,13 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
                 threadCreator={thread.creator}
                 currentUser={state.currentUser}
                 users={users}
-                comments={comments}
                 isGuest={isGuest}
                 isAIAnswering={isAIAnswering[question.id] || false}
                 streamingRefs={streamingRefs}
                 onAddAnswer={handleAddAnswer}
                 onAskAI={handleAskAI}
                 onOpenComments={setCommentPanelOpen}
+                onLikeAnswer={handleLikeAnswer}
               />
             ))}
 
@@ -969,6 +1187,16 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         onClose={() => setCommentPanelOpen(null)}
         onAddComment={handleAddComment}
         onSignIn={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
+      />
+
+      {/* Share Modal */}
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        contentType="thread"
+        contentId={thread.id}
+        contentTitle={thread.title}
+        userId={state.currentUser?.id}
       />
     </div>
   );

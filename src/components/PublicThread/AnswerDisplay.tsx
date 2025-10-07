@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { MessageCircle, Brain, Loader2, Leaf } from 'lucide-react';
+import { MessageCircle, Brain, Loader2, Leaf, Heart } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
@@ -14,7 +14,9 @@ interface AnswerDisplayProps {
   currentUser: User | null;
   users: { [userId: string]: User };
   commentCount: number;
+  isLiked?: boolean;
   onOpenComments: (answerId: string) => void;
+  onLike?: (answerId: string) => void;
   onAskAI: (targetId: string, targetType: 'question' | 'answer', customPrompt?: string) => void;
   isGuest: boolean;
   isAIAnswering: boolean;
@@ -27,7 +29,9 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
   currentUser,
   users,
   commentCount,
+  isLiked = false,
   onOpenComments,
+  onLike,
   onAskAI,
   isGuest,
   isAIAnswering,
@@ -180,8 +184,25 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
             </div>
           )}
           
-          {/* Comment Icon */}
-          <div className="flex items-center space-x-2">
+          {/* Like and Comment Icons */}
+          <div className="flex items-center space-x-3">
+            {/* Like Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onLike && onLike(answer.id)}
+              disabled={!currentUser || isGuest}
+              className={`flex items-center space-x-1 text-gray-500 hover:text-gray-700 ${
+                isLiked ? 'text-red-500 hover:text-red-600' : ''
+              }`}
+            >
+              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+              <span className="text-xs">
+                {answer.likeCount || 0}
+              </span>
+            </Button>
+
+            {/* Comment Button */}
             <Button
               variant="ghost"
               size="sm"

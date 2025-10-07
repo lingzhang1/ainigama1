@@ -11,7 +11,12 @@ const tables = {
   questions: process.env.DYNAMODB_TABLE_QUESTIONS || 'ainigama-dev-questions',
   answers: process.env.DYNAMODB_TABLE_ANSWERS,
   comments: process.env.DYNAMODB_TABLE_COMMENTS,
-  connections: process.env.DYNAMODB_TABLE_CONNECTIONS || 'ainigama-dev-connections'
+  connections: process.env.DYNAMODB_TABLE_CONNECTIONS || 'ainigama-dev-connections',
+  // New metrics tables
+  threadViews: process.env.DYNAMODB_TABLE_THREAD_VIEWS || 'ainigama-dev-thread-views',
+  likes: process.env.DYNAMODB_TABLE_LIKES || 'ainigama-dev-likes',
+  saves: process.env.DYNAMODB_TABLE_SAVES || 'ainigama-dev-saves',
+  shares: process.env.DYNAMODB_TABLE_SHARES || 'ainigama-dev-shares'
 };
 
 // Common database operations

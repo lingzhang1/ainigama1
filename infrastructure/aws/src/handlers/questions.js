@@ -81,7 +81,11 @@ exports.addQuestion = async (event) => {
       timestamp: now,
       userId: userId,
       threadId: threadId,
-      isSummary: Boolean(isSummary) // Return summary flag
+      isSummary: Boolean(isSummary), // Return summary flag
+      // New metrics (initialize to 0 for new questions)
+      likeCount: 0,
+      saveCount: 0,
+      shareCount: 0
     };
 
     console.log('✅ Created question:', questionId, 'for thread:', threadId);
@@ -182,7 +186,12 @@ exports.addAnswer = async (event) => {
       isPinned: Boolean(isPinned),
       isAI: Boolean(isAI),
       thinking: thinking || null,
-      interactionCount: 0
+      interactionCount: 0,
+      commentCount: 0,
+      // New metrics (initialize to 0 for new answers)
+      likeCount: 0,
+      saveCount: 0,
+      shareCount: 0
     };
 
     console.log('✅ Created answer:', answerId, 'for question:', questionId);
@@ -249,7 +258,11 @@ exports.getAnswerComments = async (event) => {
         timestamp: item.created_at || item.timestamp,
         userId: item.user_id,
         parentId: item.parent_id || null,
-        replies: []
+        replies: [],
+        // New metrics
+        likeCount: item.like_count || 0,
+        saveCount: item.save_count || 0,
+        shareCount: item.share_count || 0
       };
       commentMap.set(comment.id, comment);
       
@@ -343,11 +356,11 @@ exports.addAnswerComment = async (event) => {
 
     await dbOperations.put(tables.comments, comment);
 
-    // Update answer interaction count
+    // Update answer interaction count and comment count
     await dbOperations.update(
       tables.answers,
       { id: answerId },
-      'SET interaction_count = if_not_exists(interaction_count, :zero) + :one',
+      'SET interaction_count = if_not_exists(interaction_count, :zero) + :one, comment_count = if_not_exists(comment_count, :zero) + :one',
       {
         ':zero': 0,
         ':one': 1
@@ -361,7 +374,11 @@ exports.addAnswerComment = async (event) => {
       userId: userId,
       answerId: answerId,
       parentId: parentId || null,
-      replies: []
+      replies: [],
+      // New metrics (initialize to 0 for new comments)
+      likeCount: 0,
+      saveCount: 0,
+      shareCount: 0
     };
 
     console.log('✅ Created comment:', commentId, 'for answer:', answerId);

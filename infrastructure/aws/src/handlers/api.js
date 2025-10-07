@@ -3,6 +3,7 @@ const auth = require('./auth');
 const threads = require('./threads');
 const conversations = require('./conversations');
 const questions = require('./questions');
+const metrics = require('./metrics');
 
 // Re-export all handlers for serverless.yml compatibility
 module.exports = {
@@ -32,5 +33,14 @@ module.exports = {
   addQuestion: questions.addQuestion,
   addAnswer: questions.addAnswer,
   getAnswerComments: questions.getAnswerComments,
-  addAnswerComment: questions.addAnswerComment
+  addAnswerComment: questions.addAnswerComment,
+
+  // Metrics handlers
+  trackView: metrics.trackView,
+  toggleLike: metrics.toggleLike,
+  getLikes: metrics.getLikes,
+  toggleSave: metrics.toggleSave,
+  getUserSaves: metrics.getUserSaves,
+  trackShare: metrics.trackShare,
+  getShares: metrics.getShares
 };

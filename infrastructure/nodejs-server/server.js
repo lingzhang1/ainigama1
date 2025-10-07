@@ -580,7 +580,8 @@ app.options('*', (req, res) => {
 app.get('/api/threads', (req, res) => {
   const { filter = 'recent' } = req.query;
   
-  let orderBy = 'created_at DESC';
+  // Both recent and trending should sort by latest updated time
+  let orderBy = 'updated_at DESC';
   if (filter === 'trending') {
     orderBy = 'updated_at DESC';
   }

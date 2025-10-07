@@ -8,8 +8,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { FloatingActionButton } from '../ui/FloatingActionButton';
 import { NewThreadModal } from './NewThreadModal';
+import { HomePageMetricDisplay } from '../ui/MetricDisplay';
 import { Thread } from '../../types';
 import { useAppContext } from '../../context/AppContext';
+import { metricsService } from '../../services/metrics';
 import { formatDistanceToNow } from 'date-fns';
 import { useMobileDrawer } from '../../hooks/useMobileDrawer';
 import { useSwipeGesture } from '../../hooks/useSwipeGesture';
@@ -59,6 +61,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     question: ''
   });
   const [isCreatingThread, setIsCreatingThread] = useState(false);
+  const [threadInteractions, setThreadInteractions] = useState<{[threadId: string]: {isLiked: boolean, isSaved: boolean}}>({});
   const { isOpen: isLeftDrawerOpen, isMobile, toggle: toggleLeftDrawer, close: closeLeftDrawer, open: openLeftDrawer } = useMobileDrawer();
   const { isOpen: isRightDrawerOpen, toggle: toggleRightDrawer, close: closeRightDrawer, open: openRightDrawer } = useMobileDrawer();
 
@@ -76,6 +79,51 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     },
     enabled: isMobile && !isLeftDrawerOpen && !isRightDrawerOpen,
   });
+
+  // Metric interaction handlers
+  const handleLikeThread = async (threadId: string) => {
+    if (!state.currentUser?.id) return;
+    
+    const currentInteraction = threadInteractions[threadId];
+    const newIsLiked = !currentInteraction?.isLiked;
+    
+    try {
+      await metricsService.toggleLike('thread', threadId, state.currentUser.id, newIsLiked ? 'like' : 'unlike');
+      
+      setThreadInteractions(prev => ({
+        ...prev,
+        [threadId]: {
+          ...prev[threadId],
+          isLiked: newIsLiked
+        }
+      }));
+      
+      // Update thread like count in local state
+      setThreads(prev => prev.map(thread => 
+        thread.id === threadId 
+          ? { ...thread, likeCount: newIsLiked ? thread.likeCount + 1 : Math.max(0, thread.likeCount - 1) }
+          : thread
+      ));
+    } catch (error) {
+      console.error('Failed to toggle like:', error);
+    }
+  };
+
+
+  const handleViewThread = async (threadId: string) => {
+    try {
+      await metricsService.trackView(threadId, state.currentUser?.id);
+      
+      // Update thread view count in local state
+      setThreads(prev => prev.map(thread => 
+        thread.id === threadId 
+          ? { ...thread, viewCount: thread.viewCount + 1 }
+          : thread
+      ));
+    } catch (error) {
+      console.error('Failed to track view:', error);
+    }
+  };
 
   // Close dropdown when drawer closes
   useEffect(() => {
@@ -115,6 +163,8 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   }, [state.feedFilter]);
 
   const handleThreadClick = (threadId: string) => {
+    // Track view when thread is clicked
+    handleViewThread(threadId);
     dispatch({ type: 'SET_CURRENT_THREAD', payload: threadId });
     dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
   };
@@ -524,6 +574,19 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
 
                     <span>{thread.questionCount} questions</span>
                     <span>{thread.answerCount} answers</span>
+                  </div>
+
+                  {/* Home Page Metrics Display - Only likes and combined answers+comments */}
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <HomePageMetricDisplay
+                      likes={thread.likeCount || 0}
+                      answers={thread.answerCount || 0}
+                      comments={thread.commentCount || 0}
+                      isLiked={threadInteractions[thread.id]?.isLiked || false}
+                      onLike={() => handleLikeThread(thread.id)}
+                      disabled={!state.currentUser?.id}
+                      size="sm"
+                    />
                   </div>
                 </CardContent>
               </Card>

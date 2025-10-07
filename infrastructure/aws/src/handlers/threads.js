@@ -51,9 +51,10 @@ exports.getThreads = async (event) => {
         new Date(a.updated_at || a.updatedAt || 0).getTime()
       );
     } else {
+      // Recent filter should also sort by latest updated time
       sortedItems = sortedItems.sort((a, b) => 
-        new Date(b.created_at || b.createdAt || 0).getTime() - 
-        new Date(a.created_at || a.createdAt || 0).getTime()
+        new Date(b.updated_at || b.updatedAt || 0).getTime() - 
+        new Date(a.updated_at || a.updatedAt || 0).getTime()
       );
     }
     
@@ -96,7 +97,13 @@ exports.getThreads = async (event) => {
         updatedAt: thread.updated_at || thread.updatedAt,
         questionCount: thread.question_count || 0,
         answerCount: thread.answer_count || 0,
-        interactionCount: (thread.question_count || 0) + (thread.answer_count || 0),
+        commentCount: thread.comment_count || 0,
+        interactionCount: (thread.question_count || 0) + (thread.answer_count || 0) + (thread.comment_count || 0),
+        // New metrics
+        viewCount: thread.view_count || 0,
+        likeCount: thread.like_count || 0,
+        saveCount: thread.save_count || 0,
+        shareCount: thread.share_count || 0,
         questions: [],
         category: thread.category
       };
@@ -240,6 +247,11 @@ exports.createThread = async (event) => {
       questionCount: questions.length,
       answerCount: initialAnswers?.length || 0,
       interactionCount: questions.length + (initialAnswers?.length || 0),
+      // New metrics (initialize to 0 for new threads)
+      viewCount: 0,
+      likeCount: 0,
+      saveCount: 0,
+      shareCount: 0,
       questions: questions.map(q => ({
         id: q.id || crypto.randomUUID(),
         content: q.content,
@@ -341,8 +353,9 @@ exports.getThread = async (event) => {
       isSummary: Boolean(q.is_summary) // Include summary flag
     }));
 
-    // Calculate answer count for the thread
+    // Calculate answer count and comment count for the thread
     let totalAnswerCount = 0;
+    let totalCommentCount = 0;
     for (const question of questions) {
       try {
         const answersResult = await dbOperations.query(
@@ -352,6 +365,22 @@ exports.getThread = async (event) => {
           'QuestionIdIndexV2'
         );
         totalAnswerCount += answersResult.Count || 0;
+        
+        // Count comments for each answer
+        const answers = answersResult.Items || [];
+        for (const answer of answers) {
+          try {
+            const commentsResult = await dbOperations.query(
+              tables.comments,
+              'answer_id = :answerId',
+              { ':answerId': answer.id },
+              'AnswerIdIndex'
+            );
+            totalCommentCount += commentsResult.Count || 0;
+          } catch (error) {
+            console.error('Error counting comments for answer:', answer.id, error);
+          }
+        }
       } catch (error) {
         console.error('Error counting answers for question:', question.id, error);
       }
@@ -367,7 +396,13 @@ exports.getThread = async (event) => {
       updatedAt: thread.updated_at,
       questionCount: questions.length,
       answerCount: totalAnswerCount,
-      interactionCount: questions.length + totalAnswerCount,
+      commentCount: totalCommentCount,
+      interactionCount: questions.length + totalAnswerCount + totalCommentCount,
+      // New metrics
+      viewCount: thread.view_count || 0,
+      likeCount: thread.like_count || 0,
+      saveCount: thread.save_count || 0,
+      shareCount: thread.share_count || 0,
       questions,
       category: thread.category
     };
@@ -448,16 +483,42 @@ exports.getThreadAnswers = async (event) => {
         return timeB - timeA;
       });
 
-      const answers = sortedAnswers.map(answer => ({
-        id: answer.id,
-        content: answer.content,
-        timestamp: answer.created_at || answer.timestamp,
-        userId: answer.user_id,
-        questionId: answer.question_id,
-        isPinned: Boolean(answer.is_pinned),
-        isAI: Boolean(answer.is_ai),
-        thinking: answer.thinking || null,
-        interactionCount: answer.interaction_count || 0
+      // Get comment counts for each answer (calculate dynamically if not in DB)
+      const answers = await Promise.all(sortedAnswers.map(async (answer) => {
+        let commentCount = answer.comment_count || 0;
+        
+        // If comment_count is 0 or doesn't exist, calculate it dynamically
+        if (commentCount === 0) {
+          try {
+            const commentsResult = await dbOperations.query(
+              tables.comments,
+              'answer_id = :answerId',
+              { ':answerId': answer.id },
+              'AnswerIdIndex'
+            );
+            commentCount = commentsResult.Count || 0;
+          } catch (error) {
+            console.error('Error counting comments for answer:', answer.id, error);
+            commentCount = 0;
+          }
+        }
+
+        return {
+          id: answer.id,
+          content: answer.content,
+          timestamp: answer.created_at || answer.timestamp,
+          userId: answer.user_id,
+          questionId: answer.question_id,
+          isPinned: Boolean(answer.is_pinned),
+          isAI: Boolean(answer.is_ai),
+          thinking: answer.thinking || null,
+          interactionCount: answer.interaction_count || 0,
+          commentCount: commentCount,
+          // New metrics
+          likeCount: answer.like_count || 0,
+          saveCount: answer.save_count || 0,
+          shareCount: answer.share_count || 0
+        };
       }));
 
       if (answers.length > 0) {
