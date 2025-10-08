@@ -449,9 +449,9 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
           </div>
 
           <div className="relative">
-            <SearchIcon className="absolute w-4 h-4 top-1/2 left-3 transform -translate-y-1/2 text-gray-400" />
+            <SearchIcon className="absolute w-4 h-4 top-1/2 left-3 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
             <Input
-              className="w-full pl-10 h-12 md:h-10 focus:border-green-500 focus:ring-green-500"
+              className="w-full !pl-10 h-12 md:h-10 focus:border-green-500 focus:ring-green-500"
               placeholder="Search topics, questions, and answers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -690,7 +690,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
             </button>
           </div>
           <div className="mb-6">
-            <h2 className="text-sm font-normal text-gray-800 mb-4">
+            <h2 className="text-sm font-semibold text-green-700 mb-4">
               Suggested Topics
             </h2>
             <div className="space-y-2">
@@ -710,7 +710,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
           </div>
 
           <div>
-            <h2 className="text-sm font-normal text-gray-800 mb-4">
+            <h2 className="text-sm font-semibold text-green-700 mb-4">
               Popular Questions
             </h2>
             <div className="space-y-0">
