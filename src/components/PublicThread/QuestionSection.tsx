@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Brain, Loader2 } from 'lucide-react';
+import { Plus, Brain, Loader2, Leaf } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Card, CardContent } from '../ui/card';
@@ -93,7 +93,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
                     size="sm"
                     onClick={() => setShowAskAIModal(true)}
                     disabled={isAIAnswering}
-                    className="flex items-center space-x-1 text-xs"
+                    className="flex items-center space-x-1 text-xs border-green-300 text-green-600 hover:bg-green-50"
                   >
                     {isAIAnswering ? (
                       <Loader2 className="w-3 h-3 animate-spin" />
@@ -104,16 +104,16 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
                   </Button>
                 )}
               </div>
-              <div className={`text-gray-800 leading-relaxed ${question.isSummary ? 'bg-blue-50 border border-blue-200 rounded-lg p-3' : ''}`}>
+              <div className={`text-gray-800 leading-relaxed ${question.isSummary ? 'bg-green-50 border border-green-200 rounded-lg p-3' : ''}`}>
                 {question.isSummary ? (
                   <div>
                     <div className="flex items-center mb-2">
-                      <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center mr-2">
-                        <span className="text-white text-xs">∑</span>
+                      <div className="w-4 h-4 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mr-2">
+                        <Leaf className="w-2.5 h-2.5 text-white" />
                       </div>
-                      <span className="text-sm font-medium text-blue-800">Previous Discussion Summary</span>
+                      <span className="text-sm font-medium text-green-700">Previous Discussion Summary</span>
                     </div>
-                    <p className="text-sm text-blue-700">{question.content.replace('**Thread Summary**: ', '')}</p>
+                    <p className="text-sm text-green-700">{question.content.replace('**Thread Summary**: ', '')}</p>
                   </div>
                 ) : (
                   <p>{question.content}</p>
@@ -149,18 +149,18 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
               streamingRefs.current[question.id].streamingContainer = el;
             }
           }}
-          className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg"
+          className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg"
           style={{ display: 'none' }}
         >
           <div className="flex items-center space-x-2 mb-3">
-            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs font-bold">AI</span>
+            <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+              <Leaf className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="font-medium text-blue-800">AI is responding...</span>
+            <span className="font-medium text-green-700">AI is responding...</span>
             <div className="flex space-x-1">
-              <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-              <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-              <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+              <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+              <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
             </div>
           </div>
           
@@ -186,7 +186,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
                 }}
                 className="min-h-[1em]"
               />
-              <span className="animate-pulse text-blue-500">▋</span>
+              <span className="animate-pulse text-green-500">▋</span>
             </div>
           </div>
 
@@ -210,7 +210,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
               }}
               className="min-h-[1em] text-gray-800 prose prose-sm max-w-none"
             />
-            <span className="animate-pulse text-blue-500">▋</span>
+            <span className="animate-pulse text-green-500">▋</span>
           </div>
         </div>
 
@@ -238,7 +238,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
                       placeholder="Share your thoughts and insights..."
                       value={newAnswer}
                       onChange={(e) => setNewAnswer(e.target.value)}
-                      className="min-h-[100px]"
+                      className="min-h-[100px] focus:border-green-500 focus:ring-green-500"
                       autoFocus
                     />
                     <div className="flex justify-end space-x-2">
@@ -254,6 +254,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
                       <Button
                         onClick={handleAddAnswer}
                         disabled={!newAnswer.trim()}
+                        className="bg-green-600 hover:bg-green-700 text-white"
                       >
                         Post Answer
                       </Button>

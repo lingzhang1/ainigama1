@@ -90,8 +90,8 @@ export const AllowlistCheck: React.FC<AllowlistCheckProps> = ({ onApproved }) =>
       <Card className="w-full max-w-md">
         <CardContent className="p-8">
           <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Shield className="w-8 h-8 text-blue-600" />
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Shield className="w-8 h-8 text-green-600" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Ainigama Beta Access
@@ -125,7 +125,7 @@ export const AllowlistCheck: React.FC<AllowlistCheckProps> = ({ onApproved }) =>
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
               disabled={isChecking}
             >
               {isChecking ? (
@@ -142,7 +142,7 @@ export const AllowlistCheck: React.FC<AllowlistCheckProps> = ({ onApproved }) =>
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-500">
               Need access? Contact{' '}
-              <a href="mailto:support@ainigama.com" className="text-blue-600 hover:text-blue-500">
+              <a href="mailto:support@ainigama.com" className="text-green-600 hover:text-green-500">
                 support@ainigama.com
               </a>
             </p>

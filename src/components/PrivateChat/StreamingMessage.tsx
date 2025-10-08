@@ -1,7 +1,7 @@
 import React from 'react';
 import { Card, CardContent } from '../ui/card';
 import { Avatar } from '../ui/avatar';
-import { Brain, Loader2 } from 'lucide-react';
+import { Brain, Loader2, Leaf } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 /**
@@ -35,8 +35,8 @@ export const StreamingMessage: React.FC<StreamingMessageProps> = ({
     <div className="flex justify-start">
       <div className="flex items-start space-x-3 max-w-[70%]">
         <Avatar className="w-8 h-8 flex-shrink-0">
-          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs font-bold">AI</span>
+          <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+            <Leaf className="w-4 h-4 text-white" />
           </div>
         </Avatar>
         
@@ -86,7 +86,7 @@ export const StreamingMessage: React.FC<StreamingMessageProps> = ({
                       blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-3" {...props} />,
                       strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
                       em: ({node, ...props}) => <em className="italic" {...props} />,
-                      a: ({node, ...props}) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />
+                      a: ({node, ...props}) => <a className="text-green-600 hover:text-green-800 underline" {...props} />
                     }}
                   >
                     {content}
@@ -102,7 +102,7 @@ export const StreamingMessage: React.FC<StreamingMessageProps> = ({
             <Card className="bg-white border-gray-200">
               <CardContent className="p-3">
                 <div className="flex items-center space-x-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                  <Loader2 className="w-4 h-4 animate-spin text-green-500" />
                   <span className="text-sm text-gray-500">AI is thinking...</span>
                 </div>
               </CardContent>

@@ -854,7 +854,7 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading thread...</p>
         </div>
       </div>
@@ -896,12 +896,12 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
 
         {/* Summarization Notification */}
         {isSummarizing && (
-          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-6 mt-4 rounded-md">
+          <div className="bg-green-50 border-l-4 border-green-400 p-4 mx-6 mt-4 rounded-md">
             <div className="flex items-center">
-              <Loader2 className="w-5 h-5 text-blue-600 animate-spin mr-3" />
+              <Loader2 className="w-5 h-5 text-green-600 animate-spin mr-3" />
               <div>
-                <p className="text-blue-800 font-medium">AI is summarizing conversation</p>
-                <p className="text-blue-600 text-sm">Processing previous messages to maintain context...</p>
+                <p className="text-green-800 font-medium">AI is summarizing conversation</p>
+                <p className="text-green-600 text-sm">Processing previous messages to maintain context...</p>
               </div>
             </div>
           </div>

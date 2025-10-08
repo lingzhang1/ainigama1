@@ -1,5 +1,5 @@
 import React from 'react';
-import { Brain } from 'lucide-react';
+import { Brain, Leaf } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Message, User } from '../../types';
@@ -40,8 +40,8 @@ export const ChatMessageDisplay: React.FC<ChatMessageDisplayProps> = ({
         {/* Avatar */}
         <Avatar className="w-7 h-7 md:w-8 md:h-8 flex-shrink-0">
           {message.sender === 'ai' ? (
-            <div className="w-full h-full bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs font-bold">AI</span>
+            <div className="w-full h-full bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+              <Leaf className="w-4 h-4 text-white" />
             </div>
           ) : (
             <>
@@ -72,7 +72,7 @@ export const ChatMessageDisplay: React.FC<ChatMessageDisplayProps> = ({
           {/* Main Message Content */}
           <Card className={`${
             message.sender === 'user'
-              ? 'bg-blue-500 text-white'
+              ? 'bg-green-600 text-white'
               : 'bg-white border-gray-200'
           }`}>
             <CardContent className="p-2.5 md:p-3">
@@ -97,7 +97,7 @@ export const ChatMessageDisplay: React.FC<ChatMessageDisplayProps> = ({
                       blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-3" {...props} />,
                       strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
                       em: ({node, ...props}) => <em className="italic" {...props} />,
-                      a: ({node, ...props}) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />
+                      a: ({node, ...props}) => <a className="text-green-600 hover:text-green-800 underline" {...props} />
                     }}
                   >
                     {message.content}
@@ -107,7 +107,7 @@ export const ChatMessageDisplay: React.FC<ChatMessageDisplayProps> = ({
                 <div className="text-sm md:text-base whitespace-pre-wrap leading-relaxed break-words overflow-wrap-anywhere">{message.content}</div>
               )}
               <div className={`text-xs mt-1.5 md:mt-2 ${
-                message.sender === 'user' ? 'text-blue-100' : 'text-gray-500'
+                message.sender === 'user' ? 'text-green-100' : 'text-gray-500'
               }`}>
                 {formatDistanceToNow(message.timestamp)} ago
               </div>

@@ -112,7 +112,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                     blockquote: ({node, ...props}) => <blockquote className="border-l-2 border-gray-300 pl-2 italic text-gray-600 mb-2" {...props} />,
                     strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
                     em: ({node, ...props}) => <em className="italic" {...props} />,
-                    a: ({node, ...props}) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />
+                    a: ({node, ...props}) => <a className="text-green-600 hover:text-green-800 underline" {...props} />
                   }}
                 >
                   {comment.content}
@@ -144,7 +144,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
                 ...prev,
                 [commentPanelOpen]: e.target.value
               }))}
-              className="flex-1"
+              className="flex-1 focus:border-green-500 focus:ring-green-500"
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -156,7 +156,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
               size="sm"
               onClick={() => handleAddComment(commentPanelOpen)}
               disabled={!newComment[commentPanelOpen]?.trim()}
-              className="px-3"
+              className="px-3 bg-green-600 hover:bg-green-700 text-white"
             >
               <Send className="w-4 h-4" />
             </Button>

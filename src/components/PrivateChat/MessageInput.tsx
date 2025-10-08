@@ -53,7 +53,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           placeholder={placeholder}
           onKeyPress={handleKeyPress}
           onInput={handleInput}
-          className="flex-1 min-h-[48px] md:min-h-[44px] max-h-[120px] resize-none"
+          className="flex-1 min-h-[48px] md:min-h-[44px] max-h-[120px] resize-none focus:border-green-500 focus:ring-green-500"
           rows={1}
           style={{
             height: 'auto',
@@ -66,7 +66,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           onClick={onSend}
           disabled={!value.trim() || isDisabled}
           size="icon"
-          className="flex-shrink-0"
+          className="flex-shrink-0 bg-green-600 hover:bg-green-700 text-white"
         >
           <Send className="w-4 h-4 md:w-5 md:h-5" />
         </Button>

@@ -27,6 +27,18 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
   onLogout,
   onSignIn
 }) => {
+  const getCategoryColor = (category: string): string => {
+    const colorMap: { [key: string]: string } = {
+      'General': 'bg-green-100 text-green-700',
+      'Relationships': 'bg-pink-100 text-pink-700',
+      'Psychology': 'bg-purple-100 text-purple-700',
+      'Marriage': 'bg-rose-100 text-rose-700',
+      'Friendship': 'bg-amber-100 text-amber-700',
+      'Intimacy': 'bg-red-100 text-red-700'
+    };
+    return colorMap[category] || 'bg-gray-100 text-gray-600';
+  };
+
   return (
     <header className="bg-white border-b p-4">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -41,7 +53,7 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
             Back to Forum
           </Button>
           <div>
-            <h1 className="text-lg md:text-xl font-semibold text-gray-800">{thread.title}</h1>
+            <h1 className="text-lg md:text-xl font-semibold text-green-700">{thread.title}</h1>
             <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-500 mt-1">
               <div className="flex items-center">
                 <Avatar className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2">
@@ -54,7 +66,7 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
                 <Clock className="w-4 h-4 mr-1" />
                 <span>{formatDistanceToNow(thread.createdAt)} ago</span>
               </div>
-              <Badge variant="secondary">{thread.category}</Badge>
+              <Badge variant="secondary" className={getCategoryColor(thread.category || '')}>{thread.category}</Badge>
             </div>
           </div>
         </div>

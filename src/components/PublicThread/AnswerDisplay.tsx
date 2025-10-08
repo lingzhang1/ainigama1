@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { MessageCircle, Brain, Loader2 } from 'lucide-react';
+import { MessageCircle, Brain, Loader2, Leaf } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
@@ -66,8 +66,8 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
       <div className="flex items-start gap-2 md:gap-3">
         <Avatar className="w-6 h-6 flex-shrink-0">
           {answer.isAI ? (
-            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-              <span className="text-white text-xs font-bold">AI</span>
+            <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+              <Leaf className="w-3.5 h-3.5 text-white" />
             </div>
           ) : (
             <>
@@ -145,7 +145,7 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
                   blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-3" {...props} />,
                   strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
                   em: ({node, ...props}) => <em className="italic" {...props} />,
-                  a: ({node, ...props}) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />
+                  a: ({node, ...props}) => <a className="text-green-600 hover:text-green-800 underline" {...props} />
                 }}
               >
                 {answer.content}
@@ -172,7 +172,7 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
                   blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-3" {...props} />,
                   strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
                   em: ({node, ...props}) => <em className="italic" {...props} />,
-                  a: ({node, ...props}) => <a className="text-blue-600 hover:text-blue-800 underline" {...props} />
+                  a: ({node, ...props}) => <a className="text-green-600 hover:text-green-800 underline" {...props} />
                 }}
               >
                 {answer.content}
@@ -203,18 +203,18 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
                   streamingRefs.current[answer.id].streamingContainer = el;
                 }
               }}
-              className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg"
+              className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg"
               style={{ display: 'none' }}
             >
               <div className="flex items-center space-x-2 mb-2">
-                <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">AI</span>
+                <div className="w-5 h-5 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+                  <Leaf className="w-3 h-3 text-white" />
                 </div>
-                <span className="font-medium text-blue-800 text-sm">AI is commenting...</span>
+                <span className="font-medium text-green-700 text-sm">AI is commenting...</span>
                 <div className="flex space-x-1">
-                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                  <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                  <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                  <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                  <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                 </div>
               </div>
               
@@ -240,7 +240,7 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
                     }}
                     className="min-h-[1em]"
                   />
-                  <span className="animate-pulse text-blue-500">▋</span>
+                  <span className="animate-pulse text-green-500">▋</span>
                 </div>
               </div>
 
@@ -250,9 +250,9 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
                   <span className="text-xs font-medium text-gray-600">Comment</span>
                   <div className="ml-2">
                     <div className="flex space-x-1">
-                      <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                      <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                      <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                      <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                      <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                      <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                     </div>
                   </div>
                 </div>
@@ -264,7 +264,7 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
                   }}
                   className="min-h-[1em] text-gray-800 prose prose-xs max-w-none"
                 />
-                <span className="animate-pulse text-blue-500">▋</span>
+                <span className="animate-pulse text-green-500">▋</span>
               </div>
             </div>
           )}

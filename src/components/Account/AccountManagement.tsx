@@ -126,7 +126,7 @@ export const AccountManagement: React.FC<AccountManagementProps> = ({ onBack }) 
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
       <header className="bg-white border-b px-4 md:px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">

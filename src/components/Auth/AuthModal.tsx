@@ -399,7 +399,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
             <Button
               type="submit"
-              className="w-full bg-gray-800 hover:bg-gray-700 text-white"
+              className="w-full bg-green-600 hover:bg-green-700 text-white"
               disabled={isLoading}
             >
               {isLoading ? (

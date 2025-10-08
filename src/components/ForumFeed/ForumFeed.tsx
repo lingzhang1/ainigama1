@@ -179,6 +179,18 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     }
   };
 
+  const getCategoryColor = (category: string): string => {
+    const colorMap: { [key: string]: string } = {
+      'General': 'bg-green-100 text-green-700',
+      'Relationships': 'bg-pink-100 text-pink-700',
+      'Psychology': 'bg-indigo-100 text-indigo-700',
+      'Marriage': 'bg-rose-100 text-rose-700',
+      'Friendship': 'bg-amber-100 text-amber-700',
+      'Intimacy': 'bg-violet-100 text-violet-700'
+    };
+    return colorMap[category] || 'bg-gray-100 text-gray-600';
+  };
+
   const filteredThreads = threads.filter(thread =>
     thread.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     thread.category?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -239,7 +251,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
           <div className="relative">
             <Button 
               onClick={() => setShowNewThreadDropdown(!showNewThreadDropdown)}
-              className="w-full bg-gray-800 hover:bg-gray-700 text-white h-auto py-3 flex items-center justify-between"
+              className="w-full bg-green-600 hover:bg-green-700 text-white h-auto py-3 flex items-center justify-between"
             >
               <div className="flex items-center">
                 <PlusIcon className="w-4 h-4 mr-3" />
@@ -331,13 +343,20 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
               Categories
             </div>
             <nav className="space-y-1">
-              {['Relationships', 'Psychology', 'Marriage', 'Friendship', 'Intimacy'].map((category) => (
+              {[
+                { name: 'General', color: 'bg-green-400' },
+                { name: 'Relationships', color: 'bg-pink-400' },
+                { name: 'Psychology', color: 'bg-indigo-400' },
+                { name: 'Marriage', color: 'bg-rose-400' },
+                { name: 'Friendship', color: 'bg-amber-400' },
+                { name: 'Intimacy', color: 'bg-violet-400' }
+              ].map((category) => (
                 <div
-                  key={category}
+                  key={category.name}
                   className="flex items-center px-3 py-2 text-gray-700 text-base hover:bg-gray-50 rounded-md cursor-pointer"
                 >
-                  <div className="w-4 h-4 mr-3 bg-gray-300 rounded-full"></div>
-                  {category}
+                  <div className={`w-4 h-4 mr-3 ${category.color} rounded-full`}></div>
+                  {category.name}
                 </div>
               ))}
             </nav>
@@ -376,7 +395,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                 </button>
                 <button 
                   onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'account' })}
-                  className="text-xs text-blue-600 hover:text-blue-800 text-left"
+                  className="text-xs text-green-600 hover:text-green-800 text-left"
                 >
                   Account Management
                 </button>
@@ -398,13 +417,17 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         {/* Header - Sticky on scroll */}
         <header className="bg-white border-b p-4 sticky top-14 md:top-0 z-20 shadow-sm">
           <div className="flex flex-col space-y-3 md:space-y-0 md:flex-row md:items-center md:justify-between mb-3 md:mb-4">
-            <h1 className="text-lg md:text-xl font-normal text-gray-800 hidden md:block">Knowledge Feed</h1>
+            <h1 className="text-lg md:text-xl font-semibold text-green-700 hidden md:block">Knowledge Feed</h1>
             <div className="flex gap-2 w-full md:w-auto">
               <Button
                 variant={state.feedFilter === 'recent' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'recent' })}
-                className="flex items-center gap-2 flex-1 md:flex-none justify-center"
+                className={`flex items-center gap-2 flex-1 md:flex-none justify-center ${
+                  state.feedFilter === 'recent' 
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-white border-gray-300 text-green-600 hover:bg-gray-50'
+                }`}
               >
                 <ClockIcon className="w-4 h-4" />
                 <span className="hidden sm:inline">Recent</span>
@@ -413,7 +436,11 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                 variant={state.feedFilter === 'trending' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'trending' })}
-                className="flex items-center gap-2 flex-1 md:flex-none justify-center"
+                className={`flex items-center gap-2 flex-1 md:flex-none justify-center ${
+                  state.feedFilter === 'trending' 
+                    ? 'bg-green-600 hover:bg-green-700 text-white' 
+                    : 'bg-white border-gray-300 text-green-600 hover:bg-gray-50'
+                }`}
               >
                 <TrendingUpIcon className="w-4 h-4" />
                 <span className="hidden sm:inline">Trending</span>
@@ -424,7 +451,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
           <div className="relative">
             <SearchIcon className="absolute w-4 h-4 top-1/2 left-3 transform -translate-y-1/2 text-gray-400" />
             <Input
-              className="w-full pl-10 h-12 md:h-10"
+              className="w-full pl-10 h-12 md:h-10 focus:border-green-500 focus:ring-green-500"
               placeholder="Search topics, questions, and answers..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -436,13 +463,13 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         <div className="p-4 md:p-6 overflow-y-auto flex-1 mt-14">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
               <span className="ml-3 text-gray-600">Loading threads...</span>
             </div>
           ) : threads.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500 mb-4">No threads found</p>
-              <Button onClick={handleNewThread}>
+              <Button onClick={handleNewThread} className="bg-green-600 hover:bg-green-700 text-white">
                 Create the first thread
               </Button>
             </div>
@@ -451,7 +478,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
             {filteredThreads.map((thread) => (
               <Card
                 key={thread.id}
-                className="border border-gray-200 hover:shadow-md transition-shadow cursor-pointer touch-manipulation"
+                className="border border-gray-200 hover:border-green-300 hover:shadow-md transition-all cursor-pointer touch-manipulation"
                 onClick={() => {
                   handleThreadClick(thread.id);
                   closeLeftDrawer();
@@ -475,7 +502,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                       {thread.title}
                     </h3>
                     {thread.category && (
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs flex-shrink-0">
+                      <Badge variant="secondary" className={`${getCategoryColor(thread.category)} text-xs flex-shrink-0`}>
                         {thread.category}
                       </Badge>
                     )}
@@ -556,7 +583,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                   <select 
                     value={publicThreadForm.category}
                     onChange={(e) => setPublicThreadForm(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   >
                     <option value="General">General</option>
                     <option value="Relationships">Relationships</option>
@@ -582,16 +609,16 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                 </div>
 
                 {/* Privacy Notice */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <div className="flex items-start space-x-3">
                     <div className="flex-shrink-0">
-                      <Globe className="h-5 w-5 text-blue-600 mt-0.5" />
+                      <Globe className="h-5 w-5 text-green-600 mt-0.5" />
                     </div>
                     <div className="text-sm">
-                      <p className="text-blue-800 font-medium mb-1">
+                      <p className="text-green-800 font-medium mb-1">
                         This will be public
                       </p>
-                      <p className="text-blue-700">
+                      <p className="text-green-700">
                         Your thread will be visible to all community members. Others can add answers and engage in discussions.
                       </p>
                     </div>
@@ -614,7 +641,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                 <Button 
                   onClick={handleCreatePublicThread}
                   disabled={!publicThreadForm.title.trim() || !publicThreadForm.question.trim() || isCreatingThread}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white"
                 >
                   {isCreatingThread ? (
                     <>

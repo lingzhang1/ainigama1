@@ -179,7 +179,7 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'conversation': return 'bg-blue-100 text-blue-800';
+      case 'conversation': return 'bg-teal-100 text-teal-800';
       case 'question': return 'bg-green-100 text-green-800';
       case 'answer': return 'bg-purple-100 text-purple-800';
       default: return 'bg-gray-100 text-gray-800';
@@ -232,12 +232,12 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <div className="max-w-6xl mx-auto px-4 md:px-6 py-6">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
-              <p className="text-green-600">Loading your posts...</p>
+              <p className="text-gray-600">Loading your posts...</p>
             </div>
           </div>
         </div>
@@ -246,7 +246,7 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
       <header className="bg-white border-b px-4 md:px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -283,32 +283,32 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <Card className="bg-white">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-800">{userPosts.length}</div>
-              <div className="text-sm text-green-600">Total Posts</div>
+              <div className="text-2xl font-bold text-gray-800">{userPosts.length}</div>
+              <div className="text-sm text-gray-600">Total Posts</div>
             </CardContent>
           </Card>
           <Card className="bg-white">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-800">
+              <div className="text-2xl font-bold text-gray-800">
                 {userPosts.reduce((sum, post) => sum + post.stats.views, 0)}
               </div>
-              <div className="text-sm text-green-600">Total Views</div>
+              <div className="text-sm text-gray-600">Total Views</div>
             </CardContent>
           </Card>
           <Card className="bg-white">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-800">
+              <div className="text-2xl font-bold text-gray-800">
                 {userPosts.reduce((sum, post) => sum + post.stats.replies, 0)}
               </div>
-              <div className="text-sm text-green-600">Total Replies</div>
+              <div className="text-sm text-gray-600">Total Replies</div>
             </CardContent>
           </Card>
           <Card className="bg-white">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-800">
+              <div className="text-2xl font-bold text-gray-800">
                 {userPosts.reduce((sum, post) => sum + post.stats.likes, 0)}
               </div>
-              <div className="text-sm text-green-600">Total Likes</div>
+              <div className="text-sm text-gray-600">Total Likes</div>
             </CardContent>
           </Card>
         </div>
@@ -342,9 +342,9 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
           {filteredPosts.length === 0 ? (
             <Card className="bg-white">
               <CardContent className="p-8 text-center">
-                <MessageSquare className="w-12 h-12 text-green-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-green-800 mb-2">No posts found</h3>
-                <p className="text-green-600">
+                <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">No posts found</h3>
+                <p className="text-gray-600">
                   {filter === 'all' 
                     ? "You haven't created any posts yet." 
                     : filter === 'conversations' 
@@ -372,17 +372,17 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
                         {post.status}
                       </Badge>
                     </div>
-                    <div className="flex items-center space-x-1 text-sm text-green-600">
+                    <div className="flex items-center space-x-1 text-sm text-gray-500">
                       <Calendar className="w-4 h-4" />
                       <span>{post.createdAt.toLocaleDateString()}</span>
                     </div>
                   </div>
                   
-                  <h3 className="text-lg font-semibold text-green-800 mb-2">{post.title}</h3>
-                  <p className="text-green-600 mb-4 line-clamp-2">{post.content}</p>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">{post.title}</h3>
+                  <p className="text-gray-600 mb-4 line-clamp-2">{post.content}</p>
                   
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 text-sm text-green-600">
+                    <div className="flex items-center space-x-4 text-sm text-gray-500">
                       <div className="flex items-center space-x-1">
                         <Eye className="w-4 h-4" />
                         <span>{post.stats.views}</span>

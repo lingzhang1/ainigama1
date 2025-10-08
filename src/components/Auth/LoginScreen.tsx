@@ -41,7 +41,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50 flex flex-col font-handwriting">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex flex-col font-handwriting">
       {/* Header */}
       <header className="bg-white border-b px-4 md:px-6 py-3 md:py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -81,7 +81,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                 <span className="text-green-800 font-bold">F</span><span>ind </span><span className="text-green-800 font-bold">O</span><span>penness, </span><span className="text-green-800 font-bold">L</span><span>isten, </span><span className="text-green-800 font-bold">I</span><span>ntegrate, </span><span className="text-green-800 font-bold">A</span><span>nd </span><span className="text-green-800 font-bold">G</span><span>row </span><span className="text-green-800 font-bold">E</span><span>ndlessly</span>
               </h1>
             </div>
-            <h2 className="text-lg md:text-2xl text-green-600" style={{fontFamily: 'system-ui, -apple-system, sans-serif', fontWeight: '500', letterSpacing: '0.05em'}}>
+            <h2 className="text-lg md:text-2xl text-gray-600" style={{fontFamily: 'system-ui, -apple-system, sans-serif', fontWeight: '500', letterSpacing: '0.05em'}}>
               AI-Powered Knowledge Platform
             </h2>
           </div>
@@ -98,7 +98,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
               onClick={handleContinueAsGuest}
               variant="outline"
               size="lg"
-              className="px-6 md:px-8 py-3 md:py-4 border-green-300 text-green-600 hover:bg-green-50 h-auto"
+              className="px-6 md:px-8 py-3 md:py-4 border-gray-300 text-gray-700 hover:bg-gray-50 h-auto"
             >
               Continue as Guest
             </Button>

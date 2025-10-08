@@ -55,7 +55,7 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
         <CardContent className="p-0">
           {/* Header */}
           <div className="flex items-center justify-between p-4 md:p-6 border-b sticky top-0 bg-white z-10">
-            <h3 className="text-lg md:text-xl font-semibold text-gray-900">Publish to Community</h3>
+            <h3 className="text-lg md:text-xl font-semibold text-green-700">Publish to Community</h3>
             <Button 
               variant="ghost" 
               size="sm"
@@ -84,7 +84,7 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
                 placeholder="Give your thread a descriptive title..."
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full"
+                className="w-full focus:border-green-500 focus:ring-green-500"
               />
             </div>
 
@@ -96,7 +96,7 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full h-11 md:h-9 px-3 py-2 border border-gray-300 rounded-md text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                className="w-full h-11 md:h-9 px-3 py-2 border border-gray-300 rounded-md text-base md:text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white"
               >
                 <option value="General">General</option>
                 <option value="Relationships">Relationships</option>
@@ -108,16 +108,16 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
             </div>
 
             {/* Privacy Notice */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 md:p-4">
               <div className="flex items-start gap-2 md:gap-3">
                 <div className="flex-shrink-0">
-                  <Globe className="h-4 w-4 md:h-5 md:w-5 text-blue-600 mt-0.5" />
+                  <Globe className="h-4 w-4 md:h-5 md:w-5 text-green-600 mt-0.5" />
                 </div>
                 <div className="text-xs md:text-sm">
-                  <p className="text-blue-800 font-medium mb-1">
+                  <p className="text-green-800 font-medium mb-1">
                     This will be public
                   </p>
-                  <p className="text-blue-700 leading-relaxed">
+                  <p className="text-green-700 leading-relaxed">
                     Your conversation will be visible to all community members. Others can add answers and engage in discussions.
                   </p>
                 </div>
@@ -136,7 +136,7 @@ export const PublishConversationModal: React.FC<PublishConversationModalProps> =
             </Button>
             <Button
               onClick={handlePublish}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white order-1 sm:order-2"
+              className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white order-1 sm:order-2"
               disabled={!title.trim()}
             >
               Publish Thread

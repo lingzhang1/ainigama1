@@ -1167,8 +1167,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 style={{ display: 'none' }}
               >
                 <div className="flex items-start space-x-3 max-w-[70%]">
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-xs font-bold">AI</span>
+                  <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-lg">🍃</span>
                   </div>
                   
                   <div className="space-y-2 flex-1">
@@ -1193,7 +1193,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                             ref={(el) => { streamingRef.current.thinkingElement = el; }}
                             className="min-h-[1em]"
                           />
-                          <span className="animate-pulse text-blue-500">▋</span>
+                          <span className="animate-pulse text-green-500">▋</span>
                         </div>
                       </div>
                     )}
@@ -1204,9 +1204,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                         <span className="text-xs font-medium text-gray-600">Response</span>
                         <div className="ml-2">
                           <div className="flex space-x-1">
-                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                            <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                           </div>
                         </div>
                       </div>
@@ -1215,7 +1215,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                           ref={(el) => { streamingRef.current.contentElement = el; }}
                           className="min-h-[1em] text-gray-800 prose prose-sm max-w-none"
                         />
-                        <span className="animate-pulse text-blue-500">▋</span>
+                        <span className="animate-pulse text-green-500">▋</span>
                       </div>
                     </div>
                   </div>

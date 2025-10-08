@@ -76,7 +76,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             >
               <X className="w-5 h-5 text-gray-700" />
             </button>
-            <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+            <h2 className="text-lg font-semibold text-green-700 flex items-center">
               <Lock className="w-5 h-5 mr-2" />
               Private Chat
               {isGuest && (
@@ -100,7 +100,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         </div>
         
         {/* New Conversation Button */}
-        <Button onClick={onNewConversation} className="w-full">
+        <Button onClick={onNewConversation} className="w-full bg-green-600 hover:bg-green-700 text-white">
           <MessageSquare className="w-4 h-4 mr-2" />
           New Conversation
         </Button>
@@ -122,7 +122,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           <div
             key={conversation.id}
             className={`p-4 md:p-3 border-b cursor-pointer hover:bg-gray-50 active:bg-gray-100 group relative transition-colors ${
-              currentConversationId === conversation.id ? 'bg-blue-50 border-blue-200' : ''
+              currentConversationId === conversation.id ? 'bg-green-50 border-green-300' : ''
             }`}
             onClick={() => {
               // Always set the conversation, even if it's the same one
@@ -199,7 +199,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
                 </button>
                 <button 
                   onClick={onGoToAccount}
-                  className="text-xs text-blue-600 hover:text-blue-700 flex items-center space-x-1"
+                  className="text-xs text-teal-600 hover:text-teal-700 flex items-center space-x-1"
                 >
                   <Settings className="w-3 h-3" />
                   <span>Account Management</span>

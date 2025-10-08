@@ -35,7 +35,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     <header className="bg-white border-b p-3 md:p-4 flex items-center justify-between">
       <div className="flex items-center min-w-0 flex-1">
         <Lock className="w-4 h-4 md:w-5 md:h-5 mr-2 text-gray-500 flex-shrink-0" />
-        <h3 className="text-sm md:text-lg font-medium text-gray-800 truncate">
+        <h3 className="text-sm md:text-lg font-semibold text-green-700 truncate">
           {conversationTitle}
         </h3>
       </div>
@@ -58,7 +58,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           onClick={onMakePublic}
           variant="outline"
           size="sm"
-          className="flex items-center gap-1 md:gap-2"
+          className="flex items-center gap-1 md:gap-2 border-green-300 text-green-600 hover:bg-green-50 disabled:opacity-50 disabled:hover:bg-transparent"
           disabled={!canPublish || isGuest}
         >
           <Globe className="w-4 h-4" />
