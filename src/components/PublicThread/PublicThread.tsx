@@ -892,8 +892,6 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           onSortChange={setSortOrder}
           onLogout={onLogout}
           onSignIn={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
-          onGoToUserCenter={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'user-center' })}
-          onGoToAccount={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'account' })}
         />
 
         {/* Summarization Notification */}

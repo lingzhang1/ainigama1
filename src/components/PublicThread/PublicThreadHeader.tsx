@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Clock, ArrowUpDown, User, Settings } from 'lucide-react';
+import { ArrowLeft, Clock, ArrowUpDown } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
@@ -15,8 +15,6 @@ interface PublicThreadHeaderProps {
   onSortChange: (order: 'newest' | 'oldest') => void;
   onLogout: () => void;
   onSignIn: () => void;
-  onGoToUserCenter: () => void;
-  onGoToAccount: () => void;
 }
 
 export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
@@ -27,9 +25,7 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
   onBackToForum,
   onSortChange,
   onLogout,
-  onSignIn,
-  onGoToUserCenter,
-  onGoToAccount
+  onSignIn
 }) => {
   return (
     <header className="bg-white border-b p-4">
@@ -81,22 +77,7 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
                 <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
                 <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
               </Avatar>
-              <div className="flex flex-col space-y-1">
-                <button
-                  onClick={onGoToUserCenter}
-                  className="text-xs text-green-600 hover:text-green-700 flex items-center space-x-1"
-                >
-                  <User className="w-3 h-3" />
-                  <span>User Center</span>
-                </button>
-                <button
-                  onClick={onGoToAccount}
-                  className="text-xs text-blue-600 hover:text-blue-700 flex items-center space-x-1"
-                >
-                  <Settings className="w-3 h-3" />
-                  <span>Account Management</span>
-                </button>
-              </div>
+              <span className="text-sm text-gray-700">{currentUser.name}</span>
             </div>
           )}
           
