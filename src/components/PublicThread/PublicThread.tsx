@@ -34,6 +34,11 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
   const [commentPanelOpen, setCommentPanelOpen] = useState<string | null>(null);
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareModalContent, setShareModalContent] = useState<{
+    type: 'thread' | 'question' | 'answer' | 'comment';
+    id: string;
+    title: string;
+  } | null>(null);
   const [contentInteractions, setContentInteractions] = useState<{
     [key: string]: {isLiked: boolean, isSaved: boolean}
   }>({});
@@ -997,27 +1002,22 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
   };
 
   const handleShareAnswer = async (answerId: string) => {
-    try {
-      await metricsService.copyAndTrackShare('answer', answerId, state.currentUser?.id);
-      
-      // Update local state for the specific answer
-      setAnswers(prev => {
-        const updatedAnswers = { ...prev };
-        Object.keys(updatedAnswers).forEach(questionId => {
-          updatedAnswers[questionId] = updatedAnswers[questionId].map(answer => 
-            answer.id === answerId 
-              ? {
-                  ...answer,
-                  shareCount: answer.shareCount + 1
-                }
-              : answer
-          );
-        });
-        return updatedAnswers;
-      });
-    } catch (error) {
-      console.error('Failed to share answer:', error);
-    }
+    // Find the answer to get its content for the modal title
+    let answerContent = '';
+    Object.values(answers).forEach(answerList => {
+      const foundAnswer = answerList.find(a => a.id === answerId);
+      if (foundAnswer) {
+        answerContent = foundAnswer.content.substring(0, 100) + (foundAnswer.content.length > 100 ? '...' : '');
+      }
+    });
+    
+    // Open share modal
+    setShareModalContent({
+      type: 'answer',
+      id: answerId,
+      title: answerContent || 'Answer'
+    });
+    setShareModalOpen(true);
   };
 
   // Sort questions based on timestamp (exclude summary questions from UI)
@@ -1155,14 +1155,38 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
       />
 
       {/* Share Modal */}
-      <ShareModal
-        isOpen={shareModalOpen}
-        onClose={() => setShareModalOpen(false)}
-        contentType="thread"
-        contentId={thread.id}
-        contentTitle={thread.title}
-        userId={state.currentUser?.id}
-      />
+      {shareModalContent && (
+        <ShareModal
+          isOpen={shareModalOpen}
+          onClose={() => {
+            setShareModalOpen(false);
+            setShareModalContent(null);
+          }}
+          contentType={shareModalContent.type}
+          contentId={shareModalContent.id}
+          contentTitle={shareModalContent.title}
+          userId={state.currentUser?.id}
+          onShareComplete={() => {
+            // Update share count in local state
+            if (shareModalContent.type === 'answer') {
+              setAnswers(prev => {
+                const updatedAnswers = { ...prev };
+                Object.keys(updatedAnswers).forEach(questionId => {
+                  updatedAnswers[questionId] = updatedAnswers[questionId].map(answer => 
+                    answer.id === shareModalContent.id 
+                      ? {
+                          ...answer,
+                          shareCount: answer.shareCount + 1
+                        }
+                      : answer
+                  );
+                });
+                return updatedAnswers;
+              });
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

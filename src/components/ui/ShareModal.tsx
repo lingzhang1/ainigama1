@@ -10,6 +10,7 @@ export interface ShareModalProps {
   contentId: string;
   contentTitle?: string;
   userId?: string;
+  onShareComplete?: () => void;
 }
 
 export const ShareModal: React.FC<ShareModalProps> = ({
@@ -18,7 +19,8 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   contentType,
   contentId,
   contentTitle = 'Content',
-  userId
+  userId,
+  onShareComplete
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -31,6 +33,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
       await metricsService.copyAndTrackShare(contentType, contentId, userId);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
+      if (onShareComplete) onShareComplete();
     } catch (error) {
       console.error('Failed to copy link:', error);
     } finally {
@@ -42,6 +45,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     setIsLoading(true);
     try {
       await metricsService.shareToSocial(contentType, contentId, platform, userId);
+      if (onShareComplete) onShareComplete();
     } catch (error) {
       console.error(`Failed to share to ${platform}:`, error);
     } finally {

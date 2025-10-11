@@ -482,7 +482,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/test.testHandler",
               "Runtime": "nodejs18.x",
@@ -529,7 +529,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/websocket.connect",
               "Runtime": "nodejs18.x",
@@ -576,7 +576,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/websocket.disconnect",
               "Runtime": "nodejs18.x",
@@ -623,7 +623,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/websocket.default",
               "Runtime": "nodejs18.x",
@@ -670,7 +670,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/websocket.authenticate",
               "Runtime": "nodejs18.x",
@@ -717,7 +717,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/privateChat.saveConversation",
               "Runtime": "nodejs18.x",
@@ -764,7 +764,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/publicThread.joinThread",
               "Runtime": "nodejs18.x",
@@ -811,7 +811,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/publicThread.addAnswer",
               "Runtime": "nodejs18.x",
@@ -858,7 +858,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/publicThread.addComment",
               "Runtime": "nodejs18.x",
@@ -905,7 +905,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getThreads",
               "Runtime": "nodejs18.x",
@@ -952,7 +952,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.createThread",
               "Runtime": "nodejs18.x",
@@ -999,7 +999,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getThread",
               "Runtime": "nodejs18.x",
@@ -1046,7 +1046,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getThreadAnswers",
               "Runtime": "nodejs18.x",
@@ -1093,7 +1093,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getUserConversations",
               "Runtime": "nodejs18.x",
@@ -1140,7 +1140,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.saveMessages",
               "Runtime": "nodejs18.x",
@@ -1187,7 +1187,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getMessages",
               "Runtime": "nodejs18.x",
@@ -1234,7 +1234,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.createNewConversation",
               "Runtime": "nodejs18.x",
@@ -1281,7 +1281,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.updateConversationTitle",
               "Runtime": "nodejs18.x",
@@ -1328,7 +1328,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.deleteConversation",
               "Runtime": "nodejs18.x",
@@ -1375,7 +1375,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.addQuestion",
               "Runtime": "nodejs18.x",
@@ -1422,7 +1422,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.addAnswer",
               "Runtime": "nodejs18.x",
@@ -1469,7 +1469,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getAnswerComments",
               "Runtime": "nodejs18.x",
@@ -1516,7 +1516,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.addAnswerComment",
               "Runtime": "nodejs18.x",
@@ -1563,7 +1563,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.checkUserExists",
               "Runtime": "nodejs18.x",
@@ -1610,7 +1610,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.registerUser",
               "Runtime": "nodejs18.x",
@@ -1657,7 +1657,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.loginUser",
               "Runtime": "nodejs18.x",
@@ -1704,7 +1704,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.updatePassword",
               "Runtime": "nodejs18.x",
@@ -1751,7 +1751,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.checkAlias",
               "Runtime": "nodejs18.x",
@@ -1798,7 +1798,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getUserById",
               "Runtime": "nodejs18.x",
@@ -1845,7 +1845,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.trackView",
               "Runtime": "nodejs18.x",
@@ -1892,7 +1892,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.toggleLike",
               "Runtime": "nodejs18.x",
@@ -1939,7 +1939,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.getLikes",
               "Runtime": "nodejs18.x",
@@ -1986,7 +1986,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.toggleSave",
               "Runtime": "nodejs18.x",
@@ -2033,7 +2033,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.getUserSaves",
               "Runtime": "nodejs18.x",
@@ -2080,7 +2080,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.trackShare",
               "Runtime": "nodejs18.x",
@@ -2127,7 +2127,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.getShares",
               "Runtime": "nodejs18.x",
@@ -6149,7 +6149,7 @@
               "GetSharesLambdaPermissionApiGateway"
             ]
           },
-          "ApiGatewayDeployment1760211043582": {
+          "ApiGatewayDeployment1760221472973": {
             "Type": "AWS::ApiGateway::Deployment",
             "Properties": {
               "RestApiId": {
@@ -11233,7 +11233,7 @@
     "artifact": "/Users/lingzhang/Workplace/ainigama1/infrastructure/aws/.serverless/ainigama-backend.zip"
   },
   "package": {
-    "artifactDirectoryName": "serverless/ainigama-backend/dev/1760211047242-2025-10-11T19:30:47.242Z",
+    "artifactDirectoryName": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z",
     "artifact": "ainigama-backend.zip"
   }
 }

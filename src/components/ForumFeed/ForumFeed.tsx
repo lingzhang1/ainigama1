@@ -99,6 +99,8 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
           // Extract threads array from response object
           const threadsArray = loadedThreads.threads || loadedThreads;
           console.log('Loaded threads:', threadsArray.length);
+          console.log('Sample thread with topAnswer:', threadsArray.find(t => t.topAnswer));
+          console.log('Thread topAnswer check:', threadsArray.map(t => ({ id: t.id, hasTopAnswer: !!t.topAnswer, topAnswerContent: t.topAnswer?.content?.substring(0, 50) })));
           setThreads(threadsArray);
           dispatch({ type: 'SET_THREADS', payload: threadsArray });
         } else {
