@@ -1,10 +1,6 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-<<<<<<< HEAD
-import { MessageCircle, Brain, Loader2, Leaf, Heart } from 'lucide-react';
-=======
-import { MessageCircle, Brain, Loader2, Heart, Bookmark, Share2 } from 'lucide-react';
->>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
+import { MessageCircle, Brain, Loader2, Heart, Bookmark, Share2, Leaf } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';

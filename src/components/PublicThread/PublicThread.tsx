@@ -1071,11 +1071,6 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           sortOrder={sortOrder}
           onBackToForum={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
           onSortChange={setSortOrder}
-<<<<<<< HEAD
-          onLogout={onLogout}
-          onSignIn={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
-=======
->>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
         />
 
         {/* View tracking still occurs in loadThread useEffect */}

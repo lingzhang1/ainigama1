@@ -1,9 +1,5 @@
 import React from 'react';
-<<<<<<< HEAD
-import { ArrowLeft, Clock, ArrowUpDown } from 'lucide-react';
-=======
 import { ArrowLeft, ArrowUpDown } from 'lucide-react';
->>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
@@ -14,24 +10,13 @@ interface PublicThreadHeaderProps {
   sortOrder: 'newest' | 'oldest';
   onBackToForum: () => void;
   onSortChange: (order: 'newest' | 'oldest') => void;
-<<<<<<< HEAD
-  onLogout: () => void;
-  onSignIn: () => void;
-=======
->>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
 }
 
 export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
   thread,
   sortOrder,
   onBackToForum,
-<<<<<<< HEAD
-  onSortChange,
-  onLogout,
-  onSignIn
-=======
   onSortChange
->>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
 }) => {
   const getCategoryColor = (category: string): string => {
     const colorMap: { [key: string]: string } = {
@@ -68,15 +53,7 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
                 </Avatar>
                 <span>{thread.creator.name}</span>
               </div>
-<<<<<<< HEAD
-              <div className="flex items-center">
-                <Clock className="w-4 h-4 mr-1" />
-                <span>{formatDistanceToNow(thread.createdAt)} ago</span>
-              </div>
               <Badge variant="secondary" className={getCategoryColor(thread.category || '')}>{thread.category}</Badge>
-=======
-              <Badge variant="secondary">{thread.category}</Badge>
->>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
             </div>
           </div>
         </div>
@@ -91,31 +68,6 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
             <span className="hidden sm:inline">{sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}</span>
             <span className="sm:hidden">{sortOrder === 'newest' ? 'Newest' : 'Oldest'}</span>
           </Button>
-<<<<<<< HEAD
-          
-          {/* User section */}
-          {currentUser && !isGuest && (
-            <div className="flex items-center space-x-2">
-              <Avatar className="w-6 h-6">
-                <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
-                <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <span className="text-sm text-gray-700">{currentUser.name}</span>
-            </div>
-          )}
-          
-          {isGuest && (
-            <Button
-              onClick={onSignIn}
-              size="sm"
-              className="w-full sm:w-auto"
-            >
-              <span className="hidden sm:inline">Sign In to Participate</span>
-              <span className="sm:hidden">Sign In</span>
-            </Button>
-          )}
-=======
->>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
         </div>
       </div>
     </header>

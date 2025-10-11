@@ -58,6 +58,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     question: ''
   });
   const [isCreatingThread, setIsCreatingThread] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { isOpen: isLeftDrawerOpen, isMobile, toggle: toggleLeftDrawer, close: closeLeftDrawer, open: openLeftDrawer } = useMobileDrawer();
   const { isOpen: isRightDrawerOpen, toggle: toggleRightDrawer, close: closeRightDrawer, open: openRightDrawer } = useMobileDrawer();
 
@@ -198,7 +199,6 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     }
   };
 
-<<<<<<< HEAD
   const getCategoryColor = (category: string): string => {
     const colorMap: { [key: string]: string } = {
       'General': 'bg-green-100 text-green-700',
@@ -215,9 +215,6 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     thread.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     thread.category?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-=======
-  const filteredThreads = threads;
->>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
 
   return (
     <div className="flex w-full h-screen bg-gray-50">
@@ -471,7 +468,6 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
             </div>
           </div>
 
-<<<<<<< HEAD
           <div className="relative">
             <SearchIcon className="absolute w-4 h-4 top-1/2 left-3 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
             <Input
@@ -481,8 +477,6 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-=======
->>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
         </header>
 
         {/* Thread List */}
