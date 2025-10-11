@@ -1,31 +1,37 @@
 import React from 'react';
+<<<<<<< HEAD
 import { ArrowLeft, Clock, ArrowUpDown } from 'lucide-react';
+=======
+import { ArrowLeft, ArrowUpDown } from 'lucide-react';
+>>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
-import { Thread, User as UserType } from '../../types';
-import { formatDistanceToNow } from 'date-fns';
+import { Thread } from '../../types';
 
 interface PublicThreadHeaderProps {
   thread: Thread;
   sortOrder: 'newest' | 'oldest';
-  isGuest: boolean;
-  currentUser: UserType | null;
   onBackToForum: () => void;
   onSortChange: (order: 'newest' | 'oldest') => void;
+<<<<<<< HEAD
   onLogout: () => void;
   onSignIn: () => void;
+=======
+>>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
 }
 
 export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
   thread,
   sortOrder,
-  isGuest,
-  currentUser,
   onBackToForum,
+<<<<<<< HEAD
   onSortChange,
   onLogout,
   onSignIn
+=======
+  onSortChange
+>>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
 }) => {
   const getCategoryColor = (category: string): string => {
     const colorMap: { [key: string]: string } = {
@@ -62,11 +68,15 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
                 </Avatar>
                 <span>{thread.creator.name}</span>
               </div>
+<<<<<<< HEAD
               <div className="flex items-center">
                 <Clock className="w-4 h-4 mr-1" />
                 <span>{formatDistanceToNow(thread.createdAt)} ago</span>
               </div>
               <Badge variant="secondary" className={getCategoryColor(thread.category || '')}>{thread.category}</Badge>
+=======
+              <Badge variant="secondary">{thread.category}</Badge>
+>>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
             </div>
           </div>
         </div>
@@ -81,6 +91,7 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
             <span className="hidden sm:inline">{sortOrder === 'newest' ? 'Newest First' : 'Oldest First'}</span>
             <span className="sm:hidden">{sortOrder === 'newest' ? 'Newest' : 'Oldest'}</span>
           </Button>
+<<<<<<< HEAD
           
           {/* User section */}
           {currentUser && !isGuest && (
@@ -103,6 +114,8 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
               <span className="sm:hidden">Sign In</span>
             </Button>
           )}
+=======
+>>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
         </div>
       </div>
     </header>

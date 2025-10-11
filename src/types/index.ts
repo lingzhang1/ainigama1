@@ -77,7 +77,6 @@ export interface Thread {
   updatedAt: Date;
   questionCount: number;
   answerCount: number;
-  commentCount: number;
   interactionCount: number;
   // New metrics
   viewCount: number;
@@ -89,6 +88,8 @@ export interface Thread {
   isSaved?: boolean;
   questions: Question[];
   category?: string;
+  // Top answer preview (for forum feed)
+  topAnswer?: Answer;
 }
 
 export interface PrivateConversation {

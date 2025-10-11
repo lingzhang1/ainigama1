@@ -88,6 +88,72 @@ exports.getThreads = async (event) => {
         }
       }
 
+      // Get top answer (most liked) for preview
+      let topAnswer = null;
+      try {
+        // Get all questions for this thread
+        const questionsResult = await dbOperations.query(
+          tables.questions,
+          'thread_id = :threadId',
+          { ':threadId': thread.id },
+          'ThreadIdIndex'
+        );
+
+        // Get all answers for all questions
+        const allAnswers = [];
+        for (const question of (questionsResult.Items || [])) {
+          const answersResult = await dbOperations.query(
+            tables.answers,
+            'question_id = :questionId',
+            { ':questionId': question.id },
+            'QuestionIdIndexV2'
+          );
+          allAnswers.push(...(answersResult.Items || []));
+        }
+
+        // Find answer with most likes
+        if (allAnswers.length > 0) {
+          const sortedByLikes = allAnswers.sort((a, b) => 
+            (b.like_count || 0) - (a.like_count || 0)
+          );
+          const topAnswerData = sortedByLikes[0];
+          
+          // Get comment count for top answer
+          let commentCount = topAnswerData.comment_count || 0;
+          if (commentCount === 0) {
+            try {
+              const commentsResult = await dbOperations.query(
+                tables.comments,
+                'answer_id = :answerId',
+                { ':answerId': topAnswerData.id },
+                'AnswerIdIndex'
+              );
+              commentCount = commentsResult.Count || 0;
+            } catch (error) {
+              console.error('Error counting comments for top answer:', error);
+            }
+          }
+
+          topAnswer = {
+            id: topAnswerData.id,
+            content: topAnswerData.content,
+            timestamp: topAnswerData.created_at,
+            userId: topAnswerData.user_id,
+            questionId: topAnswerData.question_id,
+            isPinned: Boolean(topAnswerData.is_pinned),
+            isAI: Boolean(topAnswerData.is_ai),
+            thinking: topAnswerData.thinking || null,
+            interactionCount: topAnswerData.interaction_count || 0,
+            commentCount: commentCount,
+            likeCount: topAnswerData.like_count || 0,
+            saveCount: topAnswerData.save_count || 0,
+            shareCount: topAnswerData.share_count || 0
+          };
+        }
+      } catch (error) {
+        console.error('Failed to get top answer for thread:', thread.id, error);
+      }
+
       return {
         id: thread.id,
         title: thread.title,
@@ -97,15 +163,15 @@ exports.getThreads = async (event) => {
         updatedAt: thread.updated_at || thread.updatedAt,
         questionCount: thread.question_count || 0,
         answerCount: thread.answer_count || 0,
-        commentCount: thread.comment_count || 0,
-        interactionCount: (thread.question_count || 0) + (thread.answer_count || 0) + (thread.comment_count || 0),
+        interactionCount: (thread.question_count || 0) + (thread.answer_count || 0),
         // New metrics
         viewCount: thread.view_count || 0,
         likeCount: thread.like_count || 0,
         saveCount: thread.save_count || 0,
         shareCount: thread.share_count || 0,
         questions: [],
-        category: thread.category
+        category: thread.category,
+        topAnswer: topAnswer
       };
     }));
 
@@ -353,9 +419,8 @@ exports.getThread = async (event) => {
       isSummary: Boolean(q.is_summary) // Include summary flag
     }));
 
-    // Calculate answer count and comment count for the thread
+    // Calculate answer count for the thread
     let totalAnswerCount = 0;
-    let totalCommentCount = 0;
     for (const question of questions) {
       try {
         const answersResult = await dbOperations.query(
@@ -365,22 +430,6 @@ exports.getThread = async (event) => {
           'QuestionIdIndexV2'
         );
         totalAnswerCount += answersResult.Count || 0;
-        
-        // Count comments for each answer
-        const answers = answersResult.Items || [];
-        for (const answer of answers) {
-          try {
-            const commentsResult = await dbOperations.query(
-              tables.comments,
-              'answer_id = :answerId',
-              { ':answerId': answer.id },
-              'AnswerIdIndex'
-            );
-            totalCommentCount += commentsResult.Count || 0;
-          } catch (error) {
-            console.error('Error counting comments for answer:', answer.id, error);
-          }
-        }
       } catch (error) {
         console.error('Error counting answers for question:', question.id, error);
       }
@@ -396,8 +445,7 @@ exports.getThread = async (event) => {
       updatedAt: thread.updated_at,
       questionCount: questions.length,
       answerCount: totalAnswerCount,
-      commentCount: totalCommentCount,
-      interactionCount: questions.length + totalAnswerCount + totalCommentCount,
+      interactionCount: questions.length + totalAnswerCount,
       // New metrics
       viewCount: thread.view_count || 0,
       likeCount: thread.like_count || 0,

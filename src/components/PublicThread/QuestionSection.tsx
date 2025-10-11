@@ -27,6 +27,8 @@ interface QuestionSectionProps {
   onAskAI: (targetId: string, targetType: 'question' | 'answer', customPrompt?: string) => void;
   onOpenComments: (answerId: string) => void;
   onLikeAnswer: (answerId: string) => void;
+  onSaveAnswer: (answerId: string) => void;
+  onShareAnswer: (answerId: string) => void;
 }
 
 export const QuestionSection: React.FC<QuestionSectionProps> = ({
@@ -44,7 +46,9 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
   onAddAnswer,
   onAskAI,
   onOpenComments,
-  onLikeAnswer
+  onLikeAnswer,
+  onSaveAnswer,
+  onShareAnswer
 }) => {
   const [newAnswer, setNewAnswer] = useState('');
   const [expandedAnswerInput, setExpandedAnswerInput] = useState(false);
@@ -135,8 +139,11 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
               users={users}
               commentCount={answer.commentCount || 0}
               isLiked={answer.isLiked || false}
+              isSaved={answer.isSaved || false}
               onOpenComments={onOpenComments}
               onLike={onLikeAnswer}
+              onSave={onSaveAnswer}
+              onShare={onShareAnswer}
               onAskAI={onAskAI}
               isGuest={isGuest}
               isAIAnswering={isAIAnswering}

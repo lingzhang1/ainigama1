@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
+<<<<<<< HEAD
 import { MessageCircle, Brain, Loader2, Leaf, Heart } from 'lucide-react';
+=======
+import { MessageCircle, Brain, Loader2, Heart, Bookmark, Share2 } from 'lucide-react';
+>>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
@@ -15,8 +19,11 @@ interface AnswerDisplayProps {
   users: { [userId: string]: User };
   commentCount: number;
   isLiked?: boolean;
+  isSaved?: boolean;
   onOpenComments: (answerId: string) => void;
   onLike?: (answerId: string) => void;
+  onSave?: (answerId: string) => void;
+  onShare?: (answerId: string) => void;
   onAskAI: (targetId: string, targetType: 'question' | 'answer', customPrompt?: string) => void;
   isGuest: boolean;
   isAIAnswering: boolean;
@@ -30,8 +37,11 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
   users,
   commentCount,
   isLiked = false,
+  isSaved = false,
   onOpenComments,
   onLike,
+  onSave,
+  onShare,
   onAskAI,
   isGuest,
   isAIAnswering,
@@ -184,22 +194,45 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
             </div>
           )}
           
-          {/* Like and Comment Icons */}
-          <div className="flex items-center space-x-3">
+          {/* Answer Metrics: Like, Save, Share, Comment */}
+          <div className="flex items-center space-x-4">
             {/* Like Button */}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => onLike && onLike(answer.id)}
               disabled={!currentUser || isGuest}
-              className={`flex items-center space-x-1 text-gray-500 hover:text-gray-700 ${
-                isLiked ? 'text-red-500 hover:text-red-600' : ''
+              className={`flex items-center space-x-1 p-1 h-auto ${
+                isLiked ? 'text-red-500 hover:text-red-600' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-              <span className="text-xs">
-                {answer.likeCount || 0}
-              </span>
+              <span className="text-xs">{answer.likeCount || 0}</span>
+            </Button>
+
+            {/* Save Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onSave && onSave(answer.id)}
+              disabled={!currentUser || isGuest}
+              className={`flex items-center space-x-1 p-1 h-auto ${
+                isSaved ? 'text-blue-500 hover:text-blue-600' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+              <span className="text-xs">{answer.saveCount || 0}</span>
+            </Button>
+
+            {/* Share Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onShare && onShare(answer.id)}
+              className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 p-1 h-auto"
+            >
+              <Share2 className="w-4 h-4" />
+              <span className="text-xs">{answer.shareCount || 0}</span>
             </Button>
 
             {/* Comment Button */}
@@ -207,12 +240,10 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
               variant="ghost"
               size="sm"
               onClick={() => onOpenComments(answer.id)}
-              className="flex items-center space-x-1 text-gray-500 hover:text-gray-700"
+              className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 p-1 h-auto"
             >
               <MessageCircle className="w-4 h-4" />
-              <span className="text-xs">
-                {commentCount} comments
-              </span>
+              <span className="text-xs">{commentCount}</span>
             </Button>
           </div>
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search as SearchIcon, TrendingUp as TrendingUpIcon, Clock as ClockIcon, Plus as PlusIcon, ChevronDown, Lock, Globe, Menu, X, Loader as Loader2 } from 'lucide-react';
+import { Search as SearchIcon, TrendingUp as TrendingUpIcon, Clock as ClockIcon, Plus as PlusIcon, ChevronDown, Lock, Globe, Menu, X, Loader as Loader2, Heart, Bookmark, MessageCircle } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -8,11 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { FloatingActionButton } from '../ui/FloatingActionButton';
 import { NewThreadModal } from './NewThreadModal';
-import { HomePageMetricDisplay } from '../ui/MetricDisplay';
 import { Thread } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { metricsService } from '../../services/metrics';
-import { formatDistanceToNow } from 'date-fns';
 import { useMobileDrawer } from '../../hooks/useMobileDrawer';
 import { useSwipeGesture } from '../../hooks/useSwipeGesture';
 
@@ -49,7 +47,6 @@ const popularQuestions = [
 export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
   const isGuest = state.isGuestMode && !state.isAuthenticated;
-  const [searchQuery, setSearchQuery] = useState('');
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showNewThreadDropdown, setShowNewThreadDropdown] = useState(false);
@@ -61,7 +58,6 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     question: ''
   });
   const [isCreatingThread, setIsCreatingThread] = useState(false);
-  const [threadInteractions, setThreadInteractions] = useState<{[threadId: string]: {isLiked: boolean, isSaved: boolean}}>({});
   const { isOpen: isLeftDrawerOpen, isMobile, toggle: toggleLeftDrawer, close: closeLeftDrawer, open: openLeftDrawer } = useMobileDrawer();
   const { isOpen: isRightDrawerOpen, toggle: toggleRightDrawer, close: closeRightDrawer, open: openRightDrawer } = useMobileDrawer();
 
@@ -81,33 +77,6 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   });
 
   // Metric interaction handlers
-  const handleLikeThread = async (threadId: string) => {
-    if (!state.currentUser?.id) return;
-    
-    const currentInteraction = threadInteractions[threadId];
-    const newIsLiked = !currentInteraction?.isLiked;
-    
-    try {
-      await metricsService.toggleLike('thread', threadId, state.currentUser.id, newIsLiked ? 'like' : 'unlike');
-      
-      setThreadInteractions(prev => ({
-        ...prev,
-        [threadId]: {
-          ...prev[threadId],
-          isLiked: newIsLiked
-        }
-      }));
-      
-      // Update thread like count in local state
-      setThreads(prev => prev.map(thread => 
-        thread.id === threadId 
-          ? { ...thread, likeCount: newIsLiked ? thread.likeCount + 1 : Math.max(0, thread.likeCount - 1) }
-          : thread
-      ));
-    } catch (error) {
-      console.error('Failed to toggle like:', error);
-    }
-  };
 
 
   const handleViewThread = async (threadId: string) => {
@@ -229,6 +198,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     }
   };
 
+<<<<<<< HEAD
   const getCategoryColor = (category: string): string => {
     const colorMap: { [key: string]: string } = {
       'General': 'bg-green-100 text-green-700',
@@ -245,6 +215,9 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     thread.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     thread.category?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+=======
+  const filteredThreads = threads;
+>>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
 
   return (
     <div className="flex w-full h-screen bg-gray-50">
@@ -498,6 +471,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
             </div>
           </div>
 
+<<<<<<< HEAD
           <div className="relative">
             <SearchIcon className="absolute w-4 h-4 top-1/2 left-3 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
             <Input
@@ -507,6 +481,8 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+=======
+>>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
         </header>
 
         {/* Thread List */}
@@ -567,27 +543,34 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                       <span>{thread.creator.name}</span>
                     </div>
 
-                    <div className="flex items-center">
-                      <ClockIcon className="w-3.5 h-3.5 mr-2" />
-                      <span>Updated {formatDistanceToNow(thread.updatedAt)} ago</span>
-                    </div>
-
                     <span>{thread.questionCount} questions</span>
                     <span>{thread.answerCount} answers</span>
                   </div>
 
-                  {/* Home Page Metrics Display - Only likes and combined answers+comments */}
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <HomePageMetricDisplay
-                      likes={thread.likeCount || 0}
-                      answers={thread.answerCount || 0}
-                      comments={thread.commentCount || 0}
-                      isLiked={threadInteractions[thread.id]?.isLiked || false}
-                      onLike={() => handleLikeThread(thread.id)}
-                      disabled={!state.currentUser?.id}
-                      size="sm"
-                    />
-                  </div>
+                  {/* Top Answer Preview */}
+                  {thread.topAnswer && (
+                    <div className="mt-3 pt-3 border-t border-gray-100">
+                      <div className="text-sm text-gray-700 line-clamp-2 mb-2">
+                        {thread.topAnswer.content}
+                      </div>
+                      
+                      {/* Answer Metrics */}
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-1 text-gray-500">
+                          <Heart className="w-4 h-4" />
+                          <span className="text-xs">{thread.topAnswer.likeCount || 0}</span>
+                        </div>
+                        <div className="flex items-center space-x-1 text-gray-500">
+                          <MessageCircle className="w-4 h-4" />
+                          <span className="text-xs">{thread.topAnswer.commentCount || 0}</span>
+                        </div>
+                        <div className="flex items-center space-x-1 text-gray-500">
+                          <Bookmark className="w-4 h-4" />
+                          <span className="text-xs">{thread.topAnswer.saveCount || 0}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}

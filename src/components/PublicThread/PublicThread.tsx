@@ -12,7 +12,7 @@ import { PublicThreadHeader } from './PublicThreadHeader';
 import { QuestionSection } from './QuestionSection';
 import { NewQuestionInput } from './NewQuestionInput';
 import { CommentPanel } from './CommentPanel';
-import { ThreadMetricDisplay } from '../ui/MetricDisplay';
+// import { ThreadMetricDisplay } from '../ui/MetricDisplay';
 // import { ContentMetricDisplay } from '../ui/MetricDisplay';
 import { ShareModal } from '../ui/ShareModal';
 import { metricsService } from '../../services/metrics';
@@ -918,81 +918,7 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
 
   // ==================== METRIC INTERACTION HANDLERS ====================
 
-  const handleLikeContent = async (contentType: 'thread' | 'question' | 'answer' | 'comment', contentId: string) => {
-    if (!state.currentUser?.id) return;
-    
-    const key = `${contentType}_${contentId}`;
-    const currentInteraction = contentInteractions[key];
-    const newIsLiked = !currentInteraction?.isLiked;
-    
-    try {
-      await metricsService.toggleLike(contentType as any, contentId, state.currentUser.id, newIsLiked ? 'like' : 'unlike');
-      
-      setContentInteractions(prev => ({
-        ...prev,
-        [key]: {
-          ...prev[key],
-          isLiked: newIsLiked
-        }
-      }));
-      
-      // Update local state based on content type
-      if (contentType === 'thread' && thread) {
-        setThread(prev => prev ? {
-          ...prev,
-          likeCount: newIsLiked ? prev.likeCount + 1 : Math.max(0, prev.likeCount - 1)
-        } : null);
-      }
-    } catch (error) {
-      console.error('Failed to toggle like:', error);
-    }
-  };
-
-  const handleSaveContent = async (contentType: 'thread' | 'question' | 'answer' | 'comment', contentId: string) => {
-    if (!state.currentUser?.id) return;
-    
-    const key = `${contentType}_${contentId}`;
-    const currentInteraction = contentInteractions[key];
-    const newIsSaved = !currentInteraction?.isSaved;
-    
-    try {
-      await metricsService.toggleSave(contentType, contentId, state.currentUser.id, newIsSaved ? 'save' : 'unsave');
-      
-      setContentInteractions(prev => ({
-        ...prev,
-        [key]: {
-          ...prev[key],
-          isSaved: newIsSaved
-        }
-      }));
-      
-      // Update local state
-      if (contentType === 'thread' && thread) {
-        setThread(prev => prev ? {
-          ...prev,
-          saveCount: newIsSaved ? prev.saveCount + 1 : Math.max(0, prev.saveCount - 1)
-        } : null);
-      }
-    } catch (error) {
-      console.error('Failed to toggle save:', error);
-    }
-  };
-
-  const handleShareContent = async (contentType: 'thread' | 'question' | 'answer' | 'comment', contentId: string) => {
-    try {
-      await metricsService.copyAndTrackShare(contentType, contentId, state.currentUser?.id);
-      
-      // Update local state
-      if (contentType === 'thread' && thread) {
-        setThread(prev => prev ? {
-          ...prev,
-          shareCount: prev.shareCount + 1
-        } : null);
-      }
-    } catch (error) {
-      console.error('Failed to share content:', error);
-    }
-  };
+  // Thread-level metrics removed from UI, only answer-level metrics shown
 
   const handleLikeAnswer = async (answerId: string) => {
     if (!state.currentUser?.id) return;
@@ -1029,6 +955,68 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
       });
     } catch (error) {
       console.error('Failed to toggle answer like:', error);
+    }
+  };
+
+  const handleSaveAnswer = async (answerId: string) => {
+    if (!state.currentUser?.id) return;
+    
+    const key = `answer_${answerId}`;
+    const currentInteraction = contentInteractions[key];
+    const newIsSaved = !currentInteraction?.isSaved;
+    
+    try {
+      await metricsService.toggleSave('answer', answerId, state.currentUser.id, newIsSaved ? 'save' : 'unsave');
+      
+      setContentInteractions(prev => ({
+        ...prev,
+        [key]: {
+          ...prev[key],
+          isSaved: newIsSaved
+        }
+      }));
+      
+      // Update local state for the specific answer
+      setAnswers(prev => {
+        const updatedAnswers = { ...prev };
+        Object.keys(updatedAnswers).forEach(questionId => {
+          updatedAnswers[questionId] = updatedAnswers[questionId].map(answer => 
+            answer.id === answerId 
+              ? {
+                  ...answer,
+                  saveCount: newIsSaved ? answer.saveCount + 1 : Math.max(0, answer.saveCount - 1)
+                }
+              : answer
+          );
+        });
+        return updatedAnswers;
+      });
+    } catch (error) {
+      console.error('Failed to toggle answer save:', error);
+    }
+  };
+
+  const handleShareAnswer = async (answerId: string) => {
+    try {
+      await metricsService.copyAndTrackShare('answer', answerId, state.currentUser?.id);
+      
+      // Update local state for the specific answer
+      setAnswers(prev => {
+        const updatedAnswers = { ...prev };
+        Object.keys(updatedAnswers).forEach(questionId => {
+          updatedAnswers[questionId] = updatedAnswers[questionId].map(answer => 
+            answer.id === answerId 
+              ? {
+                  ...answer,
+                  shareCount: answer.shareCount + 1
+                }
+              : answer
+          );
+        });
+        return updatedAnswers;
+      });
+    } catch (error) {
+      console.error('Failed to share answer:', error);
     }
   };
 
@@ -1081,36 +1069,16 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         <PublicThreadHeader
           thread={thread}
           sortOrder={sortOrder}
-          isGuest={isGuest}
-          currentUser={state.currentUser}
           onBackToForum={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
           onSortChange={setSortOrder}
+<<<<<<< HEAD
           onLogout={onLogout}
           onSignIn={() => dispatch({ type: 'SET_GUEST_MODE', payload: false })}
+=======
+>>>>>>> 0ef3bbc (fix: interaction metrics api and feed ui optmization)
         />
 
-        {/* Thread Metrics */}
-        <div className="px-6 py-4 bg-white border-b border-gray-200">
-          <ThreadMetricDisplay
-            views={thread.viewCount || 0}
-            likes={thread.likeCount || 0}
-            saves={thread.saveCount || 0}
-            shares={thread.shareCount || 0}
-            comments={(thread.answerCount || 0) + (thread.commentCount || 0)}
-            isLiked={contentInteractions[`thread_${thread.id}`]?.isLiked || false}
-            isSaved={contentInteractions[`thread_${thread.id}`]?.isSaved || false}
-            onLike={() => handleLikeContent('thread', thread.id)}
-            onSave={() => handleSaveContent('thread', thread.id)}
-            onShare={() => {
-              setShareModalOpen(true);
-              handleShareContent('thread', thread.id);
-            }}
-            disabled={!state.currentUser?.id}
-            size="md"
-            showLabels={true}
-            spacing="normal"
-          />
-        </div>
+        {/* View tracking still occurs in loadThread useEffect */}
 
         {/* Summarization Notification */}
         {isSummarizing && (
@@ -1157,6 +1125,8 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
                 onAskAI={handleAskAI}
                 onOpenComments={setCommentPanelOpen}
                 onLikeAnswer={handleLikeAnswer}
+                onSaveAnswer={handleSaveAnswer}
+                onShareAnswer={handleShareAnswer}
               />
             ))}
 
