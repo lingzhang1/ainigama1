@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Search as SearchIcon, TrendingUp as TrendingUpIcon, Clock as ClockIcon, Plus as PlusIcon, ChevronDown, Lock, Globe, Menu, X, Loader as Loader2, Heart, Bookmark, MessageCircle } from 'lucide-react';
+import { Search as SearchIcon, TrendingUp as TrendingUpIcon, Clock as ClockIcon, Plus as PlusIcon, ChevronDown, Lock, Globe, Menu, X, Loader as Loader2, Heart, Bookmark, MessageCircle, HelpCircle, MessageSquare } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { Badge } from '../ui/badge';
 import { FloatingActionButton } from '../ui/FloatingActionButton';
 import { NewThreadModal } from './NewThreadModal';
 import { Thread } from '../../types';
@@ -26,23 +25,6 @@ const suggestedTopics = [
   'Dating after divorce'
 ];
 
-const popularQuestions = [
-  {
-    question: 'How do you rebuild trust after it\'s been broken?',
-    answers: '15 answers',
-    category: 'Relationships'
-  },
-  {
-    question: 'What are signs of emotional manipulation in relationships?',
-    answers: '23 answers',
-    category: 'Psychology'
-  },
-  {
-    question: 'How important is physical intimacy in a long-term relationship?',
-    answers: '31 answers',
-    category: 'Intimacy'
-  }
-];
 
 export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
@@ -199,18 +181,6 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     }
   };
 
-  const getCategoryColor = (category: string): string => {
-    const colorMap: { [key: string]: string } = {
-      'General': 'bg-green-100 text-green-700',
-      'Relationships': 'bg-pink-100 text-pink-700',
-      'Psychology': 'bg-indigo-100 text-indigo-700',
-      'Marriage': 'bg-rose-100 text-rose-700',
-      'Friendship': 'bg-amber-100 text-amber-700',
-      'Intimacy': 'bg-violet-100 text-violet-700'
-    };
-    return colorMap[category] || 'bg-gray-100 text-gray-600';
-  };
-
   const filteredThreads = threads.filter(thread =>
     thread.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     thread.category?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -227,7 +197,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         >
           <Menu className="w-6 h-6 text-gray-700" />
         </button>
-        <h1 className="text-lg font-semibold text-gray-800">MELON</h1>
+        <h1 className="text-lg font-semibold text-gray-800">FOLIAGE</h1>
         <button
           onClick={toggleRightDrawer}
           className="p-2 hover:bg-gray-100 rounded-lg"
@@ -467,16 +437,6 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
               </Button>
             </div>
           </div>
-
-          <div className="relative">
-            <SearchIcon className="absolute w-4 h-4 top-1/2 left-3 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <Input
-              className="w-full !pl-10 h-12 md:h-10 focus:border-green-500 focus:ring-green-500"
-              placeholder="Search topics, questions, and answers..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
         </header>
 
         {/* Thread List */}
@@ -517,53 +477,55 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                 }}
               >
                 <CardContent className="p-3 md:p-4">
-                  <div className="flex items-start justify-between mb-2 md:mb-3">
-                    <h3 className="text-base md:text-lg font-normal text-gray-800 leading-6 md:leading-7 flex-1 mr-4">
-                      {thread.title}
-                    </h3>
-                    {thread.category && (
-                      <Badge variant="secondary" className={`${getCategoryColor(thread.category)} text-xs flex-shrink-0`}>
-                        {thread.category}
-                      </Badge>
-                    )}
-                  </div>
+                  {/* Title of Thread */}
+                  <h3 className="text-base md:text-lg font-semibold text-gray-800 leading-6 md:leading-7 mb-3">
+                    {thread.title}
+                  </h3>
 
-                  <div className="flex flex-wrap items-center text-xs md:text-sm text-gray-500 gap-2 md:gap-4">
-                    <div className="flex items-center">
-                      <Avatar className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2">
+                  {/* User Avatar + Question Icon + Answer Icon */}
+                  <div className="flex items-center text-xs text-gray-600 gap-3 mb-3">
+                    <div className="flex items-center gap-1.5">
+                      <Avatar className="w-5 h-5">
                         <AvatarImage src={thread.creator.avatar} alt={thread.creator.name} />
                         <AvatarFallback>{thread.creator.name.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <span>{thread.creator.name}</span>
+                      <span className="text-gray-700">{thread.creator.name}</span>
                     </div>
-
-                    <span>{thread.questionCount} questions</span>
-                    <span>{thread.answerCount} answers</span>
+                    
+                    <div className="flex items-center gap-1">
+                      <HelpCircle className="w-4 h-4 text-gray-500" />
+                      <span>{thread.questionCount}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-1">
+                      <MessageSquare className="w-4 h-4 text-gray-500" />
+                      <span>{thread.answerCount}</span>
+                    </div>
                   </div>
 
-                  {/* Top Answer Preview */}
+                  {/* Preview of Most Liked Answer */}
                   {thread.topAnswer && (
-                    <div className="mt-3 pt-3 border-t border-gray-100">
-                      <div className="text-sm text-gray-700 line-clamp-2 mb-2">
+                    <>
+                      <div className="text-sm text-gray-700 line-clamp-2 mb-2 leading-relaxed">
                         {thread.topAnswer.content}
                       </div>
                       
-                      {/* Answer Metrics */}
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-1 text-gray-500">
+                      {/* Like, Save, Comments of the Answer */}
+                      <div className="flex items-center gap-4 text-gray-500">
+                        <div className="flex items-center gap-1">
                           <Heart className="w-4 h-4" />
                           <span className="text-xs">{thread.topAnswer.likeCount || 0}</span>
                         </div>
-                        <div className="flex items-center space-x-1 text-gray-500">
-                          <MessageCircle className="w-4 h-4" />
-                          <span className="text-xs">{thread.topAnswer.commentCount || 0}</span>
-                        </div>
-                        <div className="flex items-center space-x-1 text-gray-500">
+                        <div className="flex items-center gap-1">
                           <Bookmark className="w-4 h-4" />
                           <span className="text-xs">{thread.topAnswer.saveCount || 0}</span>
                         </div>
+                        <div className="flex items-center gap-1">
+                          <MessageCircle className="w-4 h-4" />
+                          <span className="text-xs">{thread.topAnswer.commentCount || 0}</span>
+                        </div>
                       </div>
-                    </div>
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -706,7 +668,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         />
       )}
 
-      {/* Right Sidebar */}
+      {/* Right Sidebar - Search Panel */}
       <aside className={`
         w-72 h-full bg-white border-l overflow-y-auto
         fixed md:relative
@@ -720,63 +682,86 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         <div className="p-4">
           {/* Mobile Close Button */}
           <div className="md:hidden flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Suggestions</h2>
+            <h2 className="text-lg font-semibold text-gray-800">Search</h2>
             <button
               onClick={closeRightDrawer}
               className="p-2 hover:bg-gray-100 rounded-lg"
-              aria-label="Close suggestions"
+              aria-label="Close search"
             >
               <X className="w-5 h-5 text-gray-700" />
             </button>
           </div>
-          <div className="mb-6">
-            <h2 className="text-sm font-semibold text-green-700 mb-4">
-              Suggested Topics
-            </h2>
-            <div className="space-y-2">
-              {suggestedTopics.map((topic, index) => (
-                <div 
-                  key={index} 
-                  className="bg-gray-50 rounded-md p-3 hover:bg-gray-100 cursor-pointer touch-manipulation"
-                  style={{ 
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'rgba(0, 0, 0, 0.1)'
-                  }}
-                >
-                  <div className="text-sm text-gray-800">{topic}</div>
-                </div>
-              ))}
-            </div>
+          
+          {/* Search Input */}
+          <div className="relative mb-6">
+            <SearchIcon className="absolute w-4 h-4 top-1/2 left-3 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <Input
+              className="w-full !pl-10 h-10 focus:border-green-500 focus:ring-green-500"
+              placeholder="Search topics, questions..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              autoFocus
+            />
           </div>
 
-          <div>
-            <h2 className="text-sm font-semibold text-green-700 mb-4">
-              Popular Questions
-            </h2>
-            <div className="space-y-0">
-              {popularQuestions.map((item, index) => (
-                <div
-                  key={index}
-                  className={`py-4 hover:bg-gray-50 cursor-pointer px-2 rounded touch-manipulation ${
-                    index < popularQuestions.length - 1 ? 'border-b border-gray-100' : ''
-                  }`}
-                  style={{ 
-                    touchAction: 'manipulation',
-                    WebkitTapHighlightColor: 'rgba(0, 0, 0, 0.1)'
-                  }}
-                >
-                  <div className="text-sm text-gray-800 leading-5 mb-2">
-                    {item.question}
-                  </div>
-                  <div className="flex items-center text-xs text-gray-500">
-                    <span>{item.answers}</span>
-                    <span className="mx-2">•</span>
-                    <span>{item.category}</span>
-                  </div>
+          {/* Search Results or Empty State */}
+          {searchQuery ? (
+            <div>
+              <h3 className="text-sm font-semibold text-green-700 mb-3">
+                Search Results ({filteredThreads.length})
+              </h3>
+              {filteredThreads.length === 0 ? (
+                <div className="text-center py-8 text-gray-500 text-sm">
+                  No threads found matching "{searchQuery}"
                 </div>
-              ))}
+              ) : (
+                <div className="space-y-3">
+                  {filteredThreads.slice(0, 5).map((thread) => (
+                    <div
+                      key={thread.id}
+                      onClick={() => {
+                        handleThreadClick(thread.id);
+                        closeRightDrawer();
+                      }}
+                      className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer"
+                    >
+                      <div className="text-sm font-medium text-gray-800 mb-1 line-clamp-2">
+                        {thread.title}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {thread.category} • {thread.answerCount} answers
+                      </div>
+                    </div>
+                  ))}
+                  {filteredThreads.length > 5 && (
+                    <div className="text-xs text-gray-500 text-center pt-2">
+                      and {filteredThreads.length - 5} more...
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
+          ) : (
+            <div>
+              <h2 className="text-sm font-semibold text-green-700 mb-4">
+                Suggested Topics
+              </h2>
+              <div className="space-y-2">
+                {suggestedTopics.map((topic, index) => (
+                  <div 
+                    key={index} 
+                    className="bg-gray-50 rounded-md p-3 hover:bg-gray-100 cursor-pointer touch-manipulation"
+                    style={{ 
+                      touchAction: 'manipulation',
+                      WebkitTapHighlightColor: 'rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    <div className="text-sm text-gray-800">{topic}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 
