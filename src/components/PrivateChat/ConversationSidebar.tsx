@@ -100,7 +100,15 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         </div>
         
         {/* New Conversation Button */}
-        <Button onClick={onNewConversation} className="w-full bg-green-600 hover:bg-green-700 text-white">
+        <Button 
+          onClick={() => {
+            onNewConversation();
+            if (isMobile) {
+              onClose();
+            }
+          }} 
+          className="w-full bg-green-600 hover:bg-green-700 text-white"
+        >
           <MessageSquare className="w-4 h-4 mr-2" />
           New Conversation
         </Button>

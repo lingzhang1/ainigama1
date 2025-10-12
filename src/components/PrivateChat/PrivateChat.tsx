@@ -68,11 +68,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   // Swipe gestures for mobile
   useSwipeGesture({
     onSwipeRight: () => {
-      if (isMobile && !isSidebarOpen && currentConversation) {
+      if (isMobile && !isSidebarOpen) {
         openSidebar();
       }
     },
-    enabled: isMobile && !isSidebarOpen && !!currentConversation,
+    enabled: isMobile && !isSidebarOpen,
   });
 
   // Streaming state management using refs (to avoid state update issues)
@@ -1070,8 +1070,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   };
   return (
     <div className="flex w-full h-screen bg-gray-50">
-      {/* Mobile Header - Only show when sidebar is closed */}
-      {isMobile && currentConversation && !isSidebarOpen && (
+      {/* Mobile Header - Always show when sidebar is closed */}
+      {isMobile && !isSidebarOpen && (
         <div className="fixed top-0 left-0 right-0 bg-white border-b z-30 px-4 py-3 flex items-center">
           <button
             onClick={toggleSidebar}
@@ -1081,20 +1081,22 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
             <Menu className="w-6 h-6 text-gray-700" />
           </button>
           <h1 className="text-lg font-semibold text-gray-800 truncate flex-1 min-w-0">
-            {currentConversation.title || 'Private Conversation'}
+            {currentConversation ? (currentConversation.title || 'Private Conversation') : 'Private Chat'}
           </h1>
           
-          {/* Mobile Publish Button */}
-          <button
-            onClick={handleMakePublic}
-            disabled={currentConversation.messages.length === 0 || isGuest}
-            className="ml-2 p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-          >
-            <Globe className="w-4 h-4 text-gray-600" />
-            <span className="text-sm font-medium text-gray-700">
-              {isGuest ? 'Sign In' : 'Publish'}
-            </span>
-          </button>
+          {/* Mobile Publish Button - Only show when conversation exists */}
+          {currentConversation && (
+            <button
+              onClick={handleMakePublic}
+              disabled={currentConversation.messages.length === 0 || isGuest}
+              className="ml-2 p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+            >
+              <Globe className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-medium text-gray-700">
+                {isGuest ? 'Sign In' : 'Publish'}
+              </span>
+            </button>
+          )}
         </div>
       )}
 
@@ -1252,12 +1254,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         defaultTitle={currentConversation?.title || "Relationship advice discussion"}
       />
 
-      {/* Floating Action Button - Mobile Only */}
-      {!currentConversation && (
+      {/* Floating Action Button - Mobile Only, shows when no conversation and sidebar closed */}
+      {!currentConversation && isMobile && !isSidebarOpen && (
         <FloatingActionButton
-          onClick={handleNewConversation}
+          onClick={openSidebar}
           icon={<Menu className="w-6 h-6" />}
-          label="Chat"
+          label="Menu"
         />
       )}
     </div>
