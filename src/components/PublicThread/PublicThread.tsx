@@ -482,104 +482,86 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         return;
       }
 
+      const loadStartTime = performance.now();
+      console.log('⏱️ Starting thread load for:', currentThreadId);
+
       try {
         setIsLoading(true);
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
         
-        // Load thread details
-        const threadResponse = await fetch(`${apiUrl}/threads/${currentThreadId}`);
-        if (threadResponse.ok) {
-          const threadData = await threadResponse.json();
-          setThread(threadData);
-          
-          // Load user interaction states for the thread if user is authenticated
-          if (state.currentUser?.id) {
-            try {
-              const likesResponse = await metricsService.getLikes('thread', currentThreadId, state.currentUser.id);
-              const savesResponse = await metricsService.getUserSaves(state.currentUser.id);
-              
-              // Check if thread is liked or saved
-              const threadKey = `thread_${currentThreadId}`;
-              setContentInteractions(prev => ({
-                ...prev,
-                [threadKey]: {
-                  isLiked: likesResponse.isLiked || false,
-                  isSaved: savesResponse.saves?.some((save: any) => 
-                    save.contentType === 'thread' && save.contentId === currentThreadId
-                  ) || false
-                }
-              }));
-            } catch (error) {
-              console.error('Failed to load user interaction states:', error);
-            }
-          }
+        // ✅ PERFORMANCE FIX #3: Load thread and answers in PARALLEL
+        const [threadResponse, answersResponse] = await Promise.all([
+          fetch(`${apiUrl}/threads/${currentThreadId}`),
+          fetch(`${apiUrl}/threads/${currentThreadId}/answers`)
+        ]);
+
+        // Parse responses in parallel
+        const [threadData, answersData] = await Promise.all([
+          threadResponse.ok ? threadResponse.json() : null,
+          answersResponse.ok ? answersResponse.json() : {}
+        ]);
+
+        if (!threadData) {
+          console.error('Failed to load thread');
+          setIsLoading(false);
+          return;
         }
 
-        // Load answers for the thread
-        const answersResponse = await fetch(`${apiUrl}/threads/${currentThreadId}/answers`);
-        let answersData = {};
-        if (answersResponse.ok) {
-          answersData = await answersResponse.json();
-          setAnswers(answersData);
-          
-          // Load user interaction states for answers if user is authenticated
-          if (state.currentUser?.id) {
-            const allAnswers = Object.values(answersData).flat() as Answer[];
-            for (const answer of allAnswers) {
-              try {
-                const answerLikesResponse = await metricsService.getLikes('answer', answer.id, state.currentUser.id);
+        // Set thread and answers immediately - render NOW!
+        setThread(threadData);
+        setAnswers(answersData);
+        
+        const loadEndTime = performance.now();
+        console.log(`⏱️ Core thread data loaded in ${(loadEndTime - loadStartTime).toFixed(0)}ms`);
+        
+        // ✅ PERFORMANCE FIX #4: Set isLoading=false BEFORE loading interactions
+        // This allows the UI to render while interactions load in background
+        setIsLoading(false);
+
+        // Load user interaction states in background (non-blocking)
+        if (state.currentUser?.id) {
+          // Thread interactions
+          metricsService.getLikes('thread', currentThreadId, state.currentUser.id)
+            .then(likesResponse => {
+              return metricsService.getUserSaves(state.currentUser.id)
+                .then(savesResponse => {
+                  const threadKey = `thread_${currentThreadId}`;
+                  setContentInteractions(prev => ({
+                    ...prev,
+                    [threadKey]: {
+                      isLiked: likesResponse.isLiked || false,
+                      isSaved: savesResponse.saves?.some((save: any) => 
+                        save.contentType === 'thread' && save.contentId === currentThreadId
+                      ) || false
+                    }
+                  }));
+                });
+            })
+            .catch(error => console.error('Background: Failed to load thread interactions:', error));
+
+          // Answer interactions (in background)
+          const allAnswers = Object.values(answersData).flat() as Answer[];
+          allAnswers.forEach(answer => {
+            metricsService.getLikes('answer', answer.id, state.currentUser.id)
+              .then(answerLikesResponse => {
                 const answerKey = `answer_${answer.id}`;
                 setContentInteractions(prev => ({
                   ...prev,
                   [answerKey]: {
                     isLiked: answerLikesResponse.isLiked || false,
-                    isSaved: prev[answerKey]?.isSaved || false // We'll load saves separately
+                    isSaved: prev[answerKey]?.isSaved || false
                   }
                 }));
-              } catch (error) {
-                console.error('Failed to load answer interaction states:', error);
-              }
-            }
-          }
+              })
+              .catch(error => console.error(`Background: Failed to load answer ${answer.id} interactions:`, error));
+          });
         }
 
-        // Load comments for each answer
+        // ✅ PERFORMANCE FIX: Comments now load on-demand when user opens comment panel
+        // This saves 10-20 API requests on initial load
+
+        // Collect all unique user IDs from answers only (comments load later)
         const allAnswers = Object.values(answersData).flat() as Answer[];
-        for (const answer of allAnswers) {
-          try {
-            const commentsResponse = await fetch(`${apiUrl}/answers/${answer.id}/comments`);
-            if (commentsResponse.ok) {
-              const commentsData = await commentsResponse.json();
-              setComments(prev => ({
-                ...prev,
-                [answer.id]: commentsData
-              }));
-              
-              // Load user interaction states for comments if user is authenticated
-              if (state.currentUser?.id) {
-                for (const comment of commentsData) {
-                  try {
-                    const commentLikesResponse = await metricsService.getLikes('comment', comment.id, state.currentUser.id);
-                    const commentKey = `comment_${comment.id}`;
-                    setContentInteractions(prev => ({
-                      ...prev,
-                      [commentKey]: {
-                        isLiked: commentLikesResponse.isLiked || false,
-                        isSaved: prev[commentKey]?.isSaved || false // We'll load saves separately
-                      }
-                    }));
-                  } catch (error) {
-                    console.error('Failed to load comment interaction states:', error);
-                  }
-                }
-              }
-            }
-          } catch (error) {
-            console.error('Failed to load comments for answer:', answer.id, error);
-          }
-        }
-
-        // Collect all unique user IDs from answers and comments
         const userIds = new Set<string>();
         
         // Add user IDs from answers
@@ -589,22 +571,8 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           }
         });
         
-        // Add user IDs from comments
-        Object.values(answersData).flat().forEach(async (answer: any) => {
-          try {
-            const commentsResponse = await fetch(`${apiUrl}/answers/${answer.id}/comments`);
-            if (commentsResponse.ok) {
-              const commentsData = await commentsResponse.json();
-              commentsData.forEach((comment: any) => {
-                if (comment.userId) {
-                  userIds.add(comment.userId);
-                }
-              });
-            }
-          } catch (error) {
-            console.error('Failed to load comments for user collection:', error);
-          }
-        });
+        // ✅ PERFORMANCE FIX: Don't load comments here just for user IDs
+        // Comments (and their user IDs) will be loaded when user opens comment panel
         
         // Fetch user info for all unique user IDs
         const userPromises = Array.from(userIds).map(async (userId) => {
@@ -627,10 +595,20 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         if (Object.keys(newUsers).length > 0) {
           setUsers(prev => ({ ...prev, ...newUsers }));
         }
+
+        const finalTime = performance.now();
+        const totalAnswers = Object.values(answersData).flat().length;
+        console.log(`✅ Thread fully loaded in ${(finalTime - loadStartTime).toFixed(0)}ms`);
+        console.log(`📊 Performance Summary:
+          - Thread: ${threadData.title}
+          - Questions: ${threadData.questions?.length || 0}
+          - Answers: ${totalAnswers}
+          - Users fetched: ${Object.keys(newUsers).length}
+          - Comments: Lazy loaded (0 at init)
+          - Interactions: Loading in background
+        `);
       } catch (error) {
         console.error('Failed to load thread:', error);
-      } finally {
-        setIsLoading(false);
       }
     };
 
@@ -693,22 +671,8 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           return;
         }
 
-        // Load comments for this answer if not already loaded
-        if (!comments[answerId] || comments[answerId].length === 0) {
-          try {
-            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-            const commentsResponse = await fetch(`${apiUrl}/answers/${answerId}/comments`);
-            if (commentsResponse.ok) {
-              const commentsData = await commentsResponse.json();
-              setComments(prev => ({ ...prev, [answerId]: commentsData }));
-            }
-          } catch (error) {
-            console.error('Failed to load comments:', error);
-          }
-        }
-        
-        // Open the comment panel for this answer
-        setCommentPanelOpen(answerId);
+        // Open the comment panel (will load comments on-demand)
+        await handleOpenComments(answerId);
         
         // Wait for comment panel to open and render
         await new Promise(resolve => setTimeout(resolve, 400));
@@ -1067,6 +1031,70 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
     }
   };
 
+  // Handle opening comment panel - load comments on-demand
+  const handleOpenComments = async (answerId: string) => {
+    console.log('💬 Opening comments for answer:', answerId);
+    setCommentPanelOpen(answerId);
+
+    // Check if comments already loaded for this answer
+    if (comments[answerId] && comments[answerId].length >= 0) {
+      console.log('✅ Comments already loaded for answer:', answerId);
+      return;
+    }
+
+    // Load comments on-demand
+    try {
+      console.log('📥 Loading comments on-demand for answer:', answerId);
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const commentsResponse = await fetch(`${apiUrl}/answers/${answerId}/comments`);
+      
+      if (commentsResponse.ok) {
+        const commentsData = await commentsResponse.json();
+        setComments(prev => ({ ...prev, [answerId]: commentsData }));
+        
+        // Load user info for comment authors in background
+        const commentUserIds = new Set<string>();
+        commentsData.forEach((comment: any) => {
+          if (comment.userId && comment.userId !== state.currentUser?.id) {
+            commentUserIds.add(comment.userId);
+          }
+        });
+        
+        // Fetch user info in background
+        if (commentUserIds.size > 0) {
+          Array.from(commentUserIds).forEach(async (userId) => {
+            if (!users[userId]) {
+              const userInfo = await fetchUserInfo(userId);
+              if (userInfo) {
+                setUsers(prev => ({ ...prev, [userId]: userInfo }));
+              }
+            }
+          });
+        }
+
+        // Load comment interaction states in background (if authenticated)
+        if (state.currentUser?.id) {
+          commentsData.forEach((comment: any) => {
+            metricsService.getLikes('comment', comment.id, state.currentUser.id)
+              .then(commentLikesResponse => {
+                const commentKey = `comment_${comment.id}`;
+                setContentInteractions(prev => ({
+                  ...prev,
+                  [commentKey]: {
+                    isLiked: commentLikesResponse.isLiked || false,
+                    isSaved: prev[commentKey]?.isSaved || false
+                  }
+                }));
+              })
+              .catch(error => console.error(`Background: Failed to load comment ${comment.id} interactions:`, error));
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load comments on-demand:', error);
+    }
+  };
+
   // Handle adding comment
   const handleAddComment = async (answerId: string, content: string) => {
     if (!content.trim() || (!state.currentUser && !isGuest)) return;
@@ -1360,7 +1388,7 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
                 streamingRefs={streamingRefs}
                 onAddAnswer={handleAddAnswer}
                 onAskAI={handleAskAI}
-                onOpenComments={setCommentPanelOpen}
+                onOpenComments={handleOpenComments}
                 onLikeAnswer={handleLikeAnswer}
                 onSaveAnswer={handleSaveAnswer}
                 onShareAnswer={handleShareAnswer}
