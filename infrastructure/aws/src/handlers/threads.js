@@ -13,12 +13,22 @@ exports.getThreads = async (event) => {
       return handleOptionsRequest();
     }
 
-    const { filter = 'recent' } = event.queryStringParameters || {};
+    const { 
+      filter = 'recent',
+      limit = '20',
+      offset = '0'
+    } = event.queryStringParameters || {};
     
-    console.log('Getting threads with filter:', filter);
+    const limitNum = parseInt(limit);
+    const offsetNum = parseInt(offset);
+    
+    console.log('Getting threads with filter:', filter, 'limit:', limitNum, 'offset:', offsetNum);
     
     // Use GSI for efficient public thread queries
+    // Fetch more than needed for pagination
     let result;
+    const fetchLimit = Math.min(limitNum + offsetNum + 20, 100); // Fetch extra for pagination
+    
     try {
       result = await dbOperations.query(
         tables.threads,
@@ -26,7 +36,7 @@ exports.getThreads = async (event) => {
         { ':isPublic': 'true' },
         'PublicThreadsIndex',
         false,
-        20
+        fetchLimit
       );
       console.log('GSI query successful, found', result.Items?.length || 0, 'threads');
     } catch (gsiError) {
@@ -36,7 +46,7 @@ exports.getThreads = async (event) => {
         tables.threads,
         'is_public = :isPublic',
         { ':isPublic': 'true' },
-        50
+        fetchLimit
       );
       console.log('Scan fallback successful, found', result.Items?.length || 0, 'threads');
     }
@@ -58,11 +68,15 @@ exports.getThreads = async (event) => {
       );
     }
     
-    // Take only first 20 after sorting
-    sortedItems = sortedItems.slice(0, 20);
+    // Apply pagination
+    const totalCount = sortedItems.length;
+    const paginatedItems = sortedItems.slice(offsetNum, offsetNum + limitNum);
+    const hasMore = totalCount > offsetNum + limitNum;
     
-    // Get user information for each thread creator
-    const transformedThreads = await Promise.all(sortedItems.map(async (thread) => {
+    console.log(`📄 Pagination: total=${totalCount}, offset=${offsetNum}, limit=${limitNum}, hasMore=${hasMore}`);
+    
+    // Get user information for each thread creator (use paginated items)
+    const transformedThreads = await Promise.all(paginatedItems.map(async (thread) => {
       let creatorInfo = {
         id: thread.creator_id || thread.creatorId,
         name: 'Unknown User',
@@ -182,7 +196,11 @@ exports.getThreads = async (event) => {
       statusCode: 200,
       body: JSON.stringify({
         threads: transformedThreads,
-        count: transformedThreads.length
+        count: transformedThreads.length,
+        total: totalCount,
+        hasMore: hasMore,
+        offset: offsetNum,
+        limit: limitNum
       })
     });
 

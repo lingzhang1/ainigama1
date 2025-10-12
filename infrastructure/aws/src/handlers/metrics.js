@@ -1145,3 +1145,146 @@ exports.getShares = async (event) => {
     });
   }
 };
+
+// ==================== BATCH INTERACTIONS ====================
+
+// Get all user interactions for a specific thread (likes + saves)
+// This is a performance optimization to replace N individual API calls
+exports.getUserInteractionsForThread = async (event) => {
+  try {
+    console.log('getUserInteractionsForThread called with method:', event.httpMethod);
+    
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
+      return handleOptionsRequest();
+    }
+
+    const { userId } = event.pathParameters || {};
+    const { threadId } = event.queryStringParameters || {};
+    
+    if (!userId) {
+      return addCorsHeaders({
+        statusCode: 400,
+        body: JSON.stringify({ error: 'User ID is required' })
+      });
+    }
+
+    if (!threadId) {
+      return addCorsHeaders({
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Thread ID is required in query parameters' })
+      });
+    }
+
+    console.log(`📦 Fetching batch interactions for user ${userId} in thread ${threadId}`);
+
+    // Get all likes for this user (using UserIdIndex)
+    const likesResult = await dbOperations.query(
+      tables.likes,
+      'user_id = :userId',
+      { ':userId': userId },
+      'UserIdIndex',
+      false,
+      100 // Reasonable limit per thread
+    );
+
+    // Get all saves for this user (using UserIdIndex)
+    const savesResult = await dbOperations.query(
+      tables.saves,
+      'user_id = :userId',
+      { ':userId': userId },
+      'UserIdIndex',
+      false,
+      100
+    );
+
+    // We need to filter to only items that belong to this thread
+    // For this, we'll need to check content IDs against thread content
+    
+    // Get thread's questions to identify relevant answers and comments
+    const questionsResult = await dbOperations.query(
+      tables.questions,
+      'thread_id = :threadId',
+      { ':threadId': threadId },
+      'ThreadIdIndex'
+    );
+    
+    const questionIds = new Set((questionsResult.Items || []).map(q => q.id));
+    
+    // Get all answer IDs for this thread
+    const answerIds = new Set();
+    for (const questionId of questionIds) {
+      const answersResult = await dbOperations.query(
+        tables.answers,
+        'question_id = :questionId',
+        { ':questionId': questionId },
+        'QuestionIdIndexV2'
+      );
+      (answersResult.Items || []).forEach(a => answerIds.add(a.id));
+    }
+
+    // Get all comment IDs for answers in this thread
+    const commentIds = new Set();
+    for (const answerId of answerIds) {
+      const commentsResult = await dbOperations.query(
+        tables.comments,
+        'answerId = :answerId',
+        { ':answerId': answerId },
+        'AnswerIdIndex'
+      );
+      (commentsResult.Items || []).forEach(c => commentIds.add(c.id));
+    }
+
+    // Filter likes to only those in this thread
+    const threadLikes = (likesResult.Items || []).filter(like => {
+      if (like.content_type === 'thread' && like.content_id === threadId) return true;
+      if (like.content_type === 'question' && questionIds.has(like.content_id)) return true;
+      if (like.content_type === 'answer' && answerIds.has(like.content_id)) return true;
+      if (like.content_type === 'comment' && commentIds.has(like.content_id)) return true;
+      return false;
+    });
+
+    // Filter saves to only those in this thread
+    const threadSaves = (savesResult.Items || []).filter(save => {
+      if (save.content_type === 'thread' && save.content_id === threadId) return true;
+      if (save.content_type === 'question' && questionIds.has(save.content_id)) return true;
+      if (save.content_type === 'answer' && answerIds.has(save.content_id)) return true;
+      if (save.content_type === 'comment' && commentIds.has(save.content_id)) return true;
+      return false;
+    });
+
+    // Organize by content type for easy frontend consumption
+    const response = {
+      likes: {
+        thread: threadLikes.filter(l => l.content_type === 'thread').map(l => l.content_id),
+        questions: threadLikes.filter(l => l.content_type === 'question').map(l => l.content_id),
+        answers: threadLikes.filter(l => l.content_type === 'answer').map(l => l.content_id),
+        comments: threadLikes.filter(l => l.content_type === 'comment').map(l => l.content_id)
+      },
+      saves: {
+        thread: threadSaves.filter(s => s.content_type === 'thread').map(s => s.content_id),
+        questions: threadSaves.filter(s => s.content_type === 'question').map(s => s.content_id),
+        answers: threadSaves.filter(s => s.content_type === 'answer').map(s => s.content_id),
+        comments: threadSaves.filter(s => s.content_type === 'comment').map(s => s.content_id)
+      }
+    };
+
+    console.log(`✅ Batch interactions fetched: ${threadLikes.length} likes, ${threadSaves.length} saves`);
+
+    return addCorsHeaders({
+      statusCode: 200,
+      body: JSON.stringify(response)
+    });
+
+  } catch (error) {
+    console.error('Get user interactions for thread error:', error);
+    return addCorsHeaders({
+      statusCode: 500,
+      body: JSON.stringify({ 
+        error: 'Failed to get user interactions',
+        message: error.message 
+      })
+    });
+  }
+};

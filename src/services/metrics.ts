@@ -227,6 +227,45 @@ class MetricsService {
     }
   }
 
+  // ==================== BATCH INTERACTIONS (PERFORMANCE OPTIMIZATION) ====================
+
+  /**
+   * Get all user interactions for a specific thread in a single API call
+   * This is a performance optimization that replaces N individual getLikes calls
+   */
+  async getUserInteractionsForThread(userId: string, threadId: string): Promise<{
+    likes: {
+      thread: string[];
+      questions: string[];
+      answers: string[];
+      comments: string[];
+    };
+    saves: {
+      thread: string[];
+      questions: string[];
+      answers: string[];
+      comments: string[];
+    };
+  }> {
+    try {
+      const response = await fetch(`${this.apiUrl}/users/${userId}/interactions?threadId=${threadId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get user interactions: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting user interactions for thread:', error);
+      throw error;
+    }
+  }
+
   // ==================== UTILITY METHODS ====================
 
   /**

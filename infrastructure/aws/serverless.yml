@@ -772,6 +772,24 @@ functions:
             allowCredentials: false
             maxAge: 86400
 
+  # Get single answer by ID (for deep link optimization)
+  getAnswerById:
+    handler: src/handlers/api.getAnswerById
+    events:
+      - http:
+          path: /answers/{answerId}
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
   # ==================== METRICS API ====================
   
   # Views
@@ -916,6 +934,24 @@ functions:
       - http:
           path: /users/{userId}/saves
           method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  # Batch Interactions (Performance Optimization)
+  getUserInteractionsForThread:
+    handler: src/handlers/api.getUserInteractionsForThread
+    events:
+      - http:
+          path: /users/{userId}/interactions
+          method: get
           cors:
             origin: '*'
             headers:

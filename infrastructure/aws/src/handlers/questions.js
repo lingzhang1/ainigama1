@@ -108,6 +108,107 @@ exports.addQuestion = async (event) => {
   }
 };
 
+// Get single answer by ID (for deep link optimization)
+exports.getAnswerById = async (event) => {
+  try {
+    console.log('getAnswerById called with method:', event.httpMethod);
+    
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
+      return handleOptionsRequest();
+    }
+
+    const { answerId } = event.pathParameters || {};
+    
+    if (!answerId) {
+      return addCorsHeaders({
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Answer ID is required' })
+      });
+    }
+
+    console.log('🎯 Fetching single answer:', answerId);
+
+    // Get the answer
+    const answerResult = await dbOperations.get(tables.answers, { id: answerId });
+
+    if (!answerResult.Item) {
+      return addCorsHeaders({
+        statusCode: 404,
+        body: JSON.stringify({ error: 'Answer not found' })
+      });
+    }
+
+    const answer = answerResult.Item;
+
+    // Get comment count for this answer
+    let commentCount = answer.comment_count || 0;
+    if (commentCount === 0) {
+      try {
+        const commentsResult = await dbOperations.query(
+          tables.comments,
+          'answerId = :answerId',
+          { ':answerId': answerId },
+          'AnswerIdIndex'
+        );
+        commentCount = commentsResult.Count || 0;
+      } catch (error) {
+        console.error('Error counting comments:', error);
+      }
+    }
+
+    // Get the question to find thread info
+    const questionResult = await dbOperations.get(tables.questions, { id: answer.question_id });
+    
+    if (!questionResult.Item) {
+      return addCorsHeaders({
+        statusCode: 404,
+        body: JSON.stringify({ error: 'Question not found for answer' })
+      });
+    }
+
+    const question = questionResult.Item;
+
+    // Return answer with metadata
+    const response = {
+      id: answer.id,
+      content: answer.content,
+      timestamp: answer.created_at || answer.timestamp,
+      userId: answer.user_id,
+      questionId: answer.question_id,
+      isPinned: Boolean(answer.is_pinned),
+      isAI: Boolean(answer.is_ai),
+      thinking: answer.thinking || null,
+      interactionCount: answer.interaction_count || 0,
+      commentCount: commentCount,
+      likeCount: answer.like_count || 0,
+      saveCount: answer.save_count || 0,
+      shareCount: answer.share_count || 0,
+      // Include thread metadata for navigation
+      threadId: question.thread_id,
+      questionContent: question.content
+    };
+
+    console.log('✅ Found answer:', answerId);
+
+    return addCorsHeaders({
+      statusCode: 200,
+      body: JSON.stringify(response)
+    });
+
+  } catch (error) {
+    console.error('Get answer by ID error:', error);
+    return addCorsHeaders({
+      statusCode: 500,
+      body: JSON.stringify({ 
+        error: 'Failed to fetch answer',
+        message: error.message 
+      })
+    });
+  }
+};
+
 // Add answer to question
 exports.addAnswer = async (event) => {
   try {

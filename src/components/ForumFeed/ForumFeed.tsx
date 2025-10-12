@@ -33,6 +33,9 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   const isGuest = state.isGuestMode && !state.isAuthenticated;
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const [showNewThreadDropdown, setShowNewThreadDropdown] = useState(false);
   const [showNewThreadModal, setShowNewThreadModal] = useState(false);
   const [showPublicThreadModal, setShowPublicThreadModal] = useState(false);
@@ -86,37 +89,75 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
     }
   }, [isLeftDrawerOpen, showNewThreadDropdown]);
 
-  useEffect(() => {
-    const loadThreads = async () => {
-      try {
+  // ✅ PERFORMANCE FIX: Pagination with infinite scroll
+  const PAGE_SIZE = 10;
+  
+  const loadThreads = async (pageNum: number = 0, append: boolean = false) => {
+    try {
+      if (!append) {
         setIsLoading(true);
-        // Use local Node.js server for development, AWS for production
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-        console.log('Loading threads from:', apiUrl);
+      } else {
+        setIsLoadingMore(true);
+      }
+      
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const offset = pageNum * PAGE_SIZE;
+      
+      console.log(`📄 Loading threads page ${pageNum} (limit: ${PAGE_SIZE}, offset: ${offset})`);
+      
+      const response = await fetch(
+        `${apiUrl}/threads?filter=${state.feedFilter}&limit=${PAGE_SIZE}&offset=${offset}`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        const threadsArray = data.threads || [];
+        const hasMoreData = data.hasMore ?? (threadsArray.length === PAGE_SIZE);
         
-        const response = await fetch(`${apiUrl}/threads?filter=${state.feedFilter}`);
+        console.log(`✅ Loaded ${threadsArray.length} threads, hasMore: ${hasMoreData}`);
         
-        if (response.ok) {
-          const loadedThreads = await response.json();
-          // Extract threads array from response object
-          const threadsArray = loadedThreads.threads || loadedThreads;
-          console.log('Loaded threads:', threadsArray.length);
-          console.log('Sample thread with topAnswer:', threadsArray.find(t => t.topAnswer));
-          console.log('Thread topAnswer check:', threadsArray.map(t => ({ id: t.id, hasTopAnswer: !!t.topAnswer, topAnswerContent: t.topAnswer?.content?.substring(0, 50) })));
+        if (append) {
+          setThreads(prev => [...prev, ...threadsArray]);
+        } else {
           setThreads(threadsArray);
           dispatch({ type: 'SET_THREADS', payload: threadsArray });
-        } else {
-          console.error('Failed to load threads:', response.status, response.statusText);
         }
-      } catch (error) {
-        console.error('Failed to load threads:', error);
-      } finally {
-        setIsLoading(false);
+        
+        setHasMore(hasMoreData);
+        setPage(pageNum);
+      } else {
+        console.error('Failed to load threads:', response.status, response.statusText);
       }
-    };
+    } catch (error) {
+      console.error('Failed to load threads:', error);
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
 
-    loadThreads();
+  // Initial load and filter change
+  useEffect(() => {
+    setPage(0);
+    setHasMore(true);
+    loadThreads(0, false);
   }, [state.feedFilter]);
+
+  // Infinite scroll handler
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    
+    // Load more when user scrolls within 1.5x viewport height from bottom
+    if (
+      scrollHeight - scrollTop <= clientHeight * 1.5 &&
+      hasMore &&
+      !isLoading &&
+      !isLoadingMore
+    ) {
+      console.log('📜 Infinite scroll triggered, loading page:', page + 1);
+      loadThreads(page + 1, true);
+    }
+  };
 
   const handleThreadClick = (threadId: string) => {
     // Track view when thread is clicked
@@ -446,7 +487,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         </header>
 
         {/* Thread List */}
-        <div className="p-4 md:p-6 overflow-y-auto flex-1 mt-14">
+        <div className="p-4 md:p-6 overflow-y-auto flex-1 mt-14" onScroll={handleScroll}>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
@@ -460,6 +501,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
               </Button>
             </div>
           ) : (
+          <>
           <div className="space-y-4">
             {filteredThreads.map((thread) => (
               <Card
@@ -537,6 +579,22 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
               </Card>
             ))}
           </div>
+          
+          {/* Loading more indicator */}
+          {isLoadingMore && (
+            <div className="flex items-center justify-center py-6">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500"></div>
+              <span className="ml-3 text-gray-600 text-sm">Loading more threads...</span>
+            </div>
+          )}
+          
+          {/* End of results indicator */}
+          {!hasMore && threads.length > 0 && (
+            <div className="text-center py-6 text-gray-500 text-sm">
+              You've reached the end
+            </div>
+          )}
+          </>
           )}
         </div>
       </main>

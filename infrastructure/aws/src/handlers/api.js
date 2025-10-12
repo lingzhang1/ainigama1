@@ -32,6 +32,7 @@ module.exports = {
   // Question and Answer handlers
   addQuestion: questions.addQuestion,
   addAnswer: questions.addAnswer,
+  getAnswerById: questions.getAnswerById,
   getAnswerComments: questions.getAnswerComments,
   addAnswerComment: questions.addAnswerComment,
 
@@ -41,6 +42,7 @@ module.exports = {
   getLikes: metrics.getLikes,
   toggleSave: metrics.toggleSave,
   getUserSaves: metrics.getUserSaves,
+  getUserInteractionsForThread: metrics.getUserInteractionsForThread,
   trackShare: metrics.trackShare,
   getShares: metrics.getShares
 };

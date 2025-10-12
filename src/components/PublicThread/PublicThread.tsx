@@ -518,50 +518,82 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         // This allows the UI to render while interactions load in background
         setIsLoading(false);
 
-        // Load user interaction states in background (non-blocking)
+        // ✅ PERFORMANCE FIX #5: Load ALL user interactions in ONE batch API call
+        // This replaces 20-30+ individual getLikes/getSaves calls with a single request
         if (state.currentUser?.id) {
-          // Thread interactions
-          metricsService.getLikes('thread', currentThreadId, state.currentUser.id)
-            .then(likesResponse => {
-              return metricsService.getUserSaves(state.currentUser.id)
-                .then(savesResponse => {
-                  const threadKey = `thread_${currentThreadId}`;
-                  setContentInteractions(prev => ({
-                    ...prev,
-                    [threadKey]: {
-                      isLiked: likesResponse.isLiked || false,
-                      isSaved: savesResponse.saves?.some((save: any) => 
-                        save.contentType === 'thread' && save.contentId === currentThreadId
-                      ) || false
-                    }
-                  }));
-                });
-            })
-            .catch(error => console.error('Background: Failed to load thread interactions:', error));
+          const interactionsStartTime = performance.now();
+          metricsService.getUserInteractionsForThread(state.currentUser.id, currentThreadId)
+            .then(interactions => {
+              const newInteractions: { [key: string]: {isLiked: boolean, isSaved: boolean} } = {};
 
-          // Answer interactions (in background)
-          const allAnswers = Object.values(answersData).flat() as Answer[];
-          allAnswers.forEach(answer => {
-            metricsService.getLikes('answer', answer.id, state.currentUser.id)
-              .then(answerLikesResponse => {
-                const answerKey = `answer_${answer.id}`;
-                setContentInteractions(prev => ({
-                  ...prev,
-                  [answerKey]: {
-                    isLiked: answerLikesResponse.isLiked || false,
-                    isSaved: prev[answerKey]?.isSaved || false
-                  }
-                }));
-              })
-              .catch(error => console.error(`Background: Failed to load answer ${answer.id} interactions:`, error));
-          });
+              // Thread interactions
+              newInteractions[`thread_${currentThreadId}`] = {
+                isLiked: interactions.likes.thread.includes(currentThreadId),
+                isSaved: interactions.saves.thread.includes(currentThreadId)
+              };
+
+              // Question interactions
+              interactions.likes.questions.forEach(qId => {
+                const key = `question_${qId}`;
+                newInteractions[key] = { ...newInteractions[key], isLiked: true };
+              });
+              interactions.saves.questions.forEach(qId => {
+                const key = `question_${qId}`;
+                newInteractions[key] = { ...newInteractions[key], isSaved: true };
+              });
+
+              // Answer interactions
+              interactions.likes.answers.forEach(aId => {
+                const key = `answer_${aId}`;
+                newInteractions[key] = { ...newInteractions[key], isLiked: true };
+              });
+              interactions.saves.answers.forEach(aId => {
+                const key = `answer_${aId}`;
+                newInteractions[key] = { ...newInteractions[key], isSaved: true };
+              });
+
+              // Comment interactions
+              interactions.likes.comments.forEach(cId => {
+                const key = `comment_${cId}`;
+                newInteractions[key] = { ...newInteractions[key], isLiked: true };
+              });
+              interactions.saves.comments.forEach(cId => {
+                const key = `comment_${cId}`;
+                newInteractions[key] = { ...newInteractions[key], isSaved: true };
+              });
+
+              setContentInteractions(newInteractions);
+              
+              const interactionsEndTime = performance.now();
+              console.log(`⚡ Batch interactions loaded in ${(interactionsEndTime - interactionsStartTime).toFixed(0)}ms (1 API call vs ${Object.values(answersData).flat().length + 1} individual calls)`);
+            })
+            .catch(error => {
+              console.error('Background: Failed to load batch interactions (falling back to individual calls):', error);
+              // Fallback: Load thread interactions individually
+              metricsService.getLikes('thread', currentThreadId, state.currentUser.id)
+                .then(likesResponse => {
+                  return metricsService.getUserSaves(state.currentUser.id)
+                    .then(savesResponse => {
+                      const threadKey = `thread_${currentThreadId}`;
+                      setContentInteractions(prev => ({
+                        ...prev,
+                        [threadKey]: {
+                          isLiked: likesResponse.isLiked || false,
+                          isSaved: savesResponse.saves?.some((save: any) => 
+                            save.contentType === 'thread' && save.contentId === currentThreadId
+                          ) || false
+                        }
+                      }));
+                    });
+                })
+                .catch(fallbackError => console.error('Fallback: Failed to load thread interactions:', fallbackError));
+            });
         }
 
         // ✅ PERFORMANCE FIX: Comments now load on-demand when user opens comment panel
         // This saves 10-20 API requests on initial load
 
         // Collect all unique user IDs from answers only (comments load later)
-        const allAnswers = Object.values(answersData).flat() as Answer[];
         const userIds = new Set<string>();
         
         // Add user IDs from answers
@@ -1072,23 +1104,8 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           });
         }
 
-        // Load comment interaction states in background (if authenticated)
-        if (state.currentUser?.id) {
-          commentsData.forEach((comment: any) => {
-            metricsService.getLikes('comment', comment.id, state.currentUser.id)
-              .then(commentLikesResponse => {
-                const commentKey = `comment_${comment.id}`;
-                setContentInteractions(prev => ({
-                  ...prev,
-                  [commentKey]: {
-                    isLiked: commentLikesResponse.isLiked || false,
-                    isSaved: prev[commentKey]?.isSaved || false
-                  }
-                }));
-              })
-              .catch(error => console.error(`Background: Failed to load comment ${comment.id} interactions:`, error));
-          });
-        }
+        // ✅ PERFORMANCE FIX: Comment interactions are already loaded via batch API call
+        // No need to make individual API calls here - interactions are in contentInteractions state
       }
     } catch (error) {
       console.error('Failed to load comments on-demand:', error);
