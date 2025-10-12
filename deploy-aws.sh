@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Ainigama AWS Deployment Script"
+echo "🚀 Foliage AWS Deployment Script"
 echo "=================================="
 
 # Check if we're in WebContainer

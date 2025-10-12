@@ -8,6 +8,7 @@ import { wsService } from './services/websocket';
 import { AllowlistCheck } from './components/Auth/AllowlistCheck';
 import { LoginScreen } from './components/Auth/LoginScreen';
 import { ForumFeed } from './components/ForumFeed/ForumFeed';
+import { CategoriesPage } from './components/ForumFeed/CategoriesPage';
 import { PrivateChat } from './components/PrivateChat/PrivateChat';
 import { PublicThread } from './components/PublicThread/PublicThread';
 import { UserCenter } from './components/UserCenter/UserCenter';
@@ -90,8 +91,8 @@ const AppContent: React.FC = () => {
         dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
       }
     } else if (currentPath === '/') {
-      // Clear current thread when returning to forum
-      if (state.viewMode !== 'forum') {
+      // Clear current thread when returning to forum, but only if not in categories or other non-route views
+      if (state.viewMode !== 'forum' && state.viewMode !== 'categories' && state.viewMode !== 'user-center' && state.viewMode !== 'account') {
         console.log('🔄 Setting view mode to forum, clearing current thread');
         dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' });
         dispatch({ type: 'SET_CURRENT_THREAD', payload: null });
@@ -179,9 +180,12 @@ const AppContent: React.FC = () => {
         return <UserCenter onBack={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })} />;
       case 'account':
         return <AccountManagement onBack={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })} />;
+      case 'categories':
+        console.log('📂 Rendering CategoriesPage');
+        return <CategoriesPage onClose={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })} />;
       case 'forum':
       default:
-        return <ForumFeed onLogout={handleLogout} />;
+        return <ForumFeed onLogout={handleLogout} onShowNotifications={() => setShowNotifications(true)} />;
     }
   };
 
@@ -237,9 +241,9 @@ const AppContent: React.FC = () => {
   // Wrap with NotificationProvider if user is authenticated
   const content = (
     <div className="min-h-screen bg-gray-50">
-      {/* Notification Bell - Fixed position */}
+      {/* Notification Bell - Fixed position (hidden on mobile for forum view as it's in footer) */}
       {state.currentUser && (
-        <div className="fixed top-4 right-4 z-50">
+        <div className={`fixed top-4 right-4 z-50 ${state.viewMode === 'forum' ? 'hidden md:block' : ''}`}>
           <NotificationBell onClick={() => setShowNotifications(true)} />
         </div>
       )}

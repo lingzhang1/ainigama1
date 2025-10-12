@@ -1,21 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search as SearchIcon, TrendingUp as TrendingUpIcon, Clock as ClockIcon, Plus as PlusIcon, ChevronDown, Lock, Globe, Menu, X, Loader as Loader2, Heart, Bookmark, MessageCircle, HelpCircle, MessageSquare } from 'lucide-react';
+import { Search as SearchIcon, TrendingUp as TrendingUpIcon, Clock as ClockIcon, Plus as PlusIcon, ChevronDown, Lock, Globe, X, Loader as Loader2, Heart, Bookmark, MessageCircle, HelpCircle, MessageSquare, Leaf, Grid, Home, User, Bell } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { FloatingActionButton } from '../ui/FloatingActionButton';
 import { NewThreadModal } from './NewThreadModal';
 import { Thread } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { metricsService } from '../../services/metrics';
 import { useMobileDrawer } from '../../hooks/useMobileDrawer';
 import { useSwipeGesture } from '../../hooks/useSwipeGesture';
+import { useNotifications } from '../../context/NotificationContext';
 
 interface ForumFeedProps {
   onLogout: () => void;
+  onShowNotifications?: () => void;
 }
 
 const suggestedTopics = [
@@ -27,10 +28,11 @@ const suggestedTopics = [
 ];
 
 
-export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
+export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotifications }) => {
   const { state, dispatch } = useAppContext();
   const navigate = useNavigate();
   const isGuest = state.isGuestMode && !state.isAuthenticated;
+  const notificationContext = state.currentUser && !state.isGuestMode ? useNotifications() : null;
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -235,22 +237,57 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
 
   return (
     <div className="flex w-full h-screen bg-gray-50">
-      {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b z-30 px-4 py-3 flex items-center justify-between pointer-events-auto">
+      {/* Mobile Header - Evenly distributed icons */}
+      <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b z-30 px-2 py-2 flex items-center justify-around pointer-events-auto">
+        {/* Foliage Icon with Menu functionality */}
         <button
           onClick={toggleLeftDrawer}
           className="p-2 hover:bg-gray-100 rounded-lg"
           aria-label="Toggle menu"
         >
-          <Menu className="w-6 h-6 text-gray-700" />
+          <Leaf className="w-5 h-5 text-green-600" />
         </button>
-        <h1 className="text-lg font-semibold text-gray-800">FOLIAGE</h1>
+        
+        {/* Trending Icon */}
+        <button
+          onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'trending' })}
+          className={`p-2 rounded-lg ${state.feedFilter === 'trending' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-600'}`}
+          aria-label="Trending"
+        >
+          <TrendingUpIcon className="w-5 h-5" />
+        </button>
+        
+        {/* Recommendation Icon */}
+        <button
+          onClick={() => {
+            console.log('🕒 Recent icon clicked - filtering by recent');
+            dispatch({ type: 'SET_FEED_FILTER', payload: 'recent' });
+          }}
+          className={`p-2 rounded-lg ${state.feedFilter === 'recent' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-600'}`}
+          aria-label="Recent recommendations"
+        >
+          <ClockIcon className="w-5 h-5" />
+        </button>
+        
+        {/* Category Icon - Navigate to categories page */}
+        <button
+          onClick={() => {
+            console.log('🔲 Category icon clicked - navigating to categories page');
+            dispatch({ type: 'SET_VIEW_MODE', payload: 'categories' });
+          }}
+          className={`p-2 rounded-lg ${state.viewMode === 'categories' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-600'}`}
+          aria-label="Categories"
+        >
+          <Grid className="w-5 h-5" />
+        </button>
+        
+        {/* Search Icon */}
         <button
           onClick={toggleRightDrawer}
-          className="p-2 hover:bg-gray-100 rounded-lg"
-          aria-label="Toggle suggestions"
+          className="p-2 hover:bg-gray-100 rounded-lg text-gray-600"
+          aria-label="Search"
         >
-          <SearchIcon className="w-6 h-6 text-gray-700" />
+          <SearchIcon className="w-5 h-5" />
         </button>
       </div>
 
@@ -451,43 +488,8 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden md:mt-0 flex flex-col">
-        {/* Header - Sticky on scroll */}
-        <header className="bg-white border-b p-4 sticky top-14 md:top-0 z-20 shadow-sm">
-          <div className="flex flex-col space-y-3 md:space-y-0 md:flex-row md:items-center md:justify-between mb-3 md:mb-4">
-            <h1 className="text-lg md:text-xl font-semibold text-gray-800 hidden md:block">Knowledge Feed</h1>
-            <div className="flex gap-2 w-full md:w-auto">
-              <Button
-                variant={state.feedFilter === 'recent' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'recent' })}
-                className={`flex items-center gap-2 flex-1 md:flex-none justify-center ${
-                  state.feedFilter === 'recent' 
-                    ? 'bg-green-600 hover:bg-green-700 text-white' 
-                    : 'bg-white border-gray-300 text-green-600 hover:bg-gray-50'
-                }`}
-              >
-                <ClockIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">Recent</span>
-              </Button>
-              <Button
-                variant={state.feedFilter === 'trending' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'trending' })}
-                className={`flex items-center gap-2 flex-1 md:flex-none justify-center ${
-                  state.feedFilter === 'trending' 
-                    ? 'bg-green-600 hover:bg-green-700 text-white' 
-                    : 'bg-white border-gray-300 text-green-600 hover:bg-gray-50'
-                }`}
-              >
-                <TrendingUpIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">Trending</span>
-              </Button>
-            </div>
-          </div>
-        </header>
-
         {/* Thread List */}
-        <div className="p-4 md:p-6 overflow-y-auto flex-1 mt-14" onScroll={handleScroll}>
+        <div className="p-4 md:p-6 overflow-y-auto flex-1 pt-16 md:pt-4 mb-16 md:mb-0" onScroll={handleScroll}>
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
@@ -829,12 +831,77 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         </div>
       </aside>
 
-      {/* Floating Action Button - Mobile Only */}
-      <FloatingActionButton
-        onClick={() => setShowNewThreadModal(true)}
-        icon={<PlusIcon className="w-6 h-6" />}
-        label="New"
-      />
+      {/* Mobile Footer Navigation */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t z-30 safe-area-bottom">
+        <div className="flex items-center justify-around px-2 py-2">
+          {/* Home Icon */}
+          <button
+            onClick={() => {
+              navigate('/');
+              dispatch({ type: 'SET_FEED_FILTER', payload: 'trending' });
+              closeLeftDrawer();
+              closeRightDrawer();
+            }}
+            className="flex flex-col items-center justify-center p-2 hover:bg-gray-100 rounded-lg min-w-[60px]"
+            aria-label="Home"
+          >
+            <Home className={`w-5 h-5 ${state.viewMode === 'forum' && state.feedFilter === 'trending' ? 'text-green-600' : 'text-gray-600'}`} />
+            <span className="text-xs mt-0.5 text-gray-600">Home</span>
+          </button>
+
+          {/* Private Threads Icon */}
+          <button
+            onClick={() => {
+              navigate('/private');
+              closeLeftDrawer();
+              closeRightDrawer();
+            }}
+            className="flex flex-col items-center justify-center p-2 hover:bg-gray-100 rounded-lg min-w-[60px]"
+            aria-label="Private threads"
+          >
+            <MessageSquare className={`w-5 h-5 ${state.viewMode === 'private' ? 'text-green-600' : 'text-gray-600'}`} />
+            <span className="text-xs mt-0.5 text-gray-600">Private</span>
+          </button>
+
+          {/* New Thread Button */}
+          <button
+            onClick={() => setShowNewThreadModal(true)}
+            className="flex flex-col items-center justify-center p-2 bg-green-600 hover:bg-green-700 rounded-lg min-w-[60px] text-white -mt-2"
+            aria-label="New thread"
+          >
+            <div className="bg-green-600 hover:bg-green-700 rounded-full p-2 shadow-lg">
+              <PlusIcon className="w-6 h-6 text-white" />
+            </div>
+          </button>
+
+          {/* Notifications Icon */}
+          {state.currentUser && onShowNotifications && (
+            <button
+              onClick={onShowNotifications}
+              className="flex flex-col items-center justify-center p-2 hover:bg-gray-100 rounded-lg min-w-[60px] relative"
+              aria-label="Notifications"
+            >
+              <Bell className="w-5 h-5 text-gray-600" />
+              {notificationContext && notificationContext.unreadCount > 0 && (
+                <span className="absolute top-1 right-3 inline-flex items-center justify-center w-4 h-4 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                  {notificationContext.unreadCount > 9 ? '9+' : notificationContext.unreadCount}
+                </span>
+              )}
+              <span className="text-xs mt-0.5 text-gray-600">Alerts</span>
+            </button>
+          )}
+
+          {/* My/Profile Icon */}
+          <button
+            onClick={toggleLeftDrawer}
+            className="flex flex-col items-center justify-center p-2 hover:bg-gray-100 rounded-lg min-w-[60px]"
+            aria-label="My profile"
+          >
+            <User className={`w-5 h-5 ${isLeftDrawerOpen ? 'text-green-600' : 'text-gray-600'}`} />
+            <span className="text-xs mt-0.5 text-gray-600">My</span>
+          </button>
+        </div>
+      </div>
 
       {/* New Thread Selection Modal */}
       <NewThreadModal

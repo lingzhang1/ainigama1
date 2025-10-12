@@ -101,7 +101,7 @@ export interface PrivateConversation {
   title?: string;
 }
 
-export type ViewMode = 'forum' | 'private' | 'public-thread' | 'user-center' | 'account';
+export type ViewMode = 'forum' | 'private' | 'public-thread' | 'user-center' | 'account' | 'categories';
 export type FeedFilter = 'recent' | 'trending';
 
 // Metrics API Response Types
