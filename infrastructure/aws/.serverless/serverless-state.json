@@ -23,6 +23,7 @@
         "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
         "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
         "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+        "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
         "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
         "NODE_ENV": "dev",
         "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -79,7 +80,10 @@
             "arn:aws:dynamodb:us-east-1:*:table/ainigama-backend-dev-saves/index/UserIdIndex",
             "arn:aws:dynamodb:us-east-1:*:table/ainigama-backend-dev-shares",
             "arn:aws:dynamodb:us-east-1:*:table/ainigama-backend-dev-shares/index/ContentTypeIndex",
-            "arn:aws:dynamodb:us-east-1:*:table/ainigama-backend-dev-connections/index/UserIdIndex"
+            "arn:aws:dynamodb:us-east-1:*:table/ainigama-backend-dev-connections/index/UserIdIndex",
+            "arn:aws:dynamodb:us-east-1:*:table/ainigama-backend-dev-notifications",
+            "arn:aws:dynamodb:us-east-1:*:table/ainigama-backend-dev-notifications/index/RecipientIdIndex",
+            "arn:aws:dynamodb:us-east-1:*:table/ainigama-backend-dev-notifications/index/RecipientIdReadIndex"
           ]
         },
         {
@@ -192,6 +196,12 @@
             "Type": "AWS::Logs::LogGroup",
             "Properties": {
               "LogGroupName": "/aws/lambda/ainigama-backend-dev-websocketAuthenticate"
+            }
+          },
+          "SubscribeNotificationsLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/ainigama-backend-dev-subscribeNotifications"
             }
           },
           "SaveConversationLogGroup": {
@@ -380,6 +390,42 @@
               "LogGroupName": "/aws/lambda/ainigama-backend-dev-getShares"
             }
           },
+          "GetNotificationsLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/ainigama-backend-dev-getNotifications"
+            }
+          },
+          "GetUnreadCountLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/ainigama-backend-dev-getUnreadCount"
+            }
+          },
+          "MarkNotificationReadLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/ainigama-backend-dev-markNotificationRead"
+            }
+          },
+          "MarkAllNotificationsReadLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/ainigama-backend-dev-markAllNotificationsRead"
+            }
+          },
+          "DeleteNotificationLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/ainigama-backend-dev-deleteNotification"
+            }
+          },
+          "ClearAllNotificationsLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/ainigama-backend-dev-clearAllNotifications"
+            }
+          },
           "IamRoleLambdaExecution": {
             "Type": "AWS::IAM::Role",
             "Properties": {
@@ -482,7 +528,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/test.testHandler",
               "Runtime": "nodejs18.x",
@@ -503,6 +549,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -529,7 +576,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/websocket.connect",
               "Runtime": "nodejs18.x",
@@ -550,6 +597,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -576,7 +624,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/websocket.disconnect",
               "Runtime": "nodejs18.x",
@@ -597,6 +645,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -623,7 +672,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/websocket.default",
               "Runtime": "nodejs18.x",
@@ -644,6 +693,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -670,7 +720,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/websocket.authenticate",
               "Runtime": "nodejs18.x",
@@ -691,6 +741,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -710,6 +761,54 @@
               "WebsocketAuthenticateLogGroup"
             ]
           },
+          "SubscribeNotificationsLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
+              },
+              "Handler": "src/handlers/websocket.subscribeNotifications",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "ainigama-backend-dev-subscribeNotifications",
+              "MemorySize": 1024,
+              "Timeout": 30,
+              "Environment": {
+                "Variables": {
+                  "DYNAMODB_TABLE_USERS": "ainigama-backend-dev-users",
+                  "DYNAMODB_TABLE_CONVERSATIONS": "ainigama-backend-dev-conversations",
+                  "DYNAMODB_TABLE_THREADS": "ainigama-backend-dev-threads",
+                  "DYNAMODB_TABLE_MESSAGES": "ainigama-backend-dev-messages",
+                  "DYNAMODB_TABLE_QUESTIONS": "ainigama-backend-dev-questions",
+                  "DYNAMODB_TABLE_ANSWERS": "ainigama-backend-dev-answers",
+                  "DYNAMODB_TABLE_COMMENTS": "ainigama-backend-dev-comments",
+                  "DYNAMODB_TABLE_CONNECTIONS": "ainigama-backend-dev-connections",
+                  "DYNAMODB_TABLE_THREAD_VIEWS": "ainigama-backend-dev-thread-views",
+                  "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
+                  "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
+                  "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
+                  "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
+                  "NODE_ENV": "dev",
+                  "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
+                  "WEBSOCKET_ENDPOINT": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"WEBSOCKET_ENDPOINT\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "SubscribeNotificationsLogGroup"
+            ]
+          },
           "SaveConversationLambdaFunction": {
             "Type": "AWS::Lambda::Function",
             "Properties": {
@@ -717,7 +816,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/privateChat.saveConversation",
               "Runtime": "nodejs18.x",
@@ -738,6 +837,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -764,7 +864,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/publicThread.joinThread",
               "Runtime": "nodejs18.x",
@@ -785,6 +885,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -811,7 +912,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/publicThread.addAnswer",
               "Runtime": "nodejs18.x",
@@ -832,6 +933,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -858,7 +960,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/publicThread.addComment",
               "Runtime": "nodejs18.x",
@@ -879,6 +981,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -905,7 +1008,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getThreads",
               "Runtime": "nodejs18.x",
@@ -926,6 +1029,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -952,7 +1056,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.createThread",
               "Runtime": "nodejs18.x",
@@ -973,6 +1077,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -999,7 +1104,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getThread",
               "Runtime": "nodejs18.x",
@@ -1020,6 +1125,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1046,7 +1152,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getThreadAnswers",
               "Runtime": "nodejs18.x",
@@ -1067,6 +1173,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1093,7 +1200,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getUserConversations",
               "Runtime": "nodejs18.x",
@@ -1114,6 +1221,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1140,7 +1248,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.saveMessages",
               "Runtime": "nodejs18.x",
@@ -1161,6 +1269,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1187,7 +1296,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getMessages",
               "Runtime": "nodejs18.x",
@@ -1208,6 +1317,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1234,7 +1344,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.createNewConversation",
               "Runtime": "nodejs18.x",
@@ -1255,6 +1365,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1281,7 +1392,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.updateConversationTitle",
               "Runtime": "nodejs18.x",
@@ -1302,6 +1413,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1328,7 +1440,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.deleteConversation",
               "Runtime": "nodejs18.x",
@@ -1349,6 +1461,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1375,7 +1488,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.addQuestion",
               "Runtime": "nodejs18.x",
@@ -1396,6 +1509,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1422,7 +1536,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.addAnswer",
               "Runtime": "nodejs18.x",
@@ -1443,6 +1557,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1469,7 +1584,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getAnswerComments",
               "Runtime": "nodejs18.x",
@@ -1490,6 +1605,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1516,7 +1632,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.addAnswerComment",
               "Runtime": "nodejs18.x",
@@ -1537,6 +1653,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1563,7 +1680,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.checkUserExists",
               "Runtime": "nodejs18.x",
@@ -1584,6 +1701,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1610,7 +1728,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.registerUser",
               "Runtime": "nodejs18.x",
@@ -1631,6 +1749,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1657,7 +1776,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.loginUser",
               "Runtime": "nodejs18.x",
@@ -1678,6 +1797,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1704,7 +1824,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.updatePassword",
               "Runtime": "nodejs18.x",
@@ -1725,6 +1845,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1751,7 +1872,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.checkAlias",
               "Runtime": "nodejs18.x",
@@ -1772,6 +1893,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1798,7 +1920,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/api.getUserById",
               "Runtime": "nodejs18.x",
@@ -1819,6 +1941,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1845,7 +1968,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.trackView",
               "Runtime": "nodejs18.x",
@@ -1866,6 +1989,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1892,7 +2016,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.toggleLike",
               "Runtime": "nodejs18.x",
@@ -1913,6 +2037,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1939,7 +2064,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.getLikes",
               "Runtime": "nodejs18.x",
@@ -1960,6 +2085,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -1986,7 +2112,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.toggleSave",
               "Runtime": "nodejs18.x",
@@ -2007,6 +2133,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -2033,7 +2160,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.getUserSaves",
               "Runtime": "nodejs18.x",
@@ -2054,6 +2181,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -2080,7 +2208,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.trackShare",
               "Runtime": "nodejs18.x",
@@ -2101,6 +2229,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -2127,7 +2256,7 @@
                 "S3Bucket": {
                   "Ref": "ServerlessDeploymentBucket"
                 },
-                "S3Key": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z/ainigama-backend.zip"
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
               },
               "Handler": "src/handlers/metrics.getShares",
               "Runtime": "nodejs18.x",
@@ -2148,6 +2277,7 @@
                   "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
                   "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
                   "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
                   "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
                   "NODE_ENV": "dev",
                   "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
@@ -2167,364 +2297,722 @@
               "GetSharesLogGroup"
             ]
           },
-          "TestHandlerLambdaVersionhM3Y9KInLMXrJnKBIkvnn7svrlR0V6hJw49rWn2ZQHQ": {
+          "GetNotificationsLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
+              },
+              "Handler": "src/handlers/notifications.getNotifications",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "ainigama-backend-dev-getNotifications",
+              "MemorySize": 1024,
+              "Timeout": 30,
+              "Environment": {
+                "Variables": {
+                  "DYNAMODB_TABLE_USERS": "ainigama-backend-dev-users",
+                  "DYNAMODB_TABLE_CONVERSATIONS": "ainigama-backend-dev-conversations",
+                  "DYNAMODB_TABLE_THREADS": "ainigama-backend-dev-threads",
+                  "DYNAMODB_TABLE_MESSAGES": "ainigama-backend-dev-messages",
+                  "DYNAMODB_TABLE_QUESTIONS": "ainigama-backend-dev-questions",
+                  "DYNAMODB_TABLE_ANSWERS": "ainigama-backend-dev-answers",
+                  "DYNAMODB_TABLE_COMMENTS": "ainigama-backend-dev-comments",
+                  "DYNAMODB_TABLE_CONNECTIONS": "ainigama-backend-dev-connections",
+                  "DYNAMODB_TABLE_THREAD_VIEWS": "ainigama-backend-dev-thread-views",
+                  "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
+                  "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
+                  "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
+                  "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
+                  "NODE_ENV": "dev",
+                  "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
+                  "WEBSOCKET_ENDPOINT": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"WEBSOCKET_ENDPOINT\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "GetNotificationsLogGroup"
+            ]
+          },
+          "GetUnreadCountLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
+              },
+              "Handler": "src/handlers/notifications.getUnreadCount",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "ainigama-backend-dev-getUnreadCount",
+              "MemorySize": 1024,
+              "Timeout": 30,
+              "Environment": {
+                "Variables": {
+                  "DYNAMODB_TABLE_USERS": "ainigama-backend-dev-users",
+                  "DYNAMODB_TABLE_CONVERSATIONS": "ainigama-backend-dev-conversations",
+                  "DYNAMODB_TABLE_THREADS": "ainigama-backend-dev-threads",
+                  "DYNAMODB_TABLE_MESSAGES": "ainigama-backend-dev-messages",
+                  "DYNAMODB_TABLE_QUESTIONS": "ainigama-backend-dev-questions",
+                  "DYNAMODB_TABLE_ANSWERS": "ainigama-backend-dev-answers",
+                  "DYNAMODB_TABLE_COMMENTS": "ainigama-backend-dev-comments",
+                  "DYNAMODB_TABLE_CONNECTIONS": "ainigama-backend-dev-connections",
+                  "DYNAMODB_TABLE_THREAD_VIEWS": "ainigama-backend-dev-thread-views",
+                  "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
+                  "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
+                  "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
+                  "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
+                  "NODE_ENV": "dev",
+                  "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
+                  "WEBSOCKET_ENDPOINT": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"WEBSOCKET_ENDPOINT\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "GetUnreadCountLogGroup"
+            ]
+          },
+          "MarkNotificationReadLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
+              },
+              "Handler": "src/handlers/notifications.markRead",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "ainigama-backend-dev-markNotificationRead",
+              "MemorySize": 1024,
+              "Timeout": 30,
+              "Environment": {
+                "Variables": {
+                  "DYNAMODB_TABLE_USERS": "ainigama-backend-dev-users",
+                  "DYNAMODB_TABLE_CONVERSATIONS": "ainigama-backend-dev-conversations",
+                  "DYNAMODB_TABLE_THREADS": "ainigama-backend-dev-threads",
+                  "DYNAMODB_TABLE_MESSAGES": "ainigama-backend-dev-messages",
+                  "DYNAMODB_TABLE_QUESTIONS": "ainigama-backend-dev-questions",
+                  "DYNAMODB_TABLE_ANSWERS": "ainigama-backend-dev-answers",
+                  "DYNAMODB_TABLE_COMMENTS": "ainigama-backend-dev-comments",
+                  "DYNAMODB_TABLE_CONNECTIONS": "ainigama-backend-dev-connections",
+                  "DYNAMODB_TABLE_THREAD_VIEWS": "ainigama-backend-dev-thread-views",
+                  "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
+                  "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
+                  "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
+                  "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
+                  "NODE_ENV": "dev",
+                  "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
+                  "WEBSOCKET_ENDPOINT": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"WEBSOCKET_ENDPOINT\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "MarkNotificationReadLogGroup"
+            ]
+          },
+          "MarkAllNotificationsReadLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
+              },
+              "Handler": "src/handlers/notifications.markAllRead",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "ainigama-backend-dev-markAllNotificationsRead",
+              "MemorySize": 1024,
+              "Timeout": 30,
+              "Environment": {
+                "Variables": {
+                  "DYNAMODB_TABLE_USERS": "ainigama-backend-dev-users",
+                  "DYNAMODB_TABLE_CONVERSATIONS": "ainigama-backend-dev-conversations",
+                  "DYNAMODB_TABLE_THREADS": "ainigama-backend-dev-threads",
+                  "DYNAMODB_TABLE_MESSAGES": "ainigama-backend-dev-messages",
+                  "DYNAMODB_TABLE_QUESTIONS": "ainigama-backend-dev-questions",
+                  "DYNAMODB_TABLE_ANSWERS": "ainigama-backend-dev-answers",
+                  "DYNAMODB_TABLE_COMMENTS": "ainigama-backend-dev-comments",
+                  "DYNAMODB_TABLE_CONNECTIONS": "ainigama-backend-dev-connections",
+                  "DYNAMODB_TABLE_THREAD_VIEWS": "ainigama-backend-dev-thread-views",
+                  "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
+                  "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
+                  "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
+                  "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
+                  "NODE_ENV": "dev",
+                  "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
+                  "WEBSOCKET_ENDPOINT": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"WEBSOCKET_ENDPOINT\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "MarkAllNotificationsReadLogGroup"
+            ]
+          },
+          "DeleteNotificationLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
+              },
+              "Handler": "src/handlers/notifications.deleteNotification",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "ainigama-backend-dev-deleteNotification",
+              "MemorySize": 1024,
+              "Timeout": 30,
+              "Environment": {
+                "Variables": {
+                  "DYNAMODB_TABLE_USERS": "ainigama-backend-dev-users",
+                  "DYNAMODB_TABLE_CONVERSATIONS": "ainigama-backend-dev-conversations",
+                  "DYNAMODB_TABLE_THREADS": "ainigama-backend-dev-threads",
+                  "DYNAMODB_TABLE_MESSAGES": "ainigama-backend-dev-messages",
+                  "DYNAMODB_TABLE_QUESTIONS": "ainigama-backend-dev-questions",
+                  "DYNAMODB_TABLE_ANSWERS": "ainigama-backend-dev-answers",
+                  "DYNAMODB_TABLE_COMMENTS": "ainigama-backend-dev-comments",
+                  "DYNAMODB_TABLE_CONNECTIONS": "ainigama-backend-dev-connections",
+                  "DYNAMODB_TABLE_THREAD_VIEWS": "ainigama-backend-dev-thread-views",
+                  "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
+                  "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
+                  "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
+                  "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
+                  "NODE_ENV": "dev",
+                  "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
+                  "WEBSOCKET_ENDPOINT": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"WEBSOCKET_ENDPOINT\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "DeleteNotificationLogGroup"
+            ]
+          },
+          "ClearAllNotificationsLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z/ainigama-backend.zip"
+              },
+              "Handler": "src/handlers/notifications.clearAll",
+              "Runtime": "nodejs18.x",
+              "FunctionName": "ainigama-backend-dev-clearAllNotifications",
+              "MemorySize": 1024,
+              "Timeout": 30,
+              "Environment": {
+                "Variables": {
+                  "DYNAMODB_TABLE_USERS": "ainigama-backend-dev-users",
+                  "DYNAMODB_TABLE_CONVERSATIONS": "ainigama-backend-dev-conversations",
+                  "DYNAMODB_TABLE_THREADS": "ainigama-backend-dev-threads",
+                  "DYNAMODB_TABLE_MESSAGES": "ainigama-backend-dev-messages",
+                  "DYNAMODB_TABLE_QUESTIONS": "ainigama-backend-dev-questions",
+                  "DYNAMODB_TABLE_ANSWERS": "ainigama-backend-dev-answers",
+                  "DYNAMODB_TABLE_COMMENTS": "ainigama-backend-dev-comments",
+                  "DYNAMODB_TABLE_CONNECTIONS": "ainigama-backend-dev-connections",
+                  "DYNAMODB_TABLE_THREAD_VIEWS": "ainigama-backend-dev-thread-views",
+                  "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
+                  "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
+                  "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+                  "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
+                  "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
+                  "NODE_ENV": "dev",
+                  "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
+                  "WEBSOCKET_ENDPOINT": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"WEBSOCKET_ENDPOINT\"]"
+                  }
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "ClearAllNotificationsLogGroup"
+            ]
+          },
+          "TestHandlerLambdaVersionhJR8xPg8RkEcBoOgPokzbsyxgUZBlIjs1LmppJYKLo": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "TestHandlerLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "WebsocketConnectLambdaVersionY4Zt5OzWcMDeJYoqB0GkJw5r34BibdXYCCrzcEh9g": {
+          "WebsocketConnectLambdaVersionUbSUC6FanfLFlOh3QvzRwZdJoM0FcNILflurrVG6Aw": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "WebsocketConnectLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "WebsocketDisconnectLambdaVersionbjnW3RqZB17TvoyfEu5AfwijfML8Zu0PjmYZQ8v63g": {
+          "WebsocketDisconnectLambdaVersionjZYOcUwZUCjfnXxsJHLK6MAJiTfRYufDDhWzRSwvFlo": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "WebsocketDisconnectLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "WebsocketDefaultLambdaVersionh9Xjsykxa3yWzlQJzgxF9Hbg7mh7XlDEhEOwpptdkQ": {
+          "WebsocketDefaultLambdaVersion1WEaakfhAWqIC0txW9muAAZ0KXLz1b4phxyIUuLDtg": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "WebsocketDefaultLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "WebsocketAuthenticateLambdaVersionAsD5IhycmOqdWlaG92JMwug4pkfqXDbFNxCI7CUBvY": {
+          "WebsocketAuthenticateLambdaVersionzkxD5IQrHJmOx5ksaBZT4zX3mXQpwIMjpgI9zm4QVIU": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "WebsocketAuthenticateLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "SaveConversationLambdaVersioneXxDzjC6uT3X2VB1R19QzPQA9rcEl4Po4mUvtgn6Qc": {
+          "SubscribeNotificationsLambdaVersiony7ddSaSRQqzFC3TrX0wacakHGg1ZLQHCu7FwQSDmm0k": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "SubscribeNotificationsLambdaFunction"
+              },
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
+            }
+          },
+          "SaveConversationLambdaVersionk3ntaQ5LFV2nQ4I1JOrws7h3rhoQ55RUgx5YWu1KlFM": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "SaveConversationLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "JoinThreadLambdaVersionfo4YGcS7qNSBYupEtI0ZGL9IM1q7edvk4kzO23XF6w": {
+          "JoinThreadLambdaVersionzqLSpPKRVRkrxAuTmKaOYP3t8YIns383Fepzqmf6Tqo": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "JoinThreadLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "AddAnswerLambdaVersionhj0jGGgRJ87ymuzMBH1ga6tOBs1fqSKpUKCNVPtsbBQ": {
+          "AddAnswerLambdaVersionRfWHHEo8aOA9YsmruRqzpyHBqt0S5KTDiCd7gGMpukQ": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "AddAnswerLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "AddCommentLambdaVersionsP77ioLCUFrlgS6qgB63GKleBoisx5NZk2QvLx3I": {
+          "AddCommentLambdaVersioni7ZrgHRxlRZAqFAxEW9o9TXUwrx7Dx3NEfJmRwx7tL8": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "AddCommentLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "GetThreadsLambdaVersion60BSWHWJfSDrPLRezaCvJb0lqEummMTx5YEEnVBKt2o": {
+          "GetThreadsLambdaVersionNSozv0FifhVtsYtKFBc9CMDhnLVzxS7DileHRQrSJQ": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "GetThreadsLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "CreateThreadLambdaVersionrMRRkmUvO6NymWjRV2hTiPiGeICSr1YSsdRO8eBA8": {
+          "CreateThreadLambdaVersionu6E66gmdl1bXsIh167zOjeW2thb8wzddxNnIuUh0Y": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "CreateThreadLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "GetThreadLambdaVersion9FE9vjSzKc6My0hqxXJCacY6j5d0OBKwTdgDOYNbbI": {
+          "GetThreadLambdaVersionWD92N4pdLyXr0NUmLfLBcX922tc4A2ShmPOrIta5i70": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "GetThreadLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "GetThreadAnswersLambdaVersionG0OoxrUHzyUWPZxN0rlM4zUAo1Nur2tjtDxJpgFE45M": {
+          "GetThreadAnswersLambdaVersion1ORZH9krGeTuwelIpsnjrOz0OmW1epNJ2eP0l0HX53s": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "GetThreadAnswersLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "GetUserConversationsLambdaVersiondM8WUHVSMMisOatBUjCSCAbi3uLSKGsrG1pJjUQ7U8o": {
+          "GetUserConversationsLambdaVersionQFs89cGGHNoubwlvPLHJFZ9GCT5MAKg2A5tPZi6nE": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "GetUserConversationsLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "SaveMessagesLambdaVersionHtIc2J1Yya9y1MGP7YQddzwrxXcZGWTVNEfrtYYeT4": {
+          "SaveMessagesLambdaVersionusgZfJhVWeuF64piXRLrsME0wY55KS5dRgDRIxSSKHU": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "SaveMessagesLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "GetMessagesLambdaVersiongNxrePOclWH4v4ahcsVAMfhYCaoXL47U6SdOUbnz6I": {
+          "GetMessagesLambdaVersionTxDiX57ppx54U4TnehNc9k2aOQ9u3auGg57fwtxJLXw": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "GetMessagesLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "CreateNewConversationLambdaVersion6wiUof09xxhhu5fIoqJBIivnJItqUKolYQRmL73XjQ": {
+          "CreateNewConversationLambdaVersionU7fO9YLc9JjplNHTHHHVZwZw2i9veT0T3sdBiPSypCs": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "CreateNewConversationLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "UpdateConversationTitleLambdaVersion64BU4cj2gvyAEYZ3W4HgC3SZrmIEGhhJjzdXEbppq0": {
+          "UpdateConversationTitleLambdaVersiongwanY4M8KYClgrbbpOjqZC8wbzKnBLHSlF2YH1MMfc": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "UpdateConversationTitleLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "DeleteConversationLambdaVersionjmgupLgVpNkKg5FQfgI1rhAjf8jQD5J32T5w2F3w9U": {
+          "DeleteConversationLambdaVersionzlv3IJ2JIzjhQ7iBzcc7dSoCblUgtCI3wAIjuIVXXA": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "DeleteConversationLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "AddQuestionLambdaVersionvBwejhzM5JpC4xcYRRnJAvKtq2NK5wtfwpjoiJssTc": {
+          "AddQuestionLambdaVersion4tJt6KVreSNNGV9Jhwx0sHgGeXzX5hZV8aI1h7p6vg": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "AddQuestionLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "AddAnswerToQuestionLambdaVersionOTOwfmWKBUCgQX1odWvEv3AH5YmpvQ3Doaqd0muZ6Q": {
+          "AddAnswerToQuestionLambdaVersions7jzsOqsdqb8Vt5oy9HNBB2k4aJw7xRPfLKY8FY1dQ": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "AddAnswerToQuestionLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "GetAnswerCommentsLambdaVersionsrw1Am6onMq1Db9CMh9folHknuntkyPh8rCNK579Ak": {
+          "GetAnswerCommentsLambdaVersionc2ZssTuAtLIHLYkBXTZnlOulgZt8Nq2J14RQsJV6kpU": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "GetAnswerCommentsLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "AddAnswerCommentLambdaVersionqX5HQcHCzl752TPPN0kTzQR6pb0rM3osIjBpmHVTw": {
+          "AddAnswerCommentLambdaVersionqpHbn9If2IvRVDEQb6KFXXkoJzD5gsOhtHVQbLM": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "AddAnswerCommentLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "CheckUserExistsLambdaVersionTxcBozlTJbR4vKREh7fpucMSZeAH6BoRzHd0jnZs": {
+          "CheckUserExistsLambdaVersionEQzve3VevsmqdHrxuL1vxKOXwGa3jfe9iPTDmYzirY": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "CheckUserExistsLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "RegisterUserLambdaVersionVvhn4CQVOCZEhlG6PPX1OBNAwoofb18C2fH7kf0DeA": {
+          "RegisterUserLambdaVersion5ePO3ZnAfqQ3h5uWGZm628q9pNusmTdaJLXjupBz6uY": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "RegisterUserLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "LoginUserLambdaVersion4M9itsB4zmxusXZn107ea5y6kqRZkLylhuDhJhl4xM0": {
+          "LoginUserLambdaVersion72mJAnEc2FjXx25GoZ4xbEMVOhJNlWSv31w90ZuHA": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "LoginUserLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "UpdatePasswordLambdaVersionBEoJ3jWEkERhtQduMDO1Cyseg6Py3P4PecMmibDyWQ": {
+          "UpdatePasswordLambdaVersion5NoD8MA83fqM1OU8kPSComf1WIuTddKDR0NTSTtcya4": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "UpdatePasswordLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "CheckAliasLambdaVersion6URkJhLfFFxwXIi9zNhibEA2rT0IwdItno4s0Arc": {
+          "CheckAliasLambdaVersion0VmegXpgGjL93KB0Qi1dyR7d24zTKzl8F8d6hHPGKY": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "CheckAliasLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "GetUserByIdLambdaVersion3YxHyjtyLUt8vnhIaR5cbA7HUUuTkaM8BhwEjtQ": {
+          "GetUserByIdLambdaVersionF453kDmMtlSkjZTlHymF6DbSoZ3Vbvg1TP71CFZHgYs": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "GetUserByIdLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "TrackViewLambdaVersionEeAR9wgdmd7V1897Ph0GhMIAa3NUBX3les2m6xjec": {
+          "TrackViewLambdaVersionN0QbYiSYi0Gl5GPYvRUmY05ABBeN09InjhnayP2Vg": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "TrackViewLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "ToggleLikeLambdaVersionMWFY0XWdQxImtwBU12VsitJzCJG1d1jAY5KLj5z2A": {
+          "ToggleLikeLambdaVersioniJNljHScBg8zwcEpC6Uwck2rtyLmlkUMQkJzPHmz7oM": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "ToggleLikeLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "GetLikesLambdaVersiondtyTa6v1HZogT96N64f2TjXyWzjoip52Do2qTa6WUw": {
+          "GetLikesLambdaVersionz2BtLbbyitjeXMH5vS44dNZ6J4Oibypf54HtAmXVvCI": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "GetLikesLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "ToggleSaveLambdaVersiony9HMpVgulrP78RHA37s0RTrXbViMQyMwNem66P5j8": {
+          "ToggleSaveLambdaVersion62WGX5srGteRoFAjZememARtOU0c9H2zd5lya9PFQ": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "ToggleSaveLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "GetUserSavesLambdaVersion3Y2S58gobaQrvdlMgRgYSl1XdinNWxnyssFBNNetI": {
+          "GetUserSavesLambdaVersionsBDVKfSxXtbCNFo3WwdUf5kJg86tUfs2iv7clb1kQE": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "GetUserSavesLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "TrackShareLambdaVersion8GefIroWCdl3w76WW2gY6fIYchNICzdcX2vaJswcNLY": {
+          "TrackShareLambdaVersionXoIBaRxbuhg5iOnyM3nscuCub8Ua1sdajVhQvw9OQ": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "TrackShareLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
-          "GetSharesLambdaVersiont3At2COhyzBlQC2mt5W18kZplQoV7jyWwiSoG3H5Ec": {
+          "GetSharesLambdaVersionGE56SVirjooYZgZwYVJsl6dCxgIDvn0O57COlHUem4": {
             "Type": "AWS::Lambda::Version",
             "DeletionPolicy": "Retain",
             "Properties": {
               "FunctionName": {
                 "Ref": "GetSharesLambdaFunction"
               },
-              "CodeSha256": "vo16ytAJ8zRw3JX0tckOjXbvjpwQuz0K50SmRZjvXKQ="
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
+            }
+          },
+          "GetNotificationsLambdaVersionjkZys8yLYAmCC2D0oeD7IRUTRvKfxvgJ6EkyyvT3c": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "GetNotificationsLambdaFunction"
+              },
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
+            }
+          },
+          "GetUnreadCountLambdaVersionrkMogzv4aWc2fZjiIywtVNVCRuZFoVZBAkvYMuw": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "GetUnreadCountLambdaFunction"
+              },
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
+            }
+          },
+          "MarkNotificationReadLambdaVersionuVQdx4zIxEMvD1G3KZMj31IAc7aebZNf4MAZreCTv0": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "MarkNotificationReadLambdaFunction"
+              },
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
+            }
+          },
+          "MarkAllNotificationsReadLambdaVersion4QywBWkxNr8XzyDQmHirgBIHtE540CFO2TkvRbgJ9c": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "MarkAllNotificationsReadLambdaFunction"
+              },
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
+            }
+          },
+          "DeleteNotificationLambdaVersionZX3UStGV6OCPws57JLMHxKGiOEk7KCoYK2vyZSzRCIw": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "DeleteNotificationLambdaFunction"
+              },
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
+            }
+          },
+          "ClearAllNotificationsLambdaVersionAFDBd2g3lXnUUktD5XN0pPA9fawGAw6bk6fFSSxsg": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "ClearAllNotificationsLambdaFunction"
+              },
+              "CodeSha256": "ffJ6JM4DHZGV71NlcB0lEf9X5DkHsHUxWI6PoTfWHEk="
             }
           },
           "ApiGatewayRestApi": {
@@ -3056,6 +3544,81 @@
                 "Ref": "ApiGatewayResourceSharesContenttypeVar"
               },
               "PathPart": "{contentId}",
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayResourceNotifications": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+              "ParentId": {
+                "Fn::GetAtt": [
+                  "ApiGatewayRestApi",
+                  "RootResourceId"
+                ]
+              },
+              "PathPart": "notifications",
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayResourceNotificationsUnreadDashcount": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+              "ParentId": {
+                "Ref": "ApiGatewayResourceNotifications"
+              },
+              "PathPart": "unread-count",
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayResourceNotificationsNotificationidVar": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+              "ParentId": {
+                "Ref": "ApiGatewayResourceNotifications"
+              },
+              "PathPart": "{notificationId}",
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayResourceNotificationsNotificationidVarRead": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+              "ParentId": {
+                "Ref": "ApiGatewayResourceNotificationsNotificationidVar"
+              },
+              "PathPart": "read",
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayResourceNotificationsMarkDashallDashread": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+              "ParentId": {
+                "Ref": "ApiGatewayResourceNotifications"
+              },
+              "PathPart": "mark-all-read",
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              }
+            }
+          },
+          "ApiGatewayResourceNotificationsClearDashall": {
+            "Type": "AWS::ApiGateway::Resource",
+            "Properties": {
+              "ParentId": {
+                "Ref": "ApiGatewayResourceNotifications"
+              },
+              "PathPart": "clear-all",
               "RestApiId": {
                 "Ref": "ApiGatewayRestApi"
               }
@@ -4861,6 +5424,456 @@
               "GetSharesLambdaPermissionApiGateway"
             ]
           },
+          "ApiGatewayMethodNotificationsOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "AuthorizationType": "NONE",
+              "HttpMethod": "OPTIONS",
+              "MethodResponses": [
+                {
+                  "StatusCode": "200",
+                  "ResponseParameters": {
+                    "method.response.header.Access-Control-Allow-Origin": true,
+                    "method.response.header.Access-Control-Allow-Headers": true,
+                    "method.response.header.Access-Control-Allow-Methods": true,
+                    "method.response.header.Access-Control-Max-Age": true
+                  },
+                  "ResponseModels": {}
+                }
+              ],
+              "RequestParameters": {},
+              "Integration": {
+                "Type": "AWS_PROXY",
+                "RequestTemplates": {
+                  "application/json": "{statusCode:200}"
+                },
+                "ContentHandling": "CONVERT_TO_TEXT",
+                "IntegrationResponses": [
+                  {
+                    "StatusCode": "200",
+                    "ResponseParameters": {
+                      "method.response.header.Access-Control-Allow-Origin": "'*'",
+                      "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                      "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET'",
+                      "method.response.header.Access-Control-Max-Age": "'86400'"
+                    },
+                    "ResponseTemplates": {
+                      "application/json": ""
+                    }
+                  }
+                ],
+                "IntegrationHttpMethod": "POST",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "GetNotificationsLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceNotifications"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false
+            },
+            "DependsOn": [
+              "GetNotificationsLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayMethodNotificationsUnreadDashcountOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "AuthorizationType": "NONE",
+              "HttpMethod": "OPTIONS",
+              "MethodResponses": [
+                {
+                  "StatusCode": "200",
+                  "ResponseParameters": {
+                    "method.response.header.Access-Control-Allow-Origin": true,
+                    "method.response.header.Access-Control-Allow-Headers": true,
+                    "method.response.header.Access-Control-Allow-Methods": true,
+                    "method.response.header.Access-Control-Max-Age": true
+                  },
+                  "ResponseModels": {}
+                }
+              ],
+              "RequestParameters": {},
+              "Integration": {
+                "Type": "AWS_PROXY",
+                "RequestTemplates": {
+                  "application/json": "{statusCode:200}"
+                },
+                "ContentHandling": "CONVERT_TO_TEXT",
+                "IntegrationResponses": [
+                  {
+                    "StatusCode": "200",
+                    "ResponseParameters": {
+                      "method.response.header.Access-Control-Allow-Origin": "'*'",
+                      "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                      "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET'",
+                      "method.response.header.Access-Control-Max-Age": "'86400'"
+                    },
+                    "ResponseTemplates": {
+                      "application/json": ""
+                    }
+                  }
+                ],
+                "IntegrationHttpMethod": "POST",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "GetUnreadCountLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceNotificationsUnreadDashcount"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false
+            },
+            "DependsOn": [
+              "GetUnreadCountLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayMethodNotificationsNotificationidVarReadOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "AuthorizationType": "NONE",
+              "HttpMethod": "OPTIONS",
+              "MethodResponses": [
+                {
+                  "StatusCode": "200",
+                  "ResponseParameters": {
+                    "method.response.header.Access-Control-Allow-Origin": true,
+                    "method.response.header.Access-Control-Allow-Headers": true,
+                    "method.response.header.Access-Control-Allow-Methods": true,
+                    "method.response.header.Access-Control-Max-Age": true
+                  },
+                  "ResponseModels": {}
+                }
+              ],
+              "RequestParameters": {},
+              "Integration": {
+                "Type": "AWS_PROXY",
+                "RequestTemplates": {
+                  "application/json": "{statusCode:200}"
+                },
+                "ContentHandling": "CONVERT_TO_TEXT",
+                "IntegrationResponses": [
+                  {
+                    "StatusCode": "200",
+                    "ResponseParameters": {
+                      "method.response.header.Access-Control-Allow-Origin": "'*'",
+                      "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                      "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,PUT'",
+                      "method.response.header.Access-Control-Max-Age": "'86400'"
+                    },
+                    "ResponseTemplates": {
+                      "application/json": ""
+                    }
+                  }
+                ],
+                "IntegrationHttpMethod": "POST",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "MarkNotificationReadLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceNotificationsNotificationidVarRead"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false
+            },
+            "DependsOn": [
+              "MarkNotificationReadLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayMethodNotificationsMarkDashallDashreadOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "AuthorizationType": "NONE",
+              "HttpMethod": "OPTIONS",
+              "MethodResponses": [
+                {
+                  "StatusCode": "200",
+                  "ResponseParameters": {
+                    "method.response.header.Access-Control-Allow-Origin": true,
+                    "method.response.header.Access-Control-Allow-Headers": true,
+                    "method.response.header.Access-Control-Allow-Methods": true,
+                    "method.response.header.Access-Control-Max-Age": true
+                  },
+                  "ResponseModels": {}
+                }
+              ],
+              "RequestParameters": {},
+              "Integration": {
+                "Type": "AWS_PROXY",
+                "RequestTemplates": {
+                  "application/json": "{statusCode:200}"
+                },
+                "ContentHandling": "CONVERT_TO_TEXT",
+                "IntegrationResponses": [
+                  {
+                    "StatusCode": "200",
+                    "ResponseParameters": {
+                      "method.response.header.Access-Control-Allow-Origin": "'*'",
+                      "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                      "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,PUT'",
+                      "method.response.header.Access-Control-Max-Age": "'86400'"
+                    },
+                    "ResponseTemplates": {
+                      "application/json": ""
+                    }
+                  }
+                ],
+                "IntegrationHttpMethod": "POST",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "MarkAllNotificationsReadLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceNotificationsMarkDashallDashread"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false
+            },
+            "DependsOn": [
+              "MarkAllNotificationsReadLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayMethodNotificationsNotificationidVarOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "AuthorizationType": "NONE",
+              "HttpMethod": "OPTIONS",
+              "MethodResponses": [
+                {
+                  "StatusCode": "200",
+                  "ResponseParameters": {
+                    "method.response.header.Access-Control-Allow-Origin": true,
+                    "method.response.header.Access-Control-Allow-Headers": true,
+                    "method.response.header.Access-Control-Allow-Methods": true,
+                    "method.response.header.Access-Control-Max-Age": true
+                  },
+                  "ResponseModels": {}
+                }
+              ],
+              "RequestParameters": {},
+              "Integration": {
+                "Type": "AWS_PROXY",
+                "RequestTemplates": {
+                  "application/json": "{statusCode:200}"
+                },
+                "ContentHandling": "CONVERT_TO_TEXT",
+                "IntegrationResponses": [
+                  {
+                    "StatusCode": "200",
+                    "ResponseParameters": {
+                      "method.response.header.Access-Control-Allow-Origin": "'*'",
+                      "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                      "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,DELETE'",
+                      "method.response.header.Access-Control-Max-Age": "'86400'"
+                    },
+                    "ResponseTemplates": {
+                      "application/json": ""
+                    }
+                  }
+                ],
+                "IntegrationHttpMethod": "POST",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "DeleteNotificationLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceNotificationsNotificationidVar"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false
+            },
+            "DependsOn": [
+              "DeleteNotificationLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayMethodNotificationsClearDashallOptions": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "AuthorizationType": "NONE",
+              "HttpMethod": "OPTIONS",
+              "MethodResponses": [
+                {
+                  "StatusCode": "200",
+                  "ResponseParameters": {
+                    "method.response.header.Access-Control-Allow-Origin": true,
+                    "method.response.header.Access-Control-Allow-Headers": true,
+                    "method.response.header.Access-Control-Allow-Methods": true,
+                    "method.response.header.Access-Control-Max-Age": true
+                  },
+                  "ResponseModels": {}
+                }
+              ],
+              "RequestParameters": {},
+              "Integration": {
+                "Type": "AWS_PROXY",
+                "RequestTemplates": {
+                  "application/json": "{statusCode:200}"
+                },
+                "ContentHandling": "CONVERT_TO_TEXT",
+                "IntegrationResponses": [
+                  {
+                    "StatusCode": "200",
+                    "ResponseParameters": {
+                      "method.response.header.Access-Control-Allow-Origin": "'*'",
+                      "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                      "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,DELETE'",
+                      "method.response.header.Access-Control-Max-Age": "'86400'"
+                    },
+                    "ResponseTemplates": {
+                      "application/json": ""
+                    }
+                  }
+                ],
+                "IntegrationHttpMethod": "POST",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "ClearAllNotificationsLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceNotificationsClearDashall"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false
+            },
+            "DependsOn": [
+              "ClearAllNotificationsLambdaPermissionApiGateway"
+            ]
+          },
           "ApiGatewayMethodTestGet": {
             "Type": "AWS::ApiGateway::Method",
             "Properties": {
@@ -6149,7 +7162,283 @@
               "GetSharesLambdaPermissionApiGateway"
             ]
           },
-          "ApiGatewayDeployment1760221472973": {
+          "ApiGatewayMethodNotificationsGet": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "GET",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceNotifications"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "GetNotificationsLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "GetNotificationsLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayMethodNotificationsUnreadDashcountGet": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "GET",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceNotificationsUnreadDashcount"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "GetUnreadCountLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "GetUnreadCountLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayMethodNotificationsNotificationidVarReadPut": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "PUT",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceNotificationsNotificationidVarRead"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "MarkNotificationReadLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "MarkNotificationReadLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayMethodNotificationsMarkDashallDashreadPut": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "PUT",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceNotificationsMarkDashallDashread"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "MarkAllNotificationsReadLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "MarkAllNotificationsReadLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayMethodNotificationsNotificationidVarDelete": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "DELETE",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceNotificationsNotificationidVar"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "DeleteNotificationLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "DeleteNotificationLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayMethodNotificationsClearDashallDelete": {
+            "Type": "AWS::ApiGateway::Method",
+            "Properties": {
+              "HttpMethod": "DELETE",
+              "RequestParameters": {},
+              "ResourceId": {
+                "Ref": "ApiGatewayResourceNotificationsClearDashall"
+              },
+              "RestApiId": {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "ApiKeyRequired": false,
+              "AuthorizationType": "NONE",
+              "Integration": {
+                "IntegrationHttpMethod": "POST",
+                "Type": "AWS_PROXY",
+                "Uri": {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":apigateway:",
+                      {
+                        "Ref": "AWS::Region"
+                      },
+                      ":lambda:path/2015-03-31/functions/",
+                      {
+                        "Fn::GetAtt": [
+                          "ClearAllNotificationsLambdaFunction",
+                          "Arn"
+                        ]
+                      },
+                      "/invocations"
+                    ]
+                  ]
+                }
+              },
+              "MethodResponses": []
+            },
+            "DependsOn": [
+              "ClearAllNotificationsLambdaPermissionApiGateway"
+            ]
+          },
+          "ApiGatewayDeployment1760226446396": {
             "Type": "AWS::ApiGateway::Deployment",
             "Properties": {
               "RestApiId": {
@@ -6182,6 +7471,12 @@
               "ApiGatewayMethodSavesContenttypeVarContentidVarOptions",
               "ApiGatewayMethodUsersUseridVarSavesOptions",
               "ApiGatewayMethodSharesContenttypeVarContentidVarOptions",
+              "ApiGatewayMethodNotificationsOptions",
+              "ApiGatewayMethodNotificationsUnreadDashcountOptions",
+              "ApiGatewayMethodNotificationsNotificationidVarReadOptions",
+              "ApiGatewayMethodNotificationsMarkDashallDashreadOptions",
+              "ApiGatewayMethodNotificationsNotificationidVarOptions",
+              "ApiGatewayMethodNotificationsClearDashallOptions",
               "ApiGatewayMethodTestGet",
               "ApiGatewayMethodTestOptions",
               "ApiGatewayMethodThreadsGet",
@@ -6237,7 +7532,19 @@
               "ApiGatewayMethodSharesContenttypeVarContentidVarPost",
               "ApiGatewayMethodSharesContenttypeVarContentidVarOptions",
               "ApiGatewayMethodSharesContenttypeVarContentidVarGet",
-              "ApiGatewayMethodSharesContenttypeVarContentidVarOptions"
+              "ApiGatewayMethodSharesContenttypeVarContentidVarOptions",
+              "ApiGatewayMethodNotificationsGet",
+              "ApiGatewayMethodNotificationsOptions",
+              "ApiGatewayMethodNotificationsUnreadDashcountGet",
+              "ApiGatewayMethodNotificationsUnreadDashcountOptions",
+              "ApiGatewayMethodNotificationsNotificationidVarReadPut",
+              "ApiGatewayMethodNotificationsNotificationidVarReadOptions",
+              "ApiGatewayMethodNotificationsMarkDashallDashreadPut",
+              "ApiGatewayMethodNotificationsMarkDashallDashreadOptions",
+              "ApiGatewayMethodNotificationsNotificationidVarDelete",
+              "ApiGatewayMethodNotificationsNotificationidVarOptions",
+              "ApiGatewayMethodNotificationsClearDashallDelete",
+              "ApiGatewayMethodNotificationsClearDashallOptions"
             ]
           },
           "TestHandlerLambdaPermissionApiGateway": {
@@ -7276,6 +8583,228 @@
               }
             }
           },
+          "GetNotificationsLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "GetNotificationsLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "ApiGatewayRestApi"
+                    },
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "GetUnreadCountLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "GetUnreadCountLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "ApiGatewayRestApi"
+                    },
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "MarkNotificationReadLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "MarkNotificationReadLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "ApiGatewayRestApi"
+                    },
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "MarkAllNotificationsReadLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "MarkAllNotificationsReadLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "ApiGatewayRestApi"
+                    },
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "DeleteNotificationLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "DeleteNotificationLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "ApiGatewayRestApi"
+                    },
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "ClearAllNotificationsLambdaPermissionApiGateway": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "ClearAllNotificationsLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "ApiGatewayRestApi"
+                    },
+                    "/*/*"
+                  ]
+                ]
+              }
+            }
+          },
           "WebsocketsApi": {
             "Type": "AWS::ApiGatewayV2::Api",
             "Properties": {
@@ -7404,6 +8933,38 @@
                     {
                       "Fn::GetAtt": [
                         "WebsocketAuthenticateLambdaFunction",
+                        "Arn"
+                      ]
+                    },
+                    "/invocations"
+                  ]
+                ]
+              }
+            }
+          },
+          "SubscribeNotificationsWebsocketsIntegration": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "WebsocketsApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":apigateway:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":lambda:path/2015-03-31/functions/",
+                    {
+                      "Fn::GetAtt": [
+                        "SubscribeNotificationsLambdaFunction",
                         "Arn"
                       ]
                     },
@@ -7609,6 +9170,23 @@
               "Principal": "apigateway.amazonaws.com"
             }
           },
+          "SubscribeNotificationsLambdaPermissionWebsockets": {
+            "Type": "AWS::Lambda::Permission",
+            "DependsOn": [
+              "WebsocketsApi",
+              "SubscribeNotificationsLambdaFunction"
+            ],
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "SubscribeNotificationsLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com"
+            }
+          },
           "SaveConversationLambdaPermissionWebsockets": {
             "Type": "AWS::Lambda::Permission",
             "DependsOn": [
@@ -7761,6 +9339,27 @@
               }
             }
           },
+          "subscribeUnderscorenotificationsWebsocketsRoute": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "WebsocketsApi"
+              },
+              "RouteKey": "subscribe_notifications",
+              "AuthorizationType": "NONE",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "SubscribeNotificationsWebsocketsIntegration"
+                    }
+                  ]
+                ]
+              }
+            }
+          },
           "saveUnderscoreconversationWebsocketsRoute": {
             "Type": "AWS::ApiGatewayV2::Route",
             "Properties": {
@@ -7854,17 +9453,18 @@
               "StageName": "dev",
               "Description": "Serverless Websockets",
               "DeploymentId": {
-                "Ref": "WebsocketsDeploymentSlf0KS3ckUPbu7C6u9TPNAUq0QuRIw5lD47IdTlRqo"
+                "Ref": "WebsocketsDeploymentk9j8C5NjeJ5ZsFmfazK4umHWP4BaY10Xs2Nx70j48o"
               }
             }
           },
-          "WebsocketsDeploymentSlf0KS3ckUPbu7C6u9TPNAUq0QuRIw5lD47IdTlRqo": {
+          "WebsocketsDeploymentk9j8C5NjeJ5ZsFmfazK4umHWP4BaY10Xs2Nx70j48o": {
             "Type": "AWS::ApiGatewayV2::Deployment",
             "DependsOn": [
               "SconnectWebsocketsRoute",
               "SdisconnectWebsocketsRoute",
               "SdefaultWebsocketsRoute",
               "authenticateWebsocketsRoute",
+              "subscribeUnderscorenotificationsWebsocketsRoute",
               "saveUnderscoreconversationWebsocketsRoute",
               "joinUnderscorethreadWebsocketsRoute",
               "addUnderscoreanswerWebsocketsRoute",
@@ -8403,6 +10003,75 @@
               "BillingMode": "PAY_PER_REQUEST"
             }
           },
+          "NotificationsTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "ainigama-backend-dev-notifications",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "recipient_id",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "created_at",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "is_read",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "GlobalSecondaryIndexes": [
+                {
+                  "IndexName": "RecipientIdIndex",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "recipient_id",
+                      "KeyType": "HASH"
+                    },
+                    {
+                      "AttributeName": "created_at",
+                      "KeyType": "RANGE"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                },
+                {
+                  "IndexName": "RecipientIdReadIndex",
+                  "KeySchema": [
+                    {
+                      "AttributeName": "recipient_id",
+                      "KeyType": "HASH"
+                    },
+                    {
+                      "AttributeName": "is_read",
+                      "KeyType": "RANGE"
+                    }
+                  ],
+                  "Projection": {
+                    "ProjectionType": "ALL"
+                  }
+                }
+              ],
+              "TimeToLiveSpecification": {
+                "AttributeName": "expires_at",
+                "Enabled": true
+              },
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          },
           "CognitoUserPool": {
             "Type": "AWS::Cognito::UserPool",
             "Properties": {
@@ -8450,7 +10119,7 @@
           "TestHandlerLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "TestHandlerLambdaVersionhM3Y9KInLMXrJnKBIkvnn7svrlR0V6hJw49rWn2ZQHQ"
+              "Ref": "TestHandlerLambdaVersionhJR8xPg8RkEcBoOgPokzbsyxgUZBlIjs1LmppJYKLo"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-TestHandlerLambdaFunctionQualifiedArn"
@@ -8459,7 +10128,7 @@
           "WebsocketConnectLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "WebsocketConnectLambdaVersionY4Zt5OzWcMDeJYoqB0GkJw5r34BibdXYCCrzcEh9g"
+              "Ref": "WebsocketConnectLambdaVersionUbSUC6FanfLFlOh3QvzRwZdJoM0FcNILflurrVG6Aw"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-WebsocketConnectLambdaFunctionQualifiedArn"
@@ -8468,7 +10137,7 @@
           "WebsocketDisconnectLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "WebsocketDisconnectLambdaVersionbjnW3RqZB17TvoyfEu5AfwijfML8Zu0PjmYZQ8v63g"
+              "Ref": "WebsocketDisconnectLambdaVersionjZYOcUwZUCjfnXxsJHLK6MAJiTfRYufDDhWzRSwvFlo"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-WebsocketDisconnectLambdaFunctionQualifiedArn"
@@ -8477,7 +10146,7 @@
           "WebsocketDefaultLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "WebsocketDefaultLambdaVersionh9Xjsykxa3yWzlQJzgxF9Hbg7mh7XlDEhEOwpptdkQ"
+              "Ref": "WebsocketDefaultLambdaVersion1WEaakfhAWqIC0txW9muAAZ0KXLz1b4phxyIUuLDtg"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-WebsocketDefaultLambdaFunctionQualifiedArn"
@@ -8486,16 +10155,25 @@
           "WebsocketAuthenticateLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "WebsocketAuthenticateLambdaVersionAsD5IhycmOqdWlaG92JMwug4pkfqXDbFNxCI7CUBvY"
+              "Ref": "WebsocketAuthenticateLambdaVersionzkxD5IQrHJmOx5ksaBZT4zX3mXQpwIMjpgI9zm4QVIU"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-WebsocketAuthenticateLambdaFunctionQualifiedArn"
             }
           },
+          "SubscribeNotificationsLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "SubscribeNotificationsLambdaVersiony7ddSaSRQqzFC3TrX0wacakHGg1ZLQHCu7FwQSDmm0k"
+            },
+            "Export": {
+              "Name": "sls-ainigama-backend-dev-SubscribeNotificationsLambdaFunctionQualifiedArn"
+            }
+          },
           "SaveConversationLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "SaveConversationLambdaVersioneXxDzjC6uT3X2VB1R19QzPQA9rcEl4Po4mUvtgn6Qc"
+              "Ref": "SaveConversationLambdaVersionk3ntaQ5LFV2nQ4I1JOrws7h3rhoQ55RUgx5YWu1KlFM"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-SaveConversationLambdaFunctionQualifiedArn"
@@ -8504,7 +10182,7 @@
           "JoinThreadLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "JoinThreadLambdaVersionfo4YGcS7qNSBYupEtI0ZGL9IM1q7edvk4kzO23XF6w"
+              "Ref": "JoinThreadLambdaVersionzqLSpPKRVRkrxAuTmKaOYP3t8YIns383Fepzqmf6Tqo"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-JoinThreadLambdaFunctionQualifiedArn"
@@ -8513,7 +10191,7 @@
           "AddAnswerLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "AddAnswerLambdaVersionhj0jGGgRJ87ymuzMBH1ga6tOBs1fqSKpUKCNVPtsbBQ"
+              "Ref": "AddAnswerLambdaVersionRfWHHEo8aOA9YsmruRqzpyHBqt0S5KTDiCd7gGMpukQ"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-AddAnswerLambdaFunctionQualifiedArn"
@@ -8522,7 +10200,7 @@
           "AddCommentLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "AddCommentLambdaVersionsP77ioLCUFrlgS6qgB63GKleBoisx5NZk2QvLx3I"
+              "Ref": "AddCommentLambdaVersioni7ZrgHRxlRZAqFAxEW9o9TXUwrx7Dx3NEfJmRwx7tL8"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-AddCommentLambdaFunctionQualifiedArn"
@@ -8531,7 +10209,7 @@
           "GetThreadsLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "GetThreadsLambdaVersion60BSWHWJfSDrPLRezaCvJb0lqEummMTx5YEEnVBKt2o"
+              "Ref": "GetThreadsLambdaVersionNSozv0FifhVtsYtKFBc9CMDhnLVzxS7DileHRQrSJQ"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-GetThreadsLambdaFunctionQualifiedArn"
@@ -8540,7 +10218,7 @@
           "CreateThreadLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "CreateThreadLambdaVersionrMRRkmUvO6NymWjRV2hTiPiGeICSr1YSsdRO8eBA8"
+              "Ref": "CreateThreadLambdaVersionu6E66gmdl1bXsIh167zOjeW2thb8wzddxNnIuUh0Y"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-CreateThreadLambdaFunctionQualifiedArn"
@@ -8549,7 +10227,7 @@
           "GetThreadLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "GetThreadLambdaVersion9FE9vjSzKc6My0hqxXJCacY6j5d0OBKwTdgDOYNbbI"
+              "Ref": "GetThreadLambdaVersionWD92N4pdLyXr0NUmLfLBcX922tc4A2ShmPOrIta5i70"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-GetThreadLambdaFunctionQualifiedArn"
@@ -8558,7 +10236,7 @@
           "GetThreadAnswersLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "GetThreadAnswersLambdaVersionG0OoxrUHzyUWPZxN0rlM4zUAo1Nur2tjtDxJpgFE45M"
+              "Ref": "GetThreadAnswersLambdaVersion1ORZH9krGeTuwelIpsnjrOz0OmW1epNJ2eP0l0HX53s"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-GetThreadAnswersLambdaFunctionQualifiedArn"
@@ -8567,7 +10245,7 @@
           "GetUserConversationsLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "GetUserConversationsLambdaVersiondM8WUHVSMMisOatBUjCSCAbi3uLSKGsrG1pJjUQ7U8o"
+              "Ref": "GetUserConversationsLambdaVersionQFs89cGGHNoubwlvPLHJFZ9GCT5MAKg2A5tPZi6nE"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-GetUserConversationsLambdaFunctionQualifiedArn"
@@ -8576,7 +10254,7 @@
           "SaveMessagesLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "SaveMessagesLambdaVersionHtIc2J1Yya9y1MGP7YQddzwrxXcZGWTVNEfrtYYeT4"
+              "Ref": "SaveMessagesLambdaVersionusgZfJhVWeuF64piXRLrsME0wY55KS5dRgDRIxSSKHU"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-SaveMessagesLambdaFunctionQualifiedArn"
@@ -8585,7 +10263,7 @@
           "GetMessagesLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "GetMessagesLambdaVersiongNxrePOclWH4v4ahcsVAMfhYCaoXL47U6SdOUbnz6I"
+              "Ref": "GetMessagesLambdaVersionTxDiX57ppx54U4TnehNc9k2aOQ9u3auGg57fwtxJLXw"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-GetMessagesLambdaFunctionQualifiedArn"
@@ -8594,7 +10272,7 @@
           "CreateNewConversationLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "CreateNewConversationLambdaVersion6wiUof09xxhhu5fIoqJBIivnJItqUKolYQRmL73XjQ"
+              "Ref": "CreateNewConversationLambdaVersionU7fO9YLc9JjplNHTHHHVZwZw2i9veT0T3sdBiPSypCs"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-CreateNewConversationLambdaFunctionQualifiedArn"
@@ -8603,7 +10281,7 @@
           "UpdateConversationTitleLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "UpdateConversationTitleLambdaVersion64BU4cj2gvyAEYZ3W4HgC3SZrmIEGhhJjzdXEbppq0"
+              "Ref": "UpdateConversationTitleLambdaVersiongwanY4M8KYClgrbbpOjqZC8wbzKnBLHSlF2YH1MMfc"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-UpdateConversationTitleLambdaFunctionQualifiedArn"
@@ -8612,7 +10290,7 @@
           "DeleteConversationLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "DeleteConversationLambdaVersionjmgupLgVpNkKg5FQfgI1rhAjf8jQD5J32T5w2F3w9U"
+              "Ref": "DeleteConversationLambdaVersionzlv3IJ2JIzjhQ7iBzcc7dSoCblUgtCI3wAIjuIVXXA"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-DeleteConversationLambdaFunctionQualifiedArn"
@@ -8621,7 +10299,7 @@
           "AddQuestionLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "AddQuestionLambdaVersionvBwejhzM5JpC4xcYRRnJAvKtq2NK5wtfwpjoiJssTc"
+              "Ref": "AddQuestionLambdaVersion4tJt6KVreSNNGV9Jhwx0sHgGeXzX5hZV8aI1h7p6vg"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-AddQuestionLambdaFunctionQualifiedArn"
@@ -8630,7 +10308,7 @@
           "AddAnswerToQuestionLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "AddAnswerToQuestionLambdaVersionOTOwfmWKBUCgQX1odWvEv3AH5YmpvQ3Doaqd0muZ6Q"
+              "Ref": "AddAnswerToQuestionLambdaVersions7jzsOqsdqb8Vt5oy9HNBB2k4aJw7xRPfLKY8FY1dQ"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-AddAnswerToQuestionLambdaFunctionQualifiedArn"
@@ -8639,7 +10317,7 @@
           "GetAnswerCommentsLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "GetAnswerCommentsLambdaVersionsrw1Am6onMq1Db9CMh9folHknuntkyPh8rCNK579Ak"
+              "Ref": "GetAnswerCommentsLambdaVersionc2ZssTuAtLIHLYkBXTZnlOulgZt8Nq2J14RQsJV6kpU"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-GetAnswerCommentsLambdaFunctionQualifiedArn"
@@ -8648,7 +10326,7 @@
           "AddAnswerCommentLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "AddAnswerCommentLambdaVersionqX5HQcHCzl752TPPN0kTzQR6pb0rM3osIjBpmHVTw"
+              "Ref": "AddAnswerCommentLambdaVersionqpHbn9If2IvRVDEQb6KFXXkoJzD5gsOhtHVQbLM"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-AddAnswerCommentLambdaFunctionQualifiedArn"
@@ -8657,7 +10335,7 @@
           "CheckUserExistsLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "CheckUserExistsLambdaVersionTxcBozlTJbR4vKREh7fpucMSZeAH6BoRzHd0jnZs"
+              "Ref": "CheckUserExistsLambdaVersionEQzve3VevsmqdHrxuL1vxKOXwGa3jfe9iPTDmYzirY"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-CheckUserExistsLambdaFunctionQualifiedArn"
@@ -8666,7 +10344,7 @@
           "RegisterUserLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "RegisterUserLambdaVersionVvhn4CQVOCZEhlG6PPX1OBNAwoofb18C2fH7kf0DeA"
+              "Ref": "RegisterUserLambdaVersion5ePO3ZnAfqQ3h5uWGZm628q9pNusmTdaJLXjupBz6uY"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-RegisterUserLambdaFunctionQualifiedArn"
@@ -8675,7 +10353,7 @@
           "LoginUserLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "LoginUserLambdaVersion4M9itsB4zmxusXZn107ea5y6kqRZkLylhuDhJhl4xM0"
+              "Ref": "LoginUserLambdaVersion72mJAnEc2FjXx25GoZ4xbEMVOhJNlWSv31w90ZuHA"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-LoginUserLambdaFunctionQualifiedArn"
@@ -8684,7 +10362,7 @@
           "UpdatePasswordLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "UpdatePasswordLambdaVersionBEoJ3jWEkERhtQduMDO1Cyseg6Py3P4PecMmibDyWQ"
+              "Ref": "UpdatePasswordLambdaVersion5NoD8MA83fqM1OU8kPSComf1WIuTddKDR0NTSTtcya4"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-UpdatePasswordLambdaFunctionQualifiedArn"
@@ -8693,7 +10371,7 @@
           "CheckAliasLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "CheckAliasLambdaVersion6URkJhLfFFxwXIi9zNhibEA2rT0IwdItno4s0Arc"
+              "Ref": "CheckAliasLambdaVersion0VmegXpgGjL93KB0Qi1dyR7d24zTKzl8F8d6hHPGKY"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-CheckAliasLambdaFunctionQualifiedArn"
@@ -8702,7 +10380,7 @@
           "GetUserByIdLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "GetUserByIdLambdaVersion3YxHyjtyLUt8vnhIaR5cbA7HUUuTkaM8BhwEjtQ"
+              "Ref": "GetUserByIdLambdaVersionF453kDmMtlSkjZTlHymF6DbSoZ3Vbvg1TP71CFZHgYs"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-GetUserByIdLambdaFunctionQualifiedArn"
@@ -8711,7 +10389,7 @@
           "TrackViewLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "TrackViewLambdaVersionEeAR9wgdmd7V1897Ph0GhMIAa3NUBX3les2m6xjec"
+              "Ref": "TrackViewLambdaVersionN0QbYiSYi0Gl5GPYvRUmY05ABBeN09InjhnayP2Vg"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-TrackViewLambdaFunctionQualifiedArn"
@@ -8720,7 +10398,7 @@
           "ToggleLikeLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "ToggleLikeLambdaVersionMWFY0XWdQxImtwBU12VsitJzCJG1d1jAY5KLj5z2A"
+              "Ref": "ToggleLikeLambdaVersioniJNljHScBg8zwcEpC6Uwck2rtyLmlkUMQkJzPHmz7oM"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-ToggleLikeLambdaFunctionQualifiedArn"
@@ -8729,7 +10407,7 @@
           "GetLikesLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "GetLikesLambdaVersiondtyTa6v1HZogT96N64f2TjXyWzjoip52Do2qTa6WUw"
+              "Ref": "GetLikesLambdaVersionz2BtLbbyitjeXMH5vS44dNZ6J4Oibypf54HtAmXVvCI"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-GetLikesLambdaFunctionQualifiedArn"
@@ -8738,7 +10416,7 @@
           "ToggleSaveLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "ToggleSaveLambdaVersiony9HMpVgulrP78RHA37s0RTrXbViMQyMwNem66P5j8"
+              "Ref": "ToggleSaveLambdaVersion62WGX5srGteRoFAjZememARtOU0c9H2zd5lya9PFQ"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-ToggleSaveLambdaFunctionQualifiedArn"
@@ -8747,7 +10425,7 @@
           "GetUserSavesLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "GetUserSavesLambdaVersion3Y2S58gobaQrvdlMgRgYSl1XdinNWxnyssFBNNetI"
+              "Ref": "GetUserSavesLambdaVersionsBDVKfSxXtbCNFo3WwdUf5kJg86tUfs2iv7clb1kQE"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-GetUserSavesLambdaFunctionQualifiedArn"
@@ -8756,7 +10434,7 @@
           "TrackShareLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "TrackShareLambdaVersion8GefIroWCdl3w76WW2gY6fIYchNICzdcX2vaJswcNLY"
+              "Ref": "TrackShareLambdaVersionXoIBaRxbuhg5iOnyM3nscuCub8Ua1sdajVhQvw9OQ"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-TrackShareLambdaFunctionQualifiedArn"
@@ -8765,10 +10443,64 @@
           "GetSharesLambdaFunctionQualifiedArn": {
             "Description": "Current Lambda function version",
             "Value": {
-              "Ref": "GetSharesLambdaVersiont3At2COhyzBlQC2mt5W18kZplQoV7jyWwiSoG3H5Ec"
+              "Ref": "GetSharesLambdaVersionGE56SVirjooYZgZwYVJsl6dCxgIDvn0O57COlHUem4"
             },
             "Export": {
               "Name": "sls-ainigama-backend-dev-GetSharesLambdaFunctionQualifiedArn"
+            }
+          },
+          "GetNotificationsLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "GetNotificationsLambdaVersionjkZys8yLYAmCC2D0oeD7IRUTRvKfxvgJ6EkyyvT3c"
+            },
+            "Export": {
+              "Name": "sls-ainigama-backend-dev-GetNotificationsLambdaFunctionQualifiedArn"
+            }
+          },
+          "GetUnreadCountLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "GetUnreadCountLambdaVersionrkMogzv4aWc2fZjiIywtVNVCRuZFoVZBAkvYMuw"
+            },
+            "Export": {
+              "Name": "sls-ainigama-backend-dev-GetUnreadCountLambdaFunctionQualifiedArn"
+            }
+          },
+          "MarkNotificationReadLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "MarkNotificationReadLambdaVersionuVQdx4zIxEMvD1G3KZMj31IAc7aebZNf4MAZreCTv0"
+            },
+            "Export": {
+              "Name": "sls-ainigama-backend-dev-MarkNotificationReadLambdaFunctionQualifiedArn"
+            }
+          },
+          "MarkAllNotificationsReadLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "MarkAllNotificationsReadLambdaVersion4QywBWkxNr8XzyDQmHirgBIHtE540CFO2TkvRbgJ9c"
+            },
+            "Export": {
+              "Name": "sls-ainigama-backend-dev-MarkAllNotificationsReadLambdaFunctionQualifiedArn"
+            }
+          },
+          "DeleteNotificationLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "DeleteNotificationLambdaVersionZX3UStGV6OCPws57JLMHxKGiOEk7KCoYK2vyZSzRCIw"
+            },
+            "Export": {
+              "Name": "sls-ainigama-backend-dev-DeleteNotificationLambdaFunctionQualifiedArn"
+            }
+          },
+          "ClearAllNotificationsLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "ClearAllNotificationsLambdaVersionAFDBd2g3lXnUUktD5XN0pPA9fawGAw6bk6fFSSxsg"
+            },
+            "Export": {
+              "Name": "sls-ainigama-backend-dev-ClearAllNotificationsLambdaFunctionQualifiedArn"
             }
           },
           "ServiceEndpoint": {
@@ -8969,7 +10701,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "TestHandlerLambdaVersionhM3Y9KInLMXrJnKBIkvnn7svrlR0V6hJw49rWn2ZQHQ"
+        "versionLogicalId": "TestHandlerLambdaVersionhJR8xPg8RkEcBoOgPokzbsyxgUZBlIjs1LmppJYKLo"
       },
       "websocketConnect": {
         "handler": "src/handlers/websocket.connect",
@@ -8986,7 +10718,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "WebsocketConnectLambdaVersionY4Zt5OzWcMDeJYoqB0GkJw5r34BibdXYCCrzcEh9g"
+        "versionLogicalId": "WebsocketConnectLambdaVersionUbSUC6FanfLFlOh3QvzRwZdJoM0FcNILflurrVG6Aw"
       },
       "websocketDisconnect": {
         "handler": "src/handlers/websocket.disconnect",
@@ -9003,7 +10735,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "WebsocketDisconnectLambdaVersionbjnW3RqZB17TvoyfEu5AfwijfML8Zu0PjmYZQ8v63g"
+        "versionLogicalId": "WebsocketDisconnectLambdaVersionjZYOcUwZUCjfnXxsJHLK6MAJiTfRYufDDhWzRSwvFlo"
       },
       "websocketDefault": {
         "handler": "src/handlers/websocket.default",
@@ -9020,7 +10752,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "WebsocketDefaultLambdaVersionh9Xjsykxa3yWzlQJzgxF9Hbg7mh7XlDEhEOwpptdkQ"
+        "versionLogicalId": "WebsocketDefaultLambdaVersion1WEaakfhAWqIC0txW9muAAZ0KXLz1b4phxyIUuLDtg"
       },
       "websocketAuthenticate": {
         "handler": "src/handlers/websocket.authenticate",
@@ -9037,7 +10769,24 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "WebsocketAuthenticateLambdaVersionAsD5IhycmOqdWlaG92JMwug4pkfqXDbFNxCI7CUBvY"
+        "versionLogicalId": "WebsocketAuthenticateLambdaVersionzkxD5IQrHJmOx5ksaBZT4zX3mXQpwIMjpgI9zm4QVIU"
+      },
+      "subscribeNotifications": {
+        "handler": "src/handlers/websocket.subscribeNotifications",
+        "events": [
+          {
+            "websocket": {
+              "route": "subscribe_notifications"
+            }
+          }
+        ],
+        "name": "ainigama-backend-dev-subscribeNotifications",
+        "package": {},
+        "memory": 1024,
+        "timeout": 30,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "SubscribeNotificationsLambdaVersiony7ddSaSRQqzFC3TrX0wacakHGg1ZLQHCu7FwQSDmm0k"
       },
       "saveConversation": {
         "handler": "src/handlers/privateChat.saveConversation",
@@ -9054,7 +10803,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "SaveConversationLambdaVersioneXxDzjC6uT3X2VB1R19QzPQA9rcEl4Po4mUvtgn6Qc"
+        "versionLogicalId": "SaveConversationLambdaVersionk3ntaQ5LFV2nQ4I1JOrws7h3rhoQ55RUgx5YWu1KlFM"
       },
       "joinThread": {
         "handler": "src/handlers/publicThread.joinThread",
@@ -9071,7 +10820,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "JoinThreadLambdaVersionfo4YGcS7qNSBYupEtI0ZGL9IM1q7edvk4kzO23XF6w"
+        "versionLogicalId": "JoinThreadLambdaVersionzqLSpPKRVRkrxAuTmKaOYP3t8YIns383Fepzqmf6Tqo"
       },
       "addAnswer": {
         "handler": "src/handlers/publicThread.addAnswer",
@@ -9088,7 +10837,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "AddAnswerLambdaVersionhj0jGGgRJ87ymuzMBH1ga6tOBs1fqSKpUKCNVPtsbBQ"
+        "versionLogicalId": "AddAnswerLambdaVersionRfWHHEo8aOA9YsmruRqzpyHBqt0S5KTDiCd7gGMpukQ"
       },
       "addComment": {
         "handler": "src/handlers/publicThread.addComment",
@@ -9105,7 +10854,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "AddCommentLambdaVersionsP77ioLCUFrlgS6qgB63GKleBoisx5NZk2QvLx3I"
+        "versionLogicalId": "AddCommentLambdaVersioni7ZrgHRxlRZAqFAxEW9o9TXUwrx7Dx3NEfJmRwx7tL8"
       },
       "getThreads": {
         "handler": "src/handlers/api.getThreads",
@@ -9162,7 +10911,7 @@
         "memory": 1024,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "GetThreadsLambdaVersion60BSWHWJfSDrPLRezaCvJb0lqEummMTx5YEEnVBKt2o"
+        "versionLogicalId": "GetThreadsLambdaVersionNSozv0FifhVtsYtKFBc9CMDhnLVzxS7DileHRQrSJQ"
       },
       "createThread": {
         "handler": "src/handlers/api.createThread",
@@ -9219,7 +10968,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "CreateThreadLambdaVersionrMRRkmUvO6NymWjRV2hTiPiGeICSr1YSsdRO8eBA8"
+        "versionLogicalId": "CreateThreadLambdaVersionu6E66gmdl1bXsIh167zOjeW2thb8wzddxNnIuUh0Y"
       },
       "getThread": {
         "handler": "src/handlers/api.getThread",
@@ -9276,7 +11025,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "GetThreadLambdaVersion9FE9vjSzKc6My0hqxXJCacY6j5d0OBKwTdgDOYNbbI"
+        "versionLogicalId": "GetThreadLambdaVersionWD92N4pdLyXr0NUmLfLBcX922tc4A2ShmPOrIta5i70"
       },
       "getThreadAnswers": {
         "handler": "src/handlers/api.getThreadAnswers",
@@ -9333,7 +11082,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "GetThreadAnswersLambdaVersionG0OoxrUHzyUWPZxN0rlM4zUAo1Nur2tjtDxJpgFE45M"
+        "versionLogicalId": "GetThreadAnswersLambdaVersion1ORZH9krGeTuwelIpsnjrOz0OmW1epNJ2eP0l0HX53s"
       },
       "getUserConversations": {
         "handler": "src/handlers/api.getUserConversations",
@@ -9390,7 +11139,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "GetUserConversationsLambdaVersiondM8WUHVSMMisOatBUjCSCAbi3uLSKGsrG1pJjUQ7U8o"
+        "versionLogicalId": "GetUserConversationsLambdaVersionQFs89cGGHNoubwlvPLHJFZ9GCT5MAKg2A5tPZi6nE"
       },
       "saveMessages": {
         "handler": "src/handlers/api.saveMessages",
@@ -9447,7 +11196,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "SaveMessagesLambdaVersionHtIc2J1Yya9y1MGP7YQddzwrxXcZGWTVNEfrtYYeT4"
+        "versionLogicalId": "SaveMessagesLambdaVersionusgZfJhVWeuF64piXRLrsME0wY55KS5dRgDRIxSSKHU"
       },
       "getMessages": {
         "handler": "src/handlers/api.getMessages",
@@ -9504,7 +11253,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "GetMessagesLambdaVersiongNxrePOclWH4v4ahcsVAMfhYCaoXL47U6SdOUbnz6I"
+        "versionLogicalId": "GetMessagesLambdaVersionTxDiX57ppx54U4TnehNc9k2aOQ9u3auGg57fwtxJLXw"
       },
       "createNewConversation": {
         "handler": "src/handlers/api.createNewConversation",
@@ -9561,7 +11310,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "CreateNewConversationLambdaVersion6wiUof09xxhhu5fIoqJBIivnJItqUKolYQRmL73XjQ"
+        "versionLogicalId": "CreateNewConversationLambdaVersionU7fO9YLc9JjplNHTHHHVZwZw2i9veT0T3sdBiPSypCs"
       },
       "updateConversationTitle": {
         "handler": "src/handlers/api.updateConversationTitle",
@@ -9618,7 +11367,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "UpdateConversationTitleLambdaVersion64BU4cj2gvyAEYZ3W4HgC3SZrmIEGhhJjzdXEbppq0"
+        "versionLogicalId": "UpdateConversationTitleLambdaVersiongwanY4M8KYClgrbbpOjqZC8wbzKnBLHSlF2YH1MMfc"
       },
       "deleteConversation": {
         "handler": "src/handlers/api.deleteConversation",
@@ -9674,7 +11423,7 @@
         "memory": 1024,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "DeleteConversationLambdaVersionjmgupLgVpNkKg5FQfgI1rhAjf8jQD5J32T5w2F3w9U"
+        "versionLogicalId": "DeleteConversationLambdaVersionzlv3IJ2JIzjhQ7iBzcc7dSoCblUgtCI3wAIjuIVXXA"
       },
       "addQuestion": {
         "handler": "src/handlers/api.addQuestion",
@@ -9731,7 +11480,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "AddQuestionLambdaVersionvBwejhzM5JpC4xcYRRnJAvKtq2NK5wtfwpjoiJssTc"
+        "versionLogicalId": "AddQuestionLambdaVersion4tJt6KVreSNNGV9Jhwx0sHgGeXzX5hZV8aI1h7p6vg"
       },
       "addAnswerToQuestion": {
         "handler": "src/handlers/api.addAnswer",
@@ -9788,7 +11537,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "AddAnswerToQuestionLambdaVersionOTOwfmWKBUCgQX1odWvEv3AH5YmpvQ3Doaqd0muZ6Q"
+        "versionLogicalId": "AddAnswerToQuestionLambdaVersions7jzsOqsdqb8Vt5oy9HNBB2k4aJw7xRPfLKY8FY1dQ"
       },
       "getAnswerComments": {
         "handler": "src/handlers/api.getAnswerComments",
@@ -9845,7 +11594,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "GetAnswerCommentsLambdaVersionsrw1Am6onMq1Db9CMh9folHknuntkyPh8rCNK579Ak"
+        "versionLogicalId": "GetAnswerCommentsLambdaVersionc2ZssTuAtLIHLYkBXTZnlOulgZt8Nq2J14RQsJV6kpU"
       },
       "addAnswerComment": {
         "handler": "src/handlers/api.addAnswerComment",
@@ -9902,7 +11651,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "AddAnswerCommentLambdaVersionqX5HQcHCzl752TPPN0kTzQR6pb0rM3osIjBpmHVTw"
+        "versionLogicalId": "AddAnswerCommentLambdaVersionqpHbn9If2IvRVDEQb6KFXXkoJzD5gsOhtHVQbLM"
       },
       "checkUserExists": {
         "handler": "src/handlers/api.checkUserExists",
@@ -9959,7 +11708,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "CheckUserExistsLambdaVersionTxcBozlTJbR4vKREh7fpucMSZeAH6BoRzHd0jnZs"
+        "versionLogicalId": "CheckUserExistsLambdaVersionEQzve3VevsmqdHrxuL1vxKOXwGa3jfe9iPTDmYzirY"
       },
       "registerUser": {
         "handler": "src/handlers/api.registerUser",
@@ -10016,7 +11765,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "RegisterUserLambdaVersionVvhn4CQVOCZEhlG6PPX1OBNAwoofb18C2fH7kf0DeA"
+        "versionLogicalId": "RegisterUserLambdaVersion5ePO3ZnAfqQ3h5uWGZm628q9pNusmTdaJLXjupBz6uY"
       },
       "loginUser": {
         "handler": "src/handlers/api.loginUser",
@@ -10073,7 +11822,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "LoginUserLambdaVersion4M9itsB4zmxusXZn107ea5y6kqRZkLylhuDhJhl4xM0"
+        "versionLogicalId": "LoginUserLambdaVersion72mJAnEc2FjXx25GoZ4xbEMVOhJNlWSv31w90ZuHA"
       },
       "updatePassword": {
         "handler": "src/handlers/api.updatePassword",
@@ -10130,7 +11879,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "UpdatePasswordLambdaVersionBEoJ3jWEkERhtQduMDO1Cyseg6Py3P4PecMmibDyWQ"
+        "versionLogicalId": "UpdatePasswordLambdaVersion5NoD8MA83fqM1OU8kPSComf1WIuTddKDR0NTSTtcya4"
       },
       "checkAlias": {
         "handler": "src/handlers/api.checkAlias",
@@ -10187,7 +11936,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "CheckAliasLambdaVersion6URkJhLfFFxwXIi9zNhibEA2rT0IwdItno4s0Arc"
+        "versionLogicalId": "CheckAliasLambdaVersion0VmegXpgGjL93KB0Qi1dyR7d24zTKzl8F8d6hHPGKY"
       },
       "getUserById": {
         "handler": "src/handlers/api.getUserById",
@@ -10244,7 +11993,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "GetUserByIdLambdaVersion3YxHyjtyLUt8vnhIaR5cbA7HUUuTkaM8BhwEjtQ"
+        "versionLogicalId": "GetUserByIdLambdaVersionF453kDmMtlSkjZTlHymF6DbSoZ3Vbvg1TP71CFZHgYs"
       },
       "trackView": {
         "handler": "src/handlers/metrics.trackView",
@@ -10301,7 +12050,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "TrackViewLambdaVersionEeAR9wgdmd7V1897Ph0GhMIAa3NUBX3les2m6xjec"
+        "versionLogicalId": "TrackViewLambdaVersionN0QbYiSYi0Gl5GPYvRUmY05ABBeN09InjhnayP2Vg"
       },
       "toggleLike": {
         "handler": "src/handlers/metrics.toggleLike",
@@ -10358,7 +12107,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "ToggleLikeLambdaVersionMWFY0XWdQxImtwBU12VsitJzCJG1d1jAY5KLj5z2A"
+        "versionLogicalId": "ToggleLikeLambdaVersioniJNljHScBg8zwcEpC6Uwck2rtyLmlkUMQkJzPHmz7oM"
       },
       "getLikes": {
         "handler": "src/handlers/metrics.getLikes",
@@ -10415,7 +12164,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "GetLikesLambdaVersiondtyTa6v1HZogT96N64f2TjXyWzjoip52Do2qTa6WUw"
+        "versionLogicalId": "GetLikesLambdaVersionz2BtLbbyitjeXMH5vS44dNZ6J4Oibypf54HtAmXVvCI"
       },
       "toggleSave": {
         "handler": "src/handlers/metrics.toggleSave",
@@ -10472,7 +12221,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "ToggleSaveLambdaVersiony9HMpVgulrP78RHA37s0RTrXbViMQyMwNem66P5j8"
+        "versionLogicalId": "ToggleSaveLambdaVersion62WGX5srGteRoFAjZememARtOU0c9H2zd5lya9PFQ"
       },
       "getUserSaves": {
         "handler": "src/handlers/metrics.getUserSaves",
@@ -10529,7 +12278,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "GetUserSavesLambdaVersion3Y2S58gobaQrvdlMgRgYSl1XdinNWxnyssFBNNetI"
+        "versionLogicalId": "GetUserSavesLambdaVersionsBDVKfSxXtbCNFo3WwdUf5kJg86tUfs2iv7clb1kQE"
       },
       "trackShare": {
         "handler": "src/handlers/metrics.trackShare",
@@ -10586,7 +12335,7 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "TrackShareLambdaVersion8GefIroWCdl3w76WW2gY6fIYchNICzdcX2vaJswcNLY"
+        "versionLogicalId": "TrackShareLambdaVersionXoIBaRxbuhg5iOnyM3nscuCub8Ua1sdajVhQvw9OQ"
       },
       "getShares": {
         "handler": "src/handlers/metrics.getShares",
@@ -10643,7 +12392,349 @@
         "timeout": 30,
         "runtime": "nodejs18.x",
         "vpc": {},
-        "versionLogicalId": "GetSharesLambdaVersiont3At2COhyzBlQC2mt5W18kZplQoV7jyWwiSoG3H5Ec"
+        "versionLogicalId": "GetSharesLambdaVersionGE56SVirjooYZgZwYVJsl6dCxgIDvn0O57COlHUem4"
+      },
+      "getNotifications": {
+        "handler": "src/handlers/notifications.getNotifications",
+        "events": [
+          {
+            "http": {
+              "path": "notifications",
+              "method": "get",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS",
+                  "GET"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token"
+                ],
+                "allowCredentials": false,
+                "maxAge": 86400
+              },
+              "integration": "AWS_PROXY"
+            }
+          },
+          {
+            "http": {
+              "path": "notifications",
+              "method": "options",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token"
+                ],
+                "allowCredentials": false,
+                "maxAge": 86400
+              },
+              "integration": "AWS_PROXY"
+            }
+          }
+        ],
+        "name": "ainigama-backend-dev-getNotifications",
+        "package": {},
+        "memory": 1024,
+        "timeout": 30,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "GetNotificationsLambdaVersionjkZys8yLYAmCC2D0oeD7IRUTRvKfxvgJ6EkyyvT3c"
+      },
+      "getUnreadCount": {
+        "handler": "src/handlers/notifications.getUnreadCount",
+        "events": [
+          {
+            "http": {
+              "path": "notifications/unread-count",
+              "method": "get",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS",
+                  "GET"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token"
+                ],
+                "allowCredentials": false,
+                "maxAge": 86400
+              },
+              "integration": "AWS_PROXY"
+            }
+          },
+          {
+            "http": {
+              "path": "notifications/unread-count",
+              "method": "options",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token"
+                ],
+                "allowCredentials": false,
+                "maxAge": 86400
+              },
+              "integration": "AWS_PROXY"
+            }
+          }
+        ],
+        "name": "ainigama-backend-dev-getUnreadCount",
+        "package": {},
+        "memory": 1024,
+        "timeout": 30,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "GetUnreadCountLambdaVersionrkMogzv4aWc2fZjiIywtVNVCRuZFoVZBAkvYMuw"
+      },
+      "markNotificationRead": {
+        "handler": "src/handlers/notifications.markRead",
+        "events": [
+          {
+            "http": {
+              "path": "notifications/{notificationId}/read",
+              "method": "put",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS",
+                  "PUT"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token"
+                ],
+                "allowCredentials": false,
+                "maxAge": 86400
+              },
+              "integration": "AWS_PROXY"
+            }
+          },
+          {
+            "http": {
+              "path": "notifications/{notificationId}/read",
+              "method": "options",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token"
+                ],
+                "allowCredentials": false,
+                "maxAge": 86400
+              },
+              "integration": "AWS_PROXY"
+            }
+          }
+        ],
+        "name": "ainigama-backend-dev-markNotificationRead",
+        "package": {},
+        "memory": 1024,
+        "timeout": 30,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "MarkNotificationReadLambdaVersionuVQdx4zIxEMvD1G3KZMj31IAc7aebZNf4MAZreCTv0"
+      },
+      "markAllNotificationsRead": {
+        "handler": "src/handlers/notifications.markAllRead",
+        "events": [
+          {
+            "http": {
+              "path": "notifications/mark-all-read",
+              "method": "put",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS",
+                  "PUT"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token"
+                ],
+                "allowCredentials": false,
+                "maxAge": 86400
+              },
+              "integration": "AWS_PROXY"
+            }
+          },
+          {
+            "http": {
+              "path": "notifications/mark-all-read",
+              "method": "options",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token"
+                ],
+                "allowCredentials": false,
+                "maxAge": 86400
+              },
+              "integration": "AWS_PROXY"
+            }
+          }
+        ],
+        "name": "ainigama-backend-dev-markAllNotificationsRead",
+        "package": {},
+        "memory": 1024,
+        "timeout": 30,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "MarkAllNotificationsReadLambdaVersion4QywBWkxNr8XzyDQmHirgBIHtE540CFO2TkvRbgJ9c"
+      },
+      "deleteNotification": {
+        "handler": "src/handlers/notifications.deleteNotification",
+        "events": [
+          {
+            "http": {
+              "path": "notifications/{notificationId}",
+              "method": "delete",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS",
+                  "DELETE"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token"
+                ],
+                "allowCredentials": false,
+                "maxAge": 86400
+              },
+              "integration": "AWS_PROXY"
+            }
+          },
+          {
+            "http": {
+              "path": "notifications/{notificationId}",
+              "method": "options",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token"
+                ],
+                "allowCredentials": false,
+                "maxAge": 86400
+              },
+              "integration": "AWS_PROXY"
+            }
+          }
+        ],
+        "name": "ainigama-backend-dev-deleteNotification",
+        "package": {},
+        "memory": 1024,
+        "timeout": 30,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "DeleteNotificationLambdaVersionZX3UStGV6OCPws57JLMHxKGiOEk7KCoYK2vyZSzRCIw"
+      },
+      "clearAllNotifications": {
+        "handler": "src/handlers/notifications.clearAll",
+        "events": [
+          {
+            "http": {
+              "path": "notifications/clear-all",
+              "method": "delete",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS",
+                  "DELETE"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token"
+                ],
+                "allowCredentials": false,
+                "maxAge": 86400
+              },
+              "integration": "AWS_PROXY"
+            }
+          },
+          {
+            "http": {
+              "path": "notifications/clear-all",
+              "method": "options",
+              "cors": {
+                "origin": "*",
+                "methods": [
+                  "OPTIONS"
+                ],
+                "headers": [
+                  "Content-Type",
+                  "X-Amz-Date",
+                  "Authorization",
+                  "X-Api-Key",
+                  "X-Amz-Security-Token"
+                ],
+                "allowCredentials": false,
+                "maxAge": 86400
+              },
+              "integration": "AWS_PROXY"
+            }
+          }
+        ],
+        "name": "ainigama-backend-dev-clearAllNotifications",
+        "package": {},
+        "memory": 1024,
+        "timeout": 30,
+        "runtime": "nodejs18.x",
+        "vpc": {},
+        "versionLogicalId": "ClearAllNotificationsLambdaVersionAFDBd2g3lXnUUktD5XN0pPA9fawGAw6bk6fFSSxsg"
       }
     },
     "resources": {
@@ -11174,6 +13265,75 @@
             "BillingMode": "PAY_PER_REQUEST"
           }
         },
+        "NotificationsTable": {
+          "Type": "AWS::DynamoDB::Table",
+          "Properties": {
+            "TableName": "ainigama-backend-dev-notifications",
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "id",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "recipient_id",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "created_at",
+                "AttributeType": "S"
+              },
+              {
+                "AttributeName": "is_read",
+                "AttributeType": "S"
+              }
+            ],
+            "KeySchema": [
+              {
+                "AttributeName": "id",
+                "KeyType": "HASH"
+              }
+            ],
+            "GlobalSecondaryIndexes": [
+              {
+                "IndexName": "RecipientIdIndex",
+                "KeySchema": [
+                  {
+                    "AttributeName": "recipient_id",
+                    "KeyType": "HASH"
+                  },
+                  {
+                    "AttributeName": "created_at",
+                    "KeyType": "RANGE"
+                  }
+                ],
+                "Projection": {
+                  "ProjectionType": "ALL"
+                }
+              },
+              {
+                "IndexName": "RecipientIdReadIndex",
+                "KeySchema": [
+                  {
+                    "AttributeName": "recipient_id",
+                    "KeyType": "HASH"
+                  },
+                  {
+                    "AttributeName": "is_read",
+                    "KeyType": "RANGE"
+                  }
+                ],
+                "Projection": {
+                  "ProjectionType": "ALL"
+                }
+              }
+            ],
+            "TimeToLiveSpecification": {
+              "AttributeName": "expires_at",
+              "Enabled": true
+            },
+            "BillingMode": "PAY_PER_REQUEST"
+          }
+        },
         "CognitoUserPool": {
           "Type": "AWS::Cognito::UserPool",
           "Properties": {
@@ -11233,7 +13393,7 @@
     "artifact": "/Users/lingzhang/Workplace/ainigama1/infrastructure/aws/.serverless/ainigama-backend.zip"
   },
   "package": {
-    "artifactDirectoryName": "serverless/ainigama-backend/dev/1760221476544-2025-10-11T22:24:36.544Z",
+    "artifactDirectoryName": "serverless/ainigama-backend/dev/1760226450019-2025-10-11T23:47:30.019Z",
     "artifact": "ainigama-backend.zip"
   }
 }

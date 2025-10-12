@@ -19,6 +19,7 @@ provider:
     DYNAMODB_TABLE_LIKES: ${self:service}-${self:provider.stage}-likes
     DYNAMODB_TABLE_SAVES: ${self:service}-${self:provider.stage}-saves
     DYNAMODB_TABLE_SHARES: ${self:service}-${self:provider.stage}-shares
+    DYNAMODB_TABLE_NOTIFICATIONS: ${self:service}-${self:provider.stage}-notifications
     DEEPSEEK_API_KEY: ${env:DEEPSEEK_API_KEY, 'sk-0dcbd0d5eca74684919812e175de65b7'}
     NODE_ENV: ${self:provider.stage}
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
@@ -68,6 +69,9 @@ provider:
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_SHARES}"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_SHARES}/index/ContentTypeIndex"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_CONNECTIONS}/index/UserIdIndex"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_NOTIFICATIONS}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_NOTIFICATIONS}/index/RecipientIdIndex"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_NOTIFICATIONS}/index/RecipientIdReadIndex"
 
     - Effect: Allow
       Action:
@@ -132,6 +136,13 @@ functions:
     events:
       - websocket:
           route: authenticate
+
+  # Notification subscription
+  subscribeNotifications:
+    handler: src/handlers/websocket.subscribeNotifications
+    events:
+      - websocket:
+          route: subscribe_notifications
 
   # Private Chat API
   # Save conversation handler
@@ -977,6 +988,188 @@ functions:
             allowCredentials: false
             maxAge: 86400
 
+  # ==================== NOTIFICATIONS API ====================
+  
+  getNotifications:
+    handler: src/handlers/notifications.getNotifications
+    events:
+      - http:
+          path: /notifications
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /notifications
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  getUnreadCount:
+    handler: src/handlers/notifications.getUnreadCount
+    events:
+      - http:
+          path: /notifications/unread-count
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /notifications/unread-count
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  markNotificationRead:
+    handler: src/handlers/notifications.markRead
+    events:
+      - http:
+          path: /notifications/{notificationId}/read
+          method: put
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /notifications/{notificationId}/read
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  markAllNotificationsRead:
+    handler: src/handlers/notifications.markAllRead
+    events:
+      - http:
+          path: /notifications/mark-all-read
+          method: put
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /notifications/mark-all-read
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  deleteNotification:
+    handler: src/handlers/notifications.deleteNotification
+    events:
+      - http:
+          path: /notifications/{notificationId}
+          method: delete
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /notifications/{notificationId}
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  clearAllNotifications:
+    handler: src/handlers/notifications.clearAll
+    events:
+      - http:
+          path: /notifications/clear-all
+          method: delete
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /notifications/clear-all
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
 resources:
   Resources:
     # WebSocket Connections Table
@@ -1275,6 +1468,44 @@ resources:
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    NotificationsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_NOTIFICATIONS}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: recipient_id
+            AttributeType: S
+          - AttributeName: created_at
+            AttributeType: S
+          - AttributeName: is_read
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: RecipientIdIndex
+            KeySchema:
+              - AttributeName: recipient_id
+                KeyType: HASH
+              - AttributeName: created_at
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: RecipientIdReadIndex
+            KeySchema:
+              - AttributeName: recipient_id
+                KeyType: HASH
+              - AttributeName: is_read
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: expires_at
+          Enabled: true
         BillingMode: PAY_PER_REQUEST
 
     # Cognito User Pool

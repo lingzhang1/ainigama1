@@ -16,7 +16,9 @@ const tables = {
   threadViews: process.env.DYNAMODB_TABLE_THREAD_VIEWS || 'ainigama-dev-thread-views',
   likes: process.env.DYNAMODB_TABLE_LIKES || 'ainigama-dev-likes',
   saves: process.env.DYNAMODB_TABLE_SAVES || 'ainigama-dev-saves',
-  shares: process.env.DYNAMODB_TABLE_SHARES || 'ainigama-dev-shares'
+  shares: process.env.DYNAMODB_TABLE_SHARES || 'ainigama-dev-shares',
+  // Notifications table
+  notifications: process.env.DYNAMODB_TABLE_NOTIFICATIONS || 'ainigama-dev-notifications'
 };
 
 // Common database operations

@@ -164,3 +164,45 @@ export interface SharesData {
     timestamp: string;
   }>;
 }
+
+// ==================== NOTIFICATION TYPES ====================
+
+export type NotificationType =
+  | 'new_answer'
+  | 'answer_liked'
+  | 'answer_commented'
+  | 'answer_saved'
+  | 'answer_shared'
+  | 'comment_liked'
+  | 'comment_replied'
+  | 'thread_liked'
+  | 'thread_saved'
+  | 'thread_shared';
+
+export interface Notification {
+  id: string;
+  recipientId: string;
+  actorId?: string;
+  type: NotificationType;
+  contentType: 'thread' | 'answer' | 'comment';
+  contentId: string;
+  relatedContentId?: string;
+  threadId: string;
+  message: string;
+  metadata: {
+    actorName: string;
+    actorAvatar: string;
+    contentPreview: string;
+    threadTitle: string;
+  };
+  isRead: boolean;
+  createdAt: Date;
+  readAt?: Date;
+}
+
+export interface NotificationResponse {
+  notifications: Notification[];
+  unreadCount: number;
+  hasMore: boolean;
+  nextOffset?: number;
+}

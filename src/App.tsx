@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
+import { NotificationProvider } from './context/NotificationContext';
 import { useWebSocket } from './hooks/useWebSocket';
 import { wsService } from './services/websocket';
 import { AllowlistCheck } from './components/Auth/AllowlistCheck';
@@ -10,13 +11,17 @@ import { PrivateChat } from './components/PrivateChat/PrivateChat';
 import { PublicThread } from './components/PublicThread/PublicThread';
 import { UserCenter } from './components/UserCenter/UserCenter';
 import { AccountManagement } from './components/Account/AccountManagement';
-import { User } from './types';
+import { NotificationBell } from './components/Notifications/NotificationBell';
+import { NotificationCenter } from './components/Notifications/NotificationCenter';
+import { User, Notification } from './types';
 import { initializeMobileTouchHandlers } from './utils/touchHandler';
 
 const AppContent: React.FC = () => {
   const { state, dispatch } = useAppContext();
+  const navigate = useNavigate();
   const [isAllowlistApproved, setIsAllowlistApproved] = React.useState(false);
   const [isCheckingAllowlist, setIsCheckingAllowlist] = React.useState(true);
+  const [showNotifications, setShowNotifications] = React.useState(false);
 
   // Initialize WebSocket connection
   useWebSocket(state.currentUser?.id || '');
@@ -66,6 +71,15 @@ const AppContent: React.FC = () => {
     setIsAllowlistApproved(true);
     // Enable guest mode by default after allowlist approval
     dispatch({ type: 'SET_GUEST_MODE', payload: true });
+  };
+
+  const handleNotificationClick = (notification: Notification) => {
+    // Navigate to the relevant thread
+    if (notification.threadId) {
+      dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
+      dispatch({ type: 'SET_THREAD_ID', payload: notification.threadId });
+      navigate(`/thread/${notification.threadId}`);
+    }
   };
 
   const renderCurrentView = () => {
@@ -133,11 +147,39 @@ const AppContent: React.FC = () => {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
-  return (
+  // Wrap with NotificationProvider if user is authenticated
+  const content = (
     <div className="min-h-screen bg-gray-50">
+      {/* Notification Bell - Fixed position */}
+      {state.currentUser && (
+        <div className="fixed top-4 right-4 z-50">
+          <NotificationBell onClick={() => setShowNotifications(true)} />
+        </div>
+      )}
+
+      {/* Notification Center */}
+      {state.currentUser && (
+        <NotificationCenter
+          isOpen={showNotifications}
+          onClose={() => setShowNotifications(false)}
+          onNavigate={handleNotificationClick}
+        />
+      )}
+
       {renderCurrentView()}
     </div>
   );
+
+  // Wrap with NotificationProvider if authenticated (not guest)
+  if (state.currentUser && !state.isGuestMode) {
+    return (
+      <NotificationProvider userId={state.currentUser.id}>
+        {content}
+      </NotificationProvider>
+    );
+  }
+
+  return content;
 };
 
 const App: React.FC = () => {

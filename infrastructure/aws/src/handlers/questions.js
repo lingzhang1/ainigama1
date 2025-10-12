@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { addCorsHeaders, handleOptionsRequest } = require('../utils/cors');
 const { tables, dbOperations, parseRequestBody } = require('../utils/db');
+const { createNotification, NotificationTypes } = require('./notifications');
 
 // Add question to thread
 exports.addQuestion = async (event) => {
@@ -176,6 +177,45 @@ exports.addAnswer = async (event) => {
         ':one': 1
       }
     );
+
+    // Create notification for question owner
+    try {
+      const questionOwnerId = question.user_id;
+      
+      // Don't notify if user answers their own question or if it's an AI answer
+      if (questionOwnerId && userId && questionOwnerId !== userId && !isAI) {
+        // Get answerer info
+        const answererResult = await dbOperations.get(tables.users, { id: userId });
+        const answerer = answererResult.Item || { name: 'Someone', avatar: '/img-5.svg' };
+
+        // Get thread info
+        let threadTitle = '';
+        if (question.thread_id) {
+          try {
+            const threadResult = await dbOperations.get(tables.threads, { id: question.thread_id });
+            threadTitle = threadResult.Item?.title || '';
+          } catch (err) {
+            console.error('Failed to get thread info:', err);
+          }
+        }
+
+        // Create notification
+        await createNotification(questionOwnerId, NotificationTypes.NEW_ANSWER, {
+          actorId: userId,
+          actorName: answerer.name,
+          actorAvatar: answerer.avatar,
+          contentType: 'answer',
+          contentId: answerId,
+          relatedContentId: questionId,
+          threadId: question.thread_id,
+          contentPreview: content.trim().substring(0, 100),
+          threadTitle: threadTitle
+        });
+      }
+    } catch (notifError) {
+      console.error('Failed to create new answer notification:', notifError);
+      // Don't fail the request if notification fails
+    }
 
     const newAnswer = {
       id: answerId,
@@ -366,6 +406,50 @@ exports.addAnswerComment = async (event) => {
         ':one': 1
       }
     );
+
+    // Create notification for answer owner
+    try {
+      const answer = answerResult.Item;
+      const answerOwnerId = answer.user_id;
+      
+      // Don't notify if user comments on their own answer
+      if (answerOwnerId && answerOwnerId !== userId) {
+        // Get commenter info
+        const commenterResult = await dbOperations.get(tables.users, { id: userId });
+        const commenter = commenterResult.Item || { name: 'Someone', avatar: '/img-5.svg' };
+
+        // Get question to find thread
+        const questionResult = await dbOperations.get(tables.questions, { id: answer.question_id });
+        const question = questionResult.Item;
+
+        // Get thread info
+        let threadTitle = '';
+        if (question && question.thread_id) {
+          try {
+            const threadResult = await dbOperations.get(tables.threads, { id: question.thread_id });
+            threadTitle = threadResult.Item?.title || '';
+          } catch (err) {
+            console.error('Failed to get thread info:', err);
+          }
+        }
+
+        // Create notification
+        await createNotification(answerOwnerId, NotificationTypes.ANSWER_COMMENTED, {
+          actorId: userId,
+          actorName: commenter.name,
+          actorAvatar: commenter.avatar,
+          contentType: 'comment',
+          contentId: commentId,
+          relatedContentId: answerId,
+          threadId: question?.thread_id || null,
+          contentPreview: content.trim().substring(0, 100),
+          threadTitle: threadTitle
+        });
+      }
+    } catch (notifError) {
+      console.error('Failed to create comment notification:', notifError);
+      // Don't fail the request if notification fails
+    }
 
     const newComment = {
       id: commentId,

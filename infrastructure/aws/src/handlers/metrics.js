@@ -1,6 +1,7 @@
 const crypto = require('crypto');
 const { addCorsHeaders, handleOptionsRequest } = require('../utils/cors');
 const { tables, dbOperations, parseRequestBody } = require('../utils/db');
+const { createNotification, NotificationTypes } = require('./notifications');
 
 // ==================== VIEWS ====================
 
@@ -220,6 +221,63 @@ exports.toggleLike = async (event) => {
         );
         
         isLiked = true;
+
+        // Create notification for content owner
+        try {
+          const contentCreatorId = contentResult.Item.user_id || contentResult.Item.creator_id;
+          
+          // Don't notify if user likes their own content
+          if (contentCreatorId && contentCreatorId !== userId) {
+            // Get actor (liker) info
+            const actorResult = await dbOperations.get(tables.users, { id: userId });
+            const actor = actorResult.Item || { name: 'Someone', avatar: '/img-5.svg' };
+
+            // Determine notification type
+            let notificationType;
+            switch (contentType) {
+              case 'thread':
+                notificationType = NotificationTypes.THREAD_LIKED;
+                break;
+              case 'answer':
+                notificationType = NotificationTypes.ANSWER_LIKED;
+                break;
+              case 'comment':
+                notificationType = NotificationTypes.COMMENT_LIKED;
+                break;
+              default:
+                notificationType = NotificationTypes.ANSWER_LIKED;
+            }
+
+            // Get thread info
+            let threadId = contentResult.Item.thread_id;
+            let threadTitle = '';
+            
+            if (threadId) {
+              try {
+                const threadResult = await dbOperations.get(tables.threads, { id: threadId });
+                threadTitle = threadResult.Item?.title || '';
+              } catch (err) {
+                console.error('Failed to get thread info:', err);
+              }
+            }
+
+            // Create notification
+            await createNotification(contentCreatorId, notificationType, {
+              actorId: userId,
+              actorName: actor.name,
+              actorAvatar: actor.avatar,
+              contentType: contentType,
+              contentId: contentId,
+              relatedContentId: null,
+              threadId: threadId,
+              contentPreview: (contentResult.Item.content || contentResult.Item.title || '').substring(0, 100),
+              threadTitle: threadTitle
+            });
+          }
+        } catch (notifError) {
+          console.error('Failed to create like notification:', notifError);
+          // Don't fail the request if notification fails
+        }
       }
     } else {
       // Unlike - delete the like record
@@ -534,6 +592,60 @@ exports.toggleSave = async (event) => {
         );
         
         isSaved = true;
+
+        // Create notification for content owner
+        try {
+          const contentCreatorId = contentResult.Item.user_id || contentResult.Item.creator_id;
+          
+          // Don't notify if user saves their own content
+          if (contentCreatorId && contentCreatorId !== userId) {
+            // Get actor (saver) info
+            const actorResult = await dbOperations.get(tables.users, { id: userId });
+            const actor = actorResult.Item || { name: 'Someone', avatar: '/img-5.svg' };
+
+            // Determine notification type
+            let notificationType;
+            switch (contentType) {
+              case 'thread':
+                notificationType = NotificationTypes.THREAD_SAVED;
+                break;
+              case 'answer':
+                notificationType = NotificationTypes.ANSWER_SAVED;
+                break;
+              default:
+                notificationType = NotificationTypes.ANSWER_SAVED;
+            }
+
+            // Get thread info
+            let threadId = contentResult.Item.thread_id;
+            let threadTitle = '';
+            
+            if (threadId) {
+              try {
+                const threadResult = await dbOperations.get(tables.threads, { id: threadId });
+                threadTitle = threadResult.Item?.title || '';
+              } catch (err) {
+                console.error('Failed to get thread info:', err);
+              }
+            }
+
+            // Create notification
+            await createNotification(contentCreatorId, notificationType, {
+              actorId: userId,
+              actorName: actor.name,
+              actorAvatar: actor.avatar,
+              contentType: contentType,
+              contentId: contentId,
+              relatedContentId: null,
+              threadId: threadId,
+              contentPreview: (contentResult.Item.content || contentResult.Item.title || '').substring(0, 100),
+              threadTitle: threadTitle
+            });
+          }
+        } catch (notifError) {
+          console.error('Failed to create save notification:', notifError);
+          // Don't fail the request if notification fails
+        }
       }
     } else {
       // Unsave - delete the save record
@@ -767,6 +879,62 @@ exports.trackShare = async (event) => {
     } catch (shareError) {
       console.error('Failed to save individual share:', shareError);
       // Don't fail the request if individual share tracking fails
+    }
+
+    // Create notification for content owner
+    if (userId) {
+      try {
+        const contentCreatorId = contentResult.Item.user_id || contentResult.Item.creator_id;
+        
+        // Don't notify if user shares their own content
+        if (contentCreatorId && contentCreatorId !== userId) {
+          // Get actor (sharer) info
+          const actorResult = await dbOperations.get(tables.users, { id: userId });
+          const actor = actorResult.Item || { name: 'Someone', avatar: '/img-5.svg' };
+
+          // Determine notification type
+          let notificationType;
+          switch (contentType) {
+            case 'thread':
+              notificationType = NotificationTypes.THREAD_SHARED;
+              break;
+            case 'answer':
+              notificationType = NotificationTypes.ANSWER_SHARED;
+              break;
+            default:
+              notificationType = NotificationTypes.ANSWER_SHARED;
+          }
+
+          // Get thread info
+          let threadId = contentResult.Item.thread_id;
+          let threadTitle = '';
+          
+          if (threadId) {
+            try {
+              const threadResult = await dbOperations.get(tables.threads, { id: threadId });
+              threadTitle = threadResult.Item?.title || '';
+            } catch (err) {
+              console.error('Failed to get thread info:', err);
+            }
+          }
+
+          // Create notification
+          await createNotification(contentCreatorId, notificationType, {
+            actorId: userId,
+            actorName: actor.name,
+            actorAvatar: actor.avatar,
+            contentType: contentType,
+            contentId: contentId,
+            relatedContentId: null,
+            threadId: threadId,
+            contentPreview: (contentResult.Item.content || contentResult.Item.title || '').substring(0, 100),
+            threadTitle: threadTitle
+          });
+        }
+      } catch (notifError) {
+        console.error('Failed to create share notification:', notifError);
+        // Don't fail the request if notification fails
+      }
     }
 
     // Get updated share count
