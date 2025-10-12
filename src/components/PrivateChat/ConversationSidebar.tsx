@@ -133,13 +133,9 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               currentConversationId === conversation.id ? 'bg-green-50 border-green-300' : ''
             }`}
             onClick={() => {
-              // Always set the conversation, even if it's the same one
-              // This ensures the UI refreshes properly
+              // Only select if it's a different conversation
               if (currentConversationId !== conversation.id) {
                 onSelectConversation(conversation);
-              } else {
-                // If clicking the same conversation, force a refresh
-                onSelectConversation({ ...conversation });
               }
               // Close drawer on mobile after selection
               if (isMobile) {

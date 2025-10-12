@@ -129,10 +129,9 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           );
           setConversations(sortedConversations);
           
-          // Set first conversation as current if none selected
-          if (sortedConversations.length > 0 && !currentConversation) {
-            setCurrentConversation(sortedConversations[0]);
-          }
+          // ✅ FIX: Don't auto-select first conversation
+          // Let user explicitly select or start new conversation
+          // This ensures "No conversation selected" screen shows by default
         } else {
           console.error('Failed to load conversations:', response.status, response.statusText);
         }
@@ -154,6 +153,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     const loadMessages = async () => {
       if (!currentConversation?.id) {
         console.log('❌ No current conversation ID, skipping message load');
+        return;
+      }
+      
+      // ✅ FIX: Skip loading for temp conversations (not saved to backend yet)
+      if (currentConversation.id.startsWith('temp-')) {
+        console.log('⏭️ Skipping message load for temp conversation:', currentConversation.id);
         return;
       }
       
@@ -260,6 +265,41 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       shouldGenerateTitle = true;
     }
     setNewMessage('');
+    
+    // ✅ FIX: Create conversation in backend if this is the first message (temp conversation)
+    if (!isGuest && state.currentUser?.id && workingConversation.id.startsWith('temp-') && workingConversation.messages.length === 0) {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+        const response = await fetch(`${apiUrl}/new-conversation`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: state.currentUser.id,
+            title: null
+          })
+        });
+        
+        if (response.ok) {
+          const backendConversation = await response.json();
+          // Replace temp ID with real backend ID
+          workingConversation = {
+            ...workingConversation,
+            id: backendConversation.id
+          };
+          updatedConversation.id = backendConversation.id;
+          setCurrentConversation(updatedConversation);
+          setConversations(prev => prev.map(c => 
+            c.id.startsWith('temp-') ? updatedConversation : c
+          ));
+          console.log('✅ Created conversation in backend:', backendConversation.id);
+        }
+      } catch (error) {
+        console.error('Failed to create conversation in backend:', error);
+        // Continue anyway with temp ID - will try to save later
+      }
+    }
     
     console.log('🔒 Processing locked, starting AI stream...');
     
@@ -585,65 +625,60 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
   /**
    * Handle creating a new conversation
+   * ✅ FIX: Create locally only, save to backend when first message is sent
    */
   const handleNewConversation = async () => {
-    // For guest users, create a temporary conversation
+    if (!state.currentUser?.id && !isGuest) return;
+    
+    // Create conversation locally (not saved to backend yet)
+    const newConversation: PrivateConversation = {
+      id: isGuest ? `guest-${Date.now()}` : `temp-${Date.now()}`, // Temp ID for now
+      userId: isGuest ? 'guest' : (state.currentUser?.id || ''),
+      messages: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      title: isGuest ? 'Guest Conversation' : 'New Conversation'
+    };
+    
+    setCurrentConversation(newConversation);
+    
+    // For guest users, add to local list
     if (isGuest) {
-      const guestConversation: PrivateConversation = {
-        id: `guest-${Date.now()}`,
-        userId: 'guest',
-        messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        title: 'Guest Conversation'
-      };
-      setCurrentConversation(guestConversation);
-      setConversations([guestConversation]);
-      return;
+      setConversations([newConversation]);
+    } else {
+      // For authenticated users, add to local list (will be saved when first message sent)
+      setConversations(prev => [newConversation, ...prev].sort((a, b) => 
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      ));
     }
     
-    if (!state.currentUser?.id) return;
-    
-    try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-      const response = await fetch(`${apiUrl}/new-conversation`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: state.currentUser.id,
-          title: null
-        })
-      });
-      
-      if (response.ok) {
-        const newConversation = await response.json();
-        setConversations(prev => [newConversation, ...prev].sort((a, b) => 
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-        ));
-        setCurrentConversation(newConversation);
-      }
-    } catch (error) {
-      console.error('Failed to create conversation:', error);
-    }
+    console.log('✅ Created local conversation:', newConversation.id, '(will save to backend when first message sent)');
   };
 
   /**
    * Handle deleting a conversation
+   * ✅ FIX: Handle temp conversations (not saved to backend yet)
    */
   const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
-    // Guest users can't delete conversations (they're not persisted anyway)
-    if (isGuest) {
-      return;
-    }
-    
     e.stopPropagation(); // Prevent conversation selection when clicking delete
     
     if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
       return;
     }
     
+    // If it's a temp or guest conversation, just remove from local state
+    if (conversationId.startsWith('temp-') || conversationId.startsWith('guest-') || isGuest) {
+      setConversations(prev => prev.filter(c => c.id !== conversationId));
+      
+      if (currentConversation?.id === conversationId) {
+        setCurrentConversation(null);
+      }
+      
+      console.log('✅ Removed local conversation:', conversationId);
+      return;
+    }
+    
+    // For real backend conversations, delete from backend
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
       const response = await fetch(`${apiUrl}/conversations/${conversationId}`, {
@@ -662,7 +697,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           setCurrentConversation(null);
         }
         
-        console.log('✅ Conversation deleted:', conversationId);
+        console.log('✅ Conversation deleted from backend:', conversationId);
       } else {
         console.error('Failed to delete conversation:', response.statusText);
         alert('Failed to delete conversation. Please try again.');
