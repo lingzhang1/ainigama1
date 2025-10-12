@@ -90,7 +90,7 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-1.5 md:gap-2 mb-2">
             <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
               <span className="font-medium text-gray-700 text-sm md:text-base">
-                {answer.isAI ? 'AI Assistant' : getUserDisplayName(answer.userId)}
+                {answer.isAI ? 'Echo' : getUserDisplayName(answer.userId)}
               </span>
               {answer.isPinned && (
                 <Badge variant="secondary" className="text-xs">Pinned</Badge>
@@ -113,7 +113,7 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
                 ) : (
                   <Brain className="w-3 h-3" />
                 )}
-                <span>Ask AI</span>
+                <span>Ask Echo</span>
               </Button>
             )}
           </div>

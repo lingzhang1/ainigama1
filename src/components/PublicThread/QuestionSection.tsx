@@ -105,7 +105,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
                     ) : (
                       <Brain className="w-3 h-3" />
                     )}
-                    <span>Ask AI</span>
+                    <span>Ask Echo</span>
                   </Button>
                 )}
               </div>
@@ -277,7 +277,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
         )}
       </CardContent>
       
-      {/* Ask AI Prompt Modal */}
+      {/* Ask Echo Prompt Modal */}
       <AskAIPromptModal
         isOpen={showAskAIModal}
         onClose={() => setShowAskAIModal(false)}
