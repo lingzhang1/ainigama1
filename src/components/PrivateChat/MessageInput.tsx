@@ -29,7 +29,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   onChange,
   onSend,
   isDisabled,
-  placeholder = "Ask DeepSeek anything..."
+  placeholder = "Hey Echo is here for you..."
 }) => {
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

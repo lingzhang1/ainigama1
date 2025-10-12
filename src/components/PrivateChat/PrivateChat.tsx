@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Menu, Globe } from 'lucide-react';
+import { Menu, Globe, Leaf } from 'lucide-react';
 import { Message, PrivateConversation } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -1107,30 +1107,44 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     <div className="flex w-full h-screen bg-gray-50">
       {/* Mobile Header - Always show when sidebar is closed */}
       {isMobile && !isSidebarOpen && (
-        <div className="fixed top-0 left-0 right-0 bg-white border-b z-30 px-4 py-3 flex items-center">
+        <div className="fixed top-0 left-0 right-0 bg-white border-b z-30 px-3 py-2.5 flex items-center justify-between">
+          {/* Left side - Foliage icon to return to forum */}
           <button
-            onClick={toggleSidebar}
-            className="p-2 hover:bg-gray-100 rounded-lg mr-3"
-            aria-label="Toggle conversations"
+            onClick={() => navigate('/')}
+            className="p-2 hover:bg-gray-100 rounded-lg"
+            aria-label="Return to forum"
           >
-            <Menu className="w-6 h-6 text-gray-700" />
+            <Leaf className="w-5 h-5 text-green-600" />
           </button>
-          <h1 className="text-lg font-semibold text-gray-800 truncate flex-1 min-w-0">
-            {currentConversation ? (currentConversation.title || 'Private Conversation') : 'Private Chat'}
-          </h1>
           
-          {/* Mobile Publish Button - Only show when conversation exists */}
-          {currentConversation && (
+          {/* Center - Menu icon and title */}
+          <div className="flex items-center gap-2 flex-1 justify-center">
+            <button
+              onClick={toggleSidebar}
+              className="p-2 hover:bg-gray-100 rounded-lg"
+              aria-label="Toggle conversations"
+            >
+              <Menu className="w-5 h-5 text-gray-700" />
+            </button>
+            <h1 className="text-base font-semibold text-gray-800 truncate max-w-[120px]">
+              {currentConversation ? (currentConversation.title || 'Private') : 'Private Chat'}
+            </h1>
+          </div>
+          
+          {/* Right side - Publish Button - Only show when conversation exists */}
+          {currentConversation ? (
             <button
               onClick={handleMakePublic}
               disabled={currentConversation.messages.length === 0 || isGuest}
-              className="ml-2 p-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:hover:bg-green-600"
             >
-              <Globe className="w-4 h-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">
+              <Globe className="w-4 h-4" />
+              <span className="text-sm font-medium">
                 {isGuest ? 'Sign In' : 'Publish'}
               </span>
             </button>
+          ) : (
+            <div className="w-[88px]"></div>
           )}
         </div>
       )}
@@ -1185,6 +1199,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 isGuest={isGuest}
                 onToggleThinking={() => setShowThinking(!showThinking)}
                 onMakePublic={handleMakePublic}
+                onReturnToForum={() => navigate('/')}
               />
             </div>
 

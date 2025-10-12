@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, Globe, Settings } from 'lucide-react';
+import { Lock, Globe, Settings, Leaf } from 'lucide-react';
 import { Button } from '../ui/button';
 
 /**
@@ -21,6 +21,7 @@ interface ChatHeaderProps {
   isGuest: boolean;
   onToggleThinking: () => void;
   onMakePublic: () => void;
+  onReturnToForum: () => void;
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
@@ -29,12 +30,24 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   canPublish,
   isGuest,
   onToggleThinking,
-  onMakePublic
+  onMakePublic,
+  onReturnToForum
 }) => {
   return (
     <header className="bg-white border-b p-3 md:p-4 flex items-center justify-between">
-      <div className="flex items-center min-w-0 flex-1">
-        <Lock className="w-4 h-4 md:w-5 md:h-5 mr-2 text-gray-500 flex-shrink-0" />
+      <div className="flex items-center min-w-0 flex-1 gap-2">
+        {/* Foliage Icon to return to forum */}
+        <Button
+          onClick={onReturnToForum}
+          variant="ghost"
+          size="sm"
+          className="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0"
+          title="Return to forum"
+        >
+          <Leaf className="w-5 h-5 text-green-600" />
+        </Button>
+        
+        <Lock className="w-4 h-4 md:w-5 md:h-5 text-gray-500 flex-shrink-0" />
         <h3 className="text-sm md:text-lg font-semibold text-green-700 truncate">
           {conversationTitle}
         </h3>
@@ -53,17 +66,16 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
           <span className="hidden lg:inline">{showThinking ? 'Hide Thinking' : 'Show Thinking'}</span>
         </Button>
         
-        {/* Make Public Button */}
+        {/* Publish Button */}
         <Button
           onClick={onMakePublic}
-          variant="outline"
           size="sm"
-          className="flex items-center gap-1 md:gap-2 border-green-300 text-green-600 hover:bg-green-50 disabled:opacity-50 disabled:hover:bg-transparent"
+          className="flex items-center gap-1 md:gap-2 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
           disabled={!canPublish || isGuest}
         >
           <Globe className="w-4 h-4" />
           <span className="hidden sm:inline">
-            {isGuest ? 'Sign In to Publish' : 'Make Public'}
+            {isGuest ? 'Sign In to Publish' : 'Publish'}
           </span>
           <span className="sm:hidden">
             {isGuest ? 'Sign In' : 'Publish'}
