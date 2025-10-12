@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search as SearchIcon, TrendingUp as TrendingUpIcon, Clock as ClockIcon, Plus as PlusIcon, ChevronDown, Lock, Globe, X, Loader as Loader2, Heart, Bookmark, MessageCircle, HelpCircle, MessageSquare, Leaf, Grid, Home, User, Bell } from 'lucide-react';
+import { Search as SearchIcon, TrendingUp as TrendingUpIcon, Sparkles as SparklesIcon, Clock as ClockIcon, Plus as PlusIcon, ChevronDown, Lock, Globe, X, Loader as Loader2, Heart, Bookmark, MessageCircle, HelpCircle, MessageSquare, Leaf, Grid, Home, User, Bell } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
@@ -260,13 +260,13 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
         {/* Recommendation Icon */}
         <button
           onClick={() => {
-            console.log('🕒 Recent icon clicked - filtering by recent');
+            console.log('✨ Recommend icon clicked - showing recommended feeds');
             dispatch({ type: 'SET_FEED_FILTER', payload: 'recent' });
           }}
           className={`p-2 rounded-lg ${state.feedFilter === 'recent' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-600'}`}
-          aria-label="Recent recommendations"
+          aria-label="Recommended for you"
         >
-          <ClockIcon className="w-5 h-5" />
+          <SparklesIcon className="w-5 h-5" />
         </button>
         
         {/* Category Icon - Navigate to categories page */}
@@ -857,10 +857,10 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
               closeRightDrawer();
             }}
             className="flex flex-col items-center justify-center p-2 hover:bg-gray-100 rounded-lg min-w-[60px]"
-            aria-label="Private threads"
+            aria-label="Private chats"
           >
             <MessageSquare className={`w-5 h-5 ${state.viewMode === 'private' ? 'text-green-600' : 'text-gray-600'}`} />
-            <span className="text-xs mt-0.5 text-gray-600">Private</span>
+            <span className="text-xs mt-0.5 text-gray-600">Chats</span>
           </button>
 
           {/* New Thread Button */}

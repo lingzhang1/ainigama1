@@ -23,6 +23,7 @@ interface QuestionSectionProps {
   isGuest: boolean;
   isAIAnswering: boolean;
   streamingRefs: React.MutableRefObject<any>;
+  showThinking: boolean;
   onAddAnswer: (questionId: string, content: string) => void;
   onAskAI: (targetId: string, targetType: 'question' | 'answer', customPrompt?: string) => void;
   onOpenComments: (answerId: string) => void;
@@ -43,6 +44,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
   isGuest,
   isAIAnswering,
   streamingRefs,
+  showThinking,
   onAddAnswer,
   onAskAI,
   onOpenComments,
@@ -140,6 +142,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
               commentCount={answer.commentCount || 0}
               isLiked={answer.isLiked || false}
               isSaved={answer.isSaved || false}
+              showThinking={showThinking}
               onOpenComments={onOpenComments}
               onLike={onLikeAnswer}
               onSave={onSaveAnswer}

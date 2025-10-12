@@ -60,10 +60,14 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   } | null>(null);
   const deepLinkHandled = useRef(false); // Track if deep link has been handled
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   
   // AI streaming state management using refs (like PrivateChat)
   const [isAIAnswering, setIsAIAnswering] = useState<{ [questionId: string]: boolean }>({});
   const [isSummarizing, setIsSummarizing] = useState(false);
+  const [showThinking, setShowThinking] = useState(true);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
   const streamingRefs = React.useRef<{ [questionId: string]: {
     thinking: string;
     content: string;
@@ -138,6 +142,41 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
       // TODO: Send analytics event
     }
   }, [from]);
+
+  // Handle scroll to hide/show header - runs after thread is loaded
+  useEffect(() => {
+    // Wait for thread to load and element to be rendered
+    if (isLoading || !thread) {
+      return;
+    }
+
+    const scrollContainer = scrollContainerRef.current;
+    
+    if (!scrollContainer) {
+      return;
+    }
+
+    const handleScroll = () => {
+      const currentScrollY = scrollContainer.scrollTop;
+      
+      // Hide header when scrolling down, show when scrolling up
+      if (currentScrollY > lastScrollY.current && currentScrollY > 50) {
+        // Scrolling down & past threshold
+        setHeaderVisible(false);
+      } else if (currentScrollY < lastScrollY.current) {
+        // Scrolling up
+        setHeaderVisible(true);
+      }
+      
+      lastScrollY.current = currentScrollY;
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      scrollContainer.removeEventListener('scroll', handleScroll);
+    };
+  }, [isLoading, thread, headerVisible]);
 
   // Build context for AI with proper multi-user structure and overflow handling
   const buildThreadContextForAI = async (targetId: string, targetType: 'question' | 'answer' = 'question'): Promise<{ messages: ChatMessage[], summaryAdded: boolean }> => {
@@ -1348,35 +1387,42 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col">
-        {/* Header */}
+        {/* Header - Fixed position */}
         <PublicThreadHeader
           thread={thread}
           sortOrder={sortOrder}
+          showThinking={showThinking}
+          headerVisible={headerVisible}
           onBackToForum={() => {
             dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' });
             dispatch({ type: 'SET_CURRENT_THREAD', payload: null });
             navigateFromHook('/');
           }}
           onSortChange={setSortOrder}
+          onToggleThinking={() => setShowThinking(!showThinking)}
         />
 
-        {/* View tracking still occurs in loadThread useEffect */}
-
-        {/* Summarization Notification */}
-        {isSummarizing && (
-          <div className="bg-green-50 border-l-4 border-green-400 p-4 mx-6 mt-4 rounded-md">
-            <div className="flex items-center">
-              <Loader2 className="w-5 h-5 text-green-600 animate-spin mr-3" />
-              <div>
-                <p className="text-green-800 font-medium">AI is summarizing conversation</p>
-                <p className="text-green-600 text-sm">Processing previous messages to maintain context...</p>
+        {/* Thread Content - with padding-top to account for fixed header */}
+        <div 
+          ref={scrollContainerRef} 
+          className={`flex-1 overflow-y-auto transition-all duration-300 ${
+            headerVisible ? 'pt-[88px]' : 'pt-0'
+          }`}
+        >
+          {/* Summarization Notification */}
+          {isSummarizing && (
+            <div className="bg-green-50 border-l-4 border-green-400 p-4 mx-6 mb-4 rounded-md">
+              <div className="flex items-center">
+                <Loader2 className="w-5 h-5 text-green-600 animate-spin mr-3" />
+                <div>
+                  <p className="text-green-800 font-medium">AI is summarizing conversation</p>
+                  <p className="text-green-600 text-sm">Processing previous messages to maintain context...</p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Thread Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+          <div className="p-6">
           <div className="max-w-4xl mx-auto space-y-8">
             {/* Add New Question (Only for thread creator) - Show at top if newest first */}
             {state.currentUser && state.currentUser.id === thread.creator.id && sortOrder === 'newest' && (
@@ -1403,6 +1449,7 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
                 isGuest={isGuest}
                 isAIAnswering={isAIAnswering[question.id] || false}
                 streamingRefs={streamingRefs}
+                showThinking={showThinking}
                 onAddAnswer={handleAddAnswer}
                 onAskAI={handleAskAI}
                 onOpenComments={handleOpenComments}
@@ -1422,10 +1469,11 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
               />
             )}
           </div>
-        </div>
+          </div>
 
-        {/* Scroll anchor */}
-        <div ref={messagesEndRef} />
+          {/* Scroll anchor */}
+          <div ref={messagesEndRef} />
+        </div>
       </main>
 
       {/* Comment Side Panel */}

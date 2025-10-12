@@ -16,6 +16,7 @@ interface AnswerDisplayProps {
   commentCount: number;
   isLiked?: boolean;
   isSaved?: boolean;
+  showThinking: boolean;
   onOpenComments: (answerId: string) => void;
   onLike?: (answerId: string) => void;
   onSave?: (answerId: string) => void;
@@ -34,6 +35,7 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
   commentCount,
   isLiked = false,
   isSaved = false,
+  showThinking,
   onOpenComments,
   onLike,
   onSave,
@@ -118,8 +120,8 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
             )}
           </div>
 
-          {/* Show AI thinking process if available */}
-          {answer.isAI && answer.thinking && (
+          {/* Show AI thinking process if available and showThinking is true */}
+          {answer.isAI && answer.thinking && showThinking && (
             <div className="mb-2 md:mb-3 p-2 md:p-3 bg-gray-50 border border-gray-200 rounded-lg">
               <div className="flex items-center mb-1.5 md:mb-2">
                 <Brain className="w-3.5 h-3.5 md:w-4 md:h-4 text-gray-500 mr-1.5 md:mr-2 flex-shrink-0" />

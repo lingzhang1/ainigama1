@@ -241,11 +241,11 @@ const AppContent: React.FC = () => {
   // Wrap with NotificationProvider if user is authenticated
   const content = (
     <div className="min-h-screen bg-gray-50">
-      {/* Notification Bell - Fixed position (hidden on mobile for forum view as it's in footer, hidden in private chat) */}
+      {/* Notification Bell - Fixed position (hidden on mobile for forum view as it's in footer, hidden in private chat and public-thread) */}
       {state.currentUser && (
         <div className={`fixed top-4 right-4 z-50 ${
           state.viewMode === 'forum' ? 'hidden md:block' : 
-          state.viewMode === 'private' ? 'hidden' : ''
+          state.viewMode === 'private' || state.viewMode === 'public-thread' ? 'hidden' : ''
         }`}>
           <NotificationBell onClick={() => setShowNotifications(true)} />
         </div>
