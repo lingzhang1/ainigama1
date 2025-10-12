@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Menu, Globe } from 'lucide-react';
 import { Message, PrivateConversation } from '../../types';
 import { useAppContext } from '../../context/AppContext';
@@ -41,6 +42,7 @@ interface PrivateChatProps {
 
 export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
+  const navigate = useNavigate();
   const isGuest = state.isGuestMode && !state.isAuthenticated;
   
   // Main state management
@@ -764,7 +766,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
   // Navigation handlers
   const handleGoToForum = () => {
-    dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' });
+    navigate('/');
   };
 
   const handleSignIn = () => {

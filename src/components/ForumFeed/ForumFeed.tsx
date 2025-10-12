@@ -168,7 +168,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   };
 
   const handleNewThread = () => {
-    dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
+    navigate('/private');
   };
 
   const handleCreatePublicThread = async () => {
@@ -302,7 +302,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
                 <button
                   onClick={() => {
-                    dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
+                    navigate('/private');
                     setShowNewThreadDropdown(false);
                     closeLeftDrawer();
                   }}
@@ -351,7 +351,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
                 onClick={() => {
-                  dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' });
+                  navigate('/');
                   closeLeftDrawer();
                 }}
               >
@@ -365,7 +365,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
                 onClick={() => {
-                  dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
+                  navigate('/private');
                   closeLeftDrawer();
                 }}
               >
@@ -841,7 +841,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         isOpen={showNewThreadModal}
         onClose={() => setShowNewThreadModal(false)}
         onSelectPrivateChat={() => {
-          dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
+          navigate('/private');
         }}
         onSelectPublicThread={() => {
           if (isGuest) {
