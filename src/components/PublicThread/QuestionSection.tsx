@@ -66,7 +66,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
   };
 
   return (
-    <Card className="border border-gray-200">
+    <Card id={`question-${question.id}`} className="border border-gray-200 deep-link-target">
       <CardContent className="p-6">
         {/* Question */}
         <div className="mb-6">

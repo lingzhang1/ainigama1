@@ -1,8 +1,9 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { useWebSocket } from './hooks/useWebSocket';
+import { generateThreadUrl } from './hooks/useThreadNavigation';
 import { wsService } from './services/websocket';
 import { AllowlistCheck } from './components/Auth/AllowlistCheck';
 import { LoginScreen } from './components/Auth/LoginScreen';
@@ -19,9 +20,13 @@ import { initializeMobileTouchHandlers } from './utils/touchHandler';
 const AppContent: React.FC = () => {
   const { state, dispatch } = useAppContext();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isAllowlistApproved, setIsAllowlistApproved] = React.useState(false);
   const [isCheckingAllowlist, setIsCheckingAllowlist] = React.useState(true);
   const [showNotifications, setShowNotifications] = React.useState(false);
+
+  // Get current route to determine view mode
+  const currentPath = location.pathname;
 
   // Initialize WebSocket connection
   useWebSocket(state.currentUser?.id || '');
@@ -73,13 +78,95 @@ const AppContent: React.FC = () => {
     dispatch({ type: 'SET_GUEST_MODE', payload: true });
   };
 
-  const handleNotificationClick = (notification: Notification) => {
-    // Navigate to the relevant thread
-    if (notification.threadId) {
-      dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
-      dispatch({ type: 'SET_THREAD_ID', payload: notification.threadId });
-      navigate(`/thread/${notification.threadId}`);
+  // Auto-detect view mode based on current URL path
+  React.useEffect(() => {
+    if (currentPath.startsWith('/thread/')) {
+      if (state.viewMode !== 'public-thread') {
+        console.log('🔄 Setting view mode to public-thread based on URL:', currentPath);
+        dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
+      }
+    } else if (currentPath === '/private') {
+      if (state.viewMode !== 'private') {
+        dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
+      }
+    } else if (currentPath === '/') {
+      // Clear current thread when returning to forum
+      if (state.viewMode !== 'forum') {
+        console.log('🔄 Setting view mode to forum, clearing current thread');
+        dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' });
+        dispatch({ type: 'SET_CURRENT_THREAD', payload: null });
+      }
     }
+  }, [currentPath, state.viewMode, dispatch]);
+
+  const handleNotificationClick = (notification: Notification) => {
+    console.log('🔔 Notification clicked:', notification);
+    console.log('🔍 Notification keys:', Object.keys(notification));
+    console.log('🔍 Notification threadId:', notification.threadId);
+    console.log('🔍 Notification thread_id:', (notification as any).thread_id);
+    console.log('🔍 Full notification object:', JSON.stringify(notification, null, 2));
+    
+    if (!notification.threadId) {
+      console.error('❌ No thread ID in notification');
+      console.error('Available keys:', Object.keys(notification));
+      return;
+    }
+
+    // Generate appropriate URL based on notification type and content
+    let url: string;
+
+    switch (notification.contentType) {
+      case 'comment':
+        // Navigate to the comment within an answer
+        if (notification.relatedContentId) {
+          url = generateThreadUrl({
+            threadId: notification.threadId,
+            answerId: notification.relatedContentId,
+            commentId: notification.contentId,
+            highlight: true,
+            from: 'notification'
+          });
+        } else {
+          // Fallback if relatedContentId is missing
+          url = generateThreadUrl({
+            threadId: notification.threadId,
+            highlight: true,
+            from: 'notification'
+          });
+        }
+        break;
+
+      case 'answer':
+        // Navigate to specific answer
+        url = generateThreadUrl({
+          threadId: notification.threadId,
+          answerId: notification.contentId,
+          highlight: true,
+          from: 'notification'
+        });
+        break;
+
+      case 'thread':
+      default:
+        // Navigate to thread
+        url = generateThreadUrl({
+          threadId: notification.threadId,
+          highlight: true,
+          from: 'notification'
+        });
+        break;
+    }
+
+    console.log('🔗 Navigating from notification to:', url);
+    console.log('📍 Current location before navigation:', location.pathname);
+    
+    // Navigate to the URL
+    navigate(url);
+    
+    // Force scroll to top to ensure clean navigation
+    setTimeout(() => {
+      console.log('📍 New location after navigation:', window.location.pathname);
+    }, 100);
   };
 
   const renderCurrentView = () => {
@@ -187,9 +274,25 @@ const App: React.FC = () => {
     <AppProvider>
       <Router>
         <Routes>
+          {/* Home page */}
           <Route path="/" element={<AppContent />} />
-          <Route path="/thread/:id" element={<AppContent />} />
+          
+          {/* Private chat */}
           <Route path="/private" element={<AppContent />} />
+          
+          {/* Thread-level routes with deep linking support */}
+          <Route path="/thread/:threadId" element={<AppContent />} />
+          
+          {/* Question-level deep linking */}
+          <Route path="/thread/:threadId/question/:questionId" element={<AppContent />} />
+          
+          {/* Answer-level deep linking */}
+          <Route path="/thread/:threadId/answer/:answerId" element={<AppContent />} />
+          
+          {/* Comment-level deep linking */}
+          <Route path="/thread/:threadId/answer/:answerId/comment/:commentId" element={<AppContent />} />
+          
+          {/* Fallback for unknown routes */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

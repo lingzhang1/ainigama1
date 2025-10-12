@@ -37,11 +37,21 @@ class NotificationService {
 
       const data = await response.json();
       
-      // Convert date strings to Date objects
+      // Convert backend snake_case to frontend camelCase and dates to Date objects
       const notifications = data.notifications.map((notif: any) => ({
-        ...notif,
-        createdAt: new Date(notif.createdAt),
-        readAt: notif.readAt ? new Date(notif.readAt) : undefined
+        id: notif.id,
+        recipientId: notif.recipientId || notif.recipient_id,
+        actorId: notif.actorId || notif.actor_id,
+        type: notif.type,
+        contentType: notif.contentType || notif.content_type,
+        contentId: notif.contentId || notif.content_id,
+        relatedContentId: notif.relatedContentId || notif.related_content_id,
+        threadId: notif.threadId || notif.thread_id,
+        message: notif.message,
+        metadata: notif.metadata,
+        isRead: notif.isRead !== undefined ? notif.isRead : (notif.is_read === 'true'),
+        createdAt: new Date(notif.createdAt || notif.created_at),
+        readAt: notif.readAt || notif.read_at ? new Date(notif.readAt || notif.read_at) : undefined
       }));
 
       return {

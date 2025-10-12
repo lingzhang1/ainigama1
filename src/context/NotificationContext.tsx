@@ -166,14 +166,28 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
     // Listen for incoming notifications
     const handleNotification = (data: any) => {
       if (data.type === 'notification' && data.data) {
+        const notif = data.data;
+        
+        // Convert backend snake_case to frontend camelCase
         const notification: Notification = {
-          ...data.data,
-          createdAt: new Date(data.data.created_at),
-          readAt: data.data.read_at ? new Date(data.data.read_at) : undefined,
-          metadata: typeof data.data.metadata === 'string' 
-            ? JSON.parse(data.data.metadata) 
-            : data.data.metadata
+          id: notif.id,
+          recipientId: notif.recipientId || notif.recipient_id,
+          actorId: notif.actorId || notif.actor_id,
+          type: notif.type,
+          contentType: notif.contentType || notif.content_type,
+          contentId: notif.contentId || notif.content_id,
+          relatedContentId: notif.relatedContentId || notif.related_content_id,
+          threadId: notif.threadId || notif.thread_id,
+          message: notif.message,
+          metadata: typeof notif.metadata === 'string' 
+            ? JSON.parse(notif.metadata) 
+            : notif.metadata,
+          isRead: notif.isRead !== undefined ? notif.isRead : (notif.is_read === 'true'),
+          createdAt: new Date(notif.createdAt || notif.created_at),
+          readAt: notif.readAt || notif.read_at ? new Date(notif.readAt || notif.read_at) : undefined
         };
+        
+        console.log('📬 Received notification via WebSocket:', notification);
         addNotification(notification);
       }
     };

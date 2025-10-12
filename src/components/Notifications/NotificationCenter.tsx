@@ -4,6 +4,7 @@ import { NotificationItem } from './NotificationItem';
 import { Button } from '../ui/button';
 import { X, Check, Trash2, Bell } from 'lucide-react';
 import { Notification } from '../../types';
+import { generateThreadUrl } from '../../hooks/useThreadNavigation';
 
 interface NotificationCenterProps {
   isOpen: boolean;

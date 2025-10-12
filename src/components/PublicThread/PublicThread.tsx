@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Loader2 } from 'lucide-react';
+import { MessageSquare, Loader2, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Thread, Question, Answer, Comment, User } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { usePublicThread } from '../../hooks/useWebSocket';
+import { useThreadNavigation } from '../../hooks/useThreadNavigation';
 import { deepSeekService, ChatMessage } from '../../services/deepseek';
 import { v4 as uuidv4 } from 'uuid';
 import { countChatMessagesTokens } from '../../utils/tokenCounter';
@@ -16,6 +17,7 @@ import { CommentPanel } from './CommentPanel';
 // import { ContentMetricDisplay } from '../ui/MetricDisplay';
 import { ShareModal } from '../ui/ShareModal';
 import { metricsService } from '../../services/metrics';
+import { scrollToQuestion, scrollToAnswer, scrollToComment } from '../../utils/scrollToElement';
 
 interface PublicThreadProps {
   onLogout: () => void;
@@ -24,6 +26,10 @@ interface PublicThreadProps {
 export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
   const isGuest = state.isGuestMode && !state.isAuthenticated;
+  
+  // Get URL parameters for deep linking
+  const { threadId: urlThreadId, questionId, answerId, commentId, highlight, from, navigate: navigateFromHook } = useThreadNavigation();
+  
   const [thread, setThread] = useState<Thread | null>(null);
   const [answers, setAnswers] = useState<{ [questionId: string]: Answer[] }>({});
   const [comments, setComments] = useState<{ [answerId: string]: Comment[] }>({});
@@ -38,10 +44,20 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     type: 'thread' | 'question' | 'answer' | 'comment';
     id: string;
     title: string;
+    threadId?: string;
+    relatedIds?: {
+      questionId?: string;
+      answerId?: string;
+    };
   } | null>(null);
   const [contentInteractions, setContentInteractions] = useState<{
     [key: string]: {isLiked: boolean, isSaved: boolean}
   }>({});
+  const [deepLinkStatus, setDeepLinkStatus] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'error' | 'warning';
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // AI streaming state management using refs (like PrivateChat)
@@ -92,8 +108,26 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     return `User${userId.slice(-4)}`;
   };
 
-  // Get current thread ID from state
-  const currentThreadId = state.currentThreadId;
+  // Get current thread ID - prioritize URL parameter over state
+  // This enables deep linking directly to threads via URL
+  const currentThreadId = urlThreadId || state.currentThreadId;
+
+  // Update app state if URL has a thread ID but state doesn't match
+  useEffect(() => {
+    if (urlThreadId && urlThreadId !== state.currentThreadId) {
+      console.log('🔗 Thread ID from URL, updating state:', urlThreadId);
+      dispatch({ type: 'SET_CURRENT_THREAD', payload: urlThreadId });
+      dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
+    }
+  }, [urlThreadId, state.currentThreadId, dispatch]);
+
+  // Log navigation source for analytics
+  useEffect(() => {
+    if (from) {
+      console.log('📊 User navigated from:', from);
+      // TODO: Send analytics event
+    }
+  }, [from]);
 
   // Build context for AI with proper multi-user structure and overflow handling
   const buildThreadContextForAI = async (targetId: string, targetType: 'question' | 'answer' = 'question'): Promise<{ messages: ChatMessage[], summaryAdded: boolean }> => {
@@ -593,6 +627,126 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
     loadThread();
   }, [currentThreadId]);
 
+  // Handle deep linking - scroll to specific content after thread loads
+  useEffect(() => {
+    // Only proceed if thread is loaded and we have deep link parameters
+    if (isLoading || !thread) return;
+
+    const handleDeepLink = async () => {
+      console.log('🔗 Deep link parameters:', { questionId, answerId, commentId, highlight });
+
+      // Priority order: comment > answer > question
+      if (commentId && answerId) {
+        // Navigate to a specific comment
+        console.log('📍 Navigating to comment:', commentId);
+        
+        // Check if answer exists in loaded data
+        const answerExists = Object.values(answers).flat().some(a => a.id === answerId);
+        if (!answerExists) {
+          console.error('❌ Answer not found:', answerId);
+          setDeepLinkStatus({
+            show: true,
+            message: 'The answer you\'re looking for was not found in this thread.',
+            type: 'error'
+          });
+          setTimeout(() => setDeepLinkStatus(null), 5000);
+          return;
+        }
+
+        // Load comments for this answer if not already loaded
+        if (!comments[answerId] || comments[answerId].length === 0) {
+          try {
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+            const commentsResponse = await fetch(`${apiUrl}/answers/${answerId}/comments`);
+            if (commentsResponse.ok) {
+              const commentsData = await commentsResponse.json();
+              setComments(prev => ({ ...prev, [answerId]: commentsData }));
+            }
+          } catch (error) {
+            console.error('Failed to load comments:', error);
+          }
+        }
+        
+        // Open the comment panel for this answer
+        setCommentPanelOpen(answerId);
+        
+        // Wait for comment panel to open and render
+        await new Promise(resolve => setTimeout(resolve, 400));
+        
+        // Then scroll to the comment
+        const success = await scrollToComment(commentId, {
+          highlight: highlight || false,
+          behavior: 'smooth',
+          offset: 100
+        });
+        
+        if (!success) {
+          console.warn('⚠️ Comment not found, scrolling to answer instead');
+          // Fallback to answer if comment not found
+          await scrollToAnswer(answerId, {
+            highlight: highlight || false,
+            behavior: 'smooth'
+          });
+        }
+      } else if (answerId) {
+        // Navigate to a specific answer
+        console.log('📍 Navigating to answer:', answerId);
+        
+        // Verify answer exists
+        const answerExists = Object.values(answers).flat().some(a => a.id === answerId);
+        if (!answerExists) {
+          console.error('❌ Answer not found in thread:', answerId);
+          setDeepLinkStatus({
+            show: true,
+            message: 'The answer you\'re looking for was not found.',
+            type: 'error'
+          });
+          setTimeout(() => setDeepLinkStatus(null), 5000);
+          // Still attempt scroll in case it loads later
+        }
+        
+        const success = await scrollToAnswer(answerId, {
+          highlight: highlight || false,
+          behavior: 'smooth'
+        });
+        
+        if (!success) {
+          console.warn('⚠️ Answer not found in DOM:', answerId);
+        }
+      } else if (questionId) {
+        // Navigate to a specific question
+        console.log('📍 Navigating to question:', questionId);
+        
+        // Verify question exists
+        const questionExists = thread.questions?.some(q => q.id === questionId);
+        if (!questionExists) {
+          console.error('❌ Question not found in thread:', questionId);
+          setDeepLinkStatus({
+            show: true,
+            message: 'The question you\'re looking for was not found.',
+            type: 'error'
+          });
+          setTimeout(() => setDeepLinkStatus(null), 5000);
+        }
+        
+        const success = await scrollToQuestion(questionId, {
+          highlight: highlight || false,
+          behavior: 'smooth'
+        });
+        
+        if (!success) {
+          console.warn('⚠️ Question not found in DOM:', questionId);
+        }
+      } else if (highlight) {
+        // Just highlight the thread (scroll to top)
+        console.log('📍 Highlighting thread');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    };
+
+    handleDeepLink();
+  }, [isLoading, thread, answers, comments, questionId, answerId, commentId, highlight]);
+
   // Handle AI answer generation
   const handleAskAI = async (targetId: string, targetType: 'question' | 'answer', customPrompt?: string) => {
     if (isGuest) return; // Guests can't use AI
@@ -1002,20 +1156,27 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
   };
 
   const handleShareAnswer = async (answerId: string) => {
-    // Find the answer to get its content for the modal title
+    // Find the answer to get its content and question ID for the modal
     let answerContent = '';
-    Object.values(answers).forEach(answerList => {
+    let questionIdForAnswer = '';
+    
+    Object.entries(answers).forEach(([qId, answerList]) => {
       const foundAnswer = answerList.find(a => a.id === answerId);
       if (foundAnswer) {
         answerContent = foundAnswer.content.substring(0, 100) + (foundAnswer.content.length > 100 ? '...' : '');
+        questionIdForAnswer = qId;
       }
     });
     
-    // Open share modal
+    // Open share modal with full context
     setShareModalContent({
       type: 'answer',
       id: answerId,
-      title: answerContent || 'Answer'
+      title: answerContent || 'Answer',
+      threadId: thread?.id,
+      relatedIds: {
+        questionId: questionIdForAnswer
+      }
     });
     setShareModalOpen(true);
   };
@@ -1051,7 +1212,11 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-800 mb-2">Thread not found</h3>
           <p className="text-gray-500 mb-4">The thread you're looking for doesn't exist or has been removed.</p>
-          <Button onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}>
+          <Button onClick={() => {
+            dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' });
+            dispatch({ type: 'SET_CURRENT_THREAD', payload: null });
+            navigateFromHook('/');
+          }}>
             Back to Forum
           </Button>
         </div>
@@ -1063,13 +1228,38 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
 
   return (
     <div className="flex w-full h-screen bg-gray-50 relative">
+      {/* Deep Link Status Toast */}
+      {deepLinkStatus?.show && (
+        <div 
+          className={`fixed top-20 left-1/2 transform -translate-x-1/2 z-50 px-4 py-3 rounded-lg shadow-lg max-w-md animate-fade-in ${
+            deepLinkStatus.type === 'error' ? 'bg-red-100 text-red-800 border border-red-300' :
+            deepLinkStatus.type === 'warning' ? 'bg-yellow-100 text-yellow-800 border border-yellow-300' :
+            'bg-green-100 text-green-800 border border-green-300'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{deepLinkStatus.message}</span>
+            <button
+              onClick={() => setDeepLinkStatus(null)}
+              className="ml-auto text-current opacity-70 hover:opacity-100"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="flex-1 flex flex-col">
         {/* Header */}
         <PublicThreadHeader
           thread={thread}
           sortOrder={sortOrder}
-          onBackToForum={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })}
+          onBackToForum={() => {
+            dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' });
+            dispatch({ type: 'SET_CURRENT_THREAD', payload: null });
+            navigateFromHook('/');
+          }}
           onSortChange={setSortOrder}
         />
 
@@ -1165,6 +1355,8 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           contentType={shareModalContent.type}
           contentId={shareModalContent.id}
           contentTitle={shareModalContent.title}
+          threadId={shareModalContent.threadId}
+          relatedIds={shareModalContent.relatedIds}
           userId={state.currentUser?.id}
           onShareComplete={() => {
             // Update share count in local state

@@ -3,6 +3,50 @@ const { addCorsHeaders, handleOptionsRequest } = require('../utils/cors');
 const { tables, dbOperations, parseRequestBody } = require('../utils/db');
 const { createNotification, NotificationTypes } = require('./notifications');
 
+// ==================== HELPER FUNCTIONS ====================
+
+/**
+ * Get thread ID for any content type
+ * Handles the different relationships: thread->question->answer->comment
+ */
+async function getThreadIdForContent(contentType, contentItem) {
+  let threadId = contentItem.thread_id;
+  
+  // For answers, get thread_id from the question
+  if (contentType === 'answer' && !threadId) {
+    try {
+      const questionId = contentItem.question_id;
+      if (questionId) {
+        const questionResult = await dbOperations.get(tables.questions, { id: questionId });
+        threadId = questionResult.Item?.thread_id;
+        console.log('📍 Got thread ID from question:', threadId);
+      }
+    } catch (err) {
+      console.error('Failed to get question for answer:', err);
+    }
+  }
+  
+  // For comments, get thread_id from the answer's question
+  if (contentType === 'comment' && !threadId) {
+    try {
+      const answerId = contentItem.answerId;
+      if (answerId) {
+        const answerResult = await dbOperations.get(tables.answers, { id: answerId });
+        const questionId = answerResult.Item?.question_id;
+        if (questionId) {
+          const questionResult = await dbOperations.get(tables.questions, { id: questionId });
+          threadId = questionResult.Item?.thread_id;
+          console.log('📍 Got thread ID from answer->question:', threadId);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to get question for comment:', err);
+    }
+  }
+  
+  return threadId;
+}
+
 // ==================== VIEWS ====================
 
 // Track thread view
@@ -248,8 +292,8 @@ exports.toggleLike = async (event) => {
                 notificationType = NotificationTypes.ANSWER_LIKED;
             }
 
-            // Get thread info
-            let threadId = contentResult.Item.thread_id;
+            // Get thread info using helper function
+            let threadId = await getThreadIdForContent(contentType, contentResult.Item);
             let threadTitle = '';
             
             if (threadId) {
@@ -260,6 +304,8 @@ exports.toggleLike = async (event) => {
                 console.error('Failed to get thread info:', err);
               }
             }
+
+            console.log('💙 Creating like notification with threadId:', threadId);
 
             // Create notification
             await createNotification(contentCreatorId, notificationType, {
@@ -616,8 +662,8 @@ exports.toggleSave = async (event) => {
                 notificationType = NotificationTypes.ANSWER_SAVED;
             }
 
-            // Get thread info
-            let threadId = contentResult.Item.thread_id;
+            // Get thread info using helper function
+            let threadId = await getThreadIdForContent(contentType, contentResult.Item);
             let threadTitle = '';
             
             if (threadId) {
@@ -628,6 +674,8 @@ exports.toggleSave = async (event) => {
                 console.error('Failed to get thread info:', err);
               }
             }
+
+            console.log('💾 Creating save notification with threadId:', threadId);
 
             // Create notification
             await createNotification(contentCreatorId, notificationType, {
@@ -905,8 +953,8 @@ exports.trackShare = async (event) => {
               notificationType = NotificationTypes.ANSWER_SHARED;
           }
 
-          // Get thread info
-          let threadId = contentResult.Item.thread_id;
+          // Get thread info using helper function
+          let threadId = await getThreadIdForContent(contentType, contentResult.Item);
           let threadTitle = '';
           
           if (threadId) {
@@ -917,6 +965,8 @@ exports.trackShare = async (event) => {
               console.error('Failed to get thread info:', err);
             }
           }
+
+          console.log('📤 Creating share notification with threadId:', threadId);
 
           // Create notification
           await createNotification(contentCreatorId, notificationType, {
@@ -940,9 +990,43 @@ exports.trackShare = async (event) => {
     // Get updated share count
     const updatedContent = await dbOperations.get(contentTable, { id: contentId });
 
-    // Generate share URL
+    // Generate proper deep link share URL based on content type
     const baseUrl = process.env.BASE_URL || 'https://your-app.com';
-    const shareUrl = `${baseUrl}/thread/${contentId}`;
+    let shareUrl;
+    
+    switch (contentType) {
+      case 'comment':
+        // For comments, we need the answer ID from the comment's answerId field
+        const commentAnswerId = contentResult.Item.answerId;
+        const commentThreadId = contentResult.Item.thread_id;
+        shareUrl = `${baseUrl}/thread/${commentThreadId}/answer/${commentAnswerId}/comment/${contentId}?from=share`;
+        break;
+        
+      case 'answer':
+        // For answers, we need the thread ID from the question
+        try {
+          const answerQuestionId = contentResult.Item.question_id;
+          const questionResult = await dbOperations.get(tables.questions, { id: answerQuestionId });
+          const answerThreadId = questionResult.Item?.thread_id;
+          shareUrl = `${baseUrl}/thread/${answerThreadId}/answer/${contentId}?from=share`;
+        } catch (err) {
+          console.error('Failed to get thread ID for answer:', err);
+          shareUrl = `${baseUrl}/thread/${contentResult.Item.thread_id || contentId}`;
+        }
+        break;
+        
+      case 'question':
+        // For questions, include the question ID in the URL
+        const questionThreadId = contentResult.Item.thread_id;
+        shareUrl = `${baseUrl}/thread/${questionThreadId}/question/${contentId}?from=share`;
+        break;
+        
+      case 'thread':
+      default:
+        // For threads, simple thread URL
+        shareUrl = `${baseUrl}/thread/${contentId}?from=share`;
+        break;
+    }
 
     return addCorsHeaders({
       statusCode: 200,

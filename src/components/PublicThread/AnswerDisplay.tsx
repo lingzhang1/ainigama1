@@ -72,7 +72,7 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
   };
 
   return (
-    <div className="border-l-2 border-gray-100 pl-3 md:pl-4">
+    <div id={`answer-${answer.id}`} className="border-l-2 border-gray-100 pl-3 md:pl-4 deep-link-target">
       <div className="flex items-start gap-2 md:gap-3">
         <Avatar className="w-6 h-6 flex-shrink-0">
           {answer.isAI ? (

@@ -10,6 +10,11 @@ export interface ShareModalProps {
   contentId: string;
   contentTitle?: string;
   userId?: string;
+  threadId?: string;
+  relatedIds?: {
+    questionId?: string;
+    answerId?: string;
+  };
   onShareComplete?: () => void;
 }
 

@@ -78,7 +78,7 @@ export const CommentPanel: React.FC<CommentPanelProps> = ({
       {/* Comments List */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {(comments[commentPanelOpen] || []).map((comment) => (
-          <div key={comment.id} className="bg-gray-50 p-3 rounded-lg">
+          <div id={`comment-${comment.id}`} key={comment.id} className="bg-gray-50 p-3 rounded-lg deep-link-target">
             <div className="flex items-center space-x-2 mb-2">
               <Avatar className="w-5 h-5">
                 <AvatarImage src="/img-5.svg" />

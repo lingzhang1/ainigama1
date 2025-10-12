@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search as SearchIcon, TrendingUp as TrendingUpIcon, Clock as ClockIcon, Plus as PlusIcon, ChevronDown, Lock, Globe, Menu, X, Loader as Loader2, Heart, Bookmark, MessageCircle, HelpCircle, MessageSquare } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
@@ -28,6 +29,7 @@ const suggestedTopics = [
 
 export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
+  const navigate = useNavigate();
   const isGuest = state.isGuestMode && !state.isAuthenticated;
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -119,8 +121,9 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   const handleThreadClick = (threadId: string) => {
     // Track view when thread is clicked
     handleViewThread(threadId);
-    dispatch({ type: 'SET_CURRENT_THREAD', payload: threadId });
-    dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
+    
+    // Navigate using React Router
+    navigate(`/thread/${threadId}`);
   };
 
   const handleNewThread = () => {
@@ -163,10 +166,11 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
         const newThread = await response.json();
         console.log('✅ Successfully created public thread:', newThread.id);
         
-        // Update app state
+        // Update app state and navigate
         dispatch({ type: 'ADD_THREAD', payload: newThread });
-        dispatch({ type: 'SET_CURRENT_THREAD', payload: newThread.id });
-        dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
+        
+        // Navigate using React Router
+        navigate(`/thread/${newThread.id}`);
         
         // Reset form and close modal
         setPublicThreadForm({ title: '', category: 'General', question: '' });
