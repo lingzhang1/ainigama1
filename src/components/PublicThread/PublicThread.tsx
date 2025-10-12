@@ -58,6 +58,7 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     message: string;
     type: 'success' | 'error' | 'warning';
   } | null>(null);
+  const deepLinkHandled = useRef(false); // Track if deep link has been handled
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   // AI streaming state management using refs (like PrivateChat)
@@ -118,8 +119,17 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
       console.log('🔗 Thread ID from URL, updating state:', urlThreadId);
       dispatch({ type: 'SET_CURRENT_THREAD', payload: urlThreadId });
       dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
+      
+      // Reset deep link handled flag when navigating to a new thread
+      deepLinkHandled.current = false;
     }
   }, [urlThreadId, state.currentThreadId, dispatch]);
+
+  // Reset deep link flag when URL parameters change
+  useEffect(() => {
+    deepLinkHandled.current = false;
+    console.log('🔄 Deep link flag reset due to URL parameter change');
+  }, [questionId, answerId, commentId]);
 
   // Log navigation source for analytics
   useEffect(() => {
@@ -629,11 +639,41 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
 
   // Handle deep linking - scroll to specific content after thread loads
   useEffect(() => {
+    console.log('🔍 Deep link effect triggered - isLoading:', isLoading, 'thread:', !!thread, 'answersLoaded:', Object.keys(answers).length);
+    
     // Only proceed if thread is loaded and we have deep link parameters
-    if (isLoading || !thread) return;
+    if (isLoading || !thread) {
+      console.log('⏳ Deep link waiting - isLoading:', isLoading, 'thread:', !!thread);
+      return;
+    }
+
+    // Check if we have any deep link parameters
+    const hasDeepLinkParams = !!(questionId || answerId || commentId);
+    if (!hasDeepLinkParams) {
+      console.log('ℹ️ No deep link parameters, skipping');
+      return;
+    }
+
+    // If already handled this deep link, don't run again
+    if (deepLinkHandled.current) {
+      console.log('✅ Deep link already handled, skipping');
+      return;
+    }
+
+    // If we're trying to navigate to an answer or comment, wait for answers to load
+    if ((answerId || commentId) && Object.keys(answers).length === 0) {
+      console.log('⏳ Deep link waiting for answers to load... (currently 0 questions with answers)');
+      return;
+    }
 
     const handleDeepLink = async () => {
-      console.log('🔗 Deep link parameters:', { questionId, answerId, commentId, highlight });
+      console.log('🚀 Deep link handler EXECUTING');
+      console.log('🔗 Parameters:', { questionId, answerId, commentId, highlight });
+      console.log('🔗 Answers loaded:', Object.keys(answers).length, 'questions');
+      console.log('🔗 Total answers:', Object.values(answers).flat().length);
+      
+      // Mark as handled
+      deepLinkHandled.current = true;
 
       // Priority order: comment > answer > question
       if (commentId && answerId) {
@@ -692,10 +732,14 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         // Navigate to a specific answer
         console.log('📍 Navigating to answer:', answerId);
         
-        // Verify answer exists
-        const answerExists = Object.values(answers).flat().some(a => a.id === answerId);
+        // Verify answer exists in data
+        const allAnswers = Object.values(answers).flat();
+        const answerExists = allAnswers.some(a => a.id === answerId);
+        console.log('🔍 Answer exists in data?', answerExists);
+        console.log('🔍 All answer IDs:', allAnswers.map(a => a.id));
+        
         if (!answerExists) {
-          console.error('❌ Answer not found in thread:', answerId);
+          console.error('❌ Answer not found in thread data:', answerId);
           setDeepLinkStatus({
             show: true,
             message: 'The answer you\'re looking for was not found.',
@@ -705,13 +749,21 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           // Still attempt scroll in case it loads later
         }
         
+        // Check if element exists in DOM
+        const elementId = `answer-${answerId}`;
+        const element = document.getElementById(elementId);
+        console.log('🔍 Element in DOM?', !!element, 'ID:', elementId);
+        
         const success = await scrollToAnswer(answerId, {
           highlight: highlight || false,
           behavior: 'smooth'
         });
         
         if (!success) {
-          console.warn('⚠️ Answer not found in DOM:', answerId);
+          console.warn('⚠️ Answer not found in DOM after scroll attempts:', answerId);
+          console.log('🔍 All elements with "answer-" IDs:', 
+            Array.from(document.querySelectorAll('[id^="answer-"]')).map(el => el.id)
+          );
         }
       } else if (questionId) {
         // Navigate to a specific question

@@ -14,8 +14,26 @@ export interface ScrollToElementOptions {
 }
 
 /**
+ * Find the scrollable parent of an element
+ */
+function findScrollableParent(element: HTMLElement): HTMLElement | Window {
+  let parent = element.parentElement;
+  
+  while (parent) {
+    const { overflow, overflowY } = window.getComputedStyle(parent);
+    if (overflow === 'auto' || overflow === 'scroll' || overflowY === 'auto' || overflowY === 'scroll') {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+  
+  return window;
+}
+
+/**
  * Scroll to a specific element with optional highlighting
  * Retries if element is not immediately available (useful for dynamic content)
+ * Handles both window scroll and nested scroll containers
  */
 export const scrollToElement = ({
   elementId,
@@ -36,15 +54,14 @@ export const scrollToElement = ({
       if (element) {
         console.log(`✅ Found element "${elementId}", scrolling (attempt ${attempts})`);
         
-        // Calculate scroll position with offset
-        const elementPosition = element.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - offset;
-
-        // Scroll to element
-        window.scrollTo({
-          top: offsetPosition,
-          behavior: behavior
+        // Use scrollIntoView for reliable scrolling in any container
+        element.scrollIntoView({
+          behavior: behavior,
+          block: 'center', // Center the element in the viewport
+          inline: 'nearest'
         });
+        
+        console.log('📜 Scrolled element into view with behavior:', behavior);
 
         // Add highlight effect if requested
         if (highlight) {
