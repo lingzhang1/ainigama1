@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import { Brain, Loader2, Leaf } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
@@ -56,8 +56,6 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
   const [newAnswer, setNewAnswer] = useState('');
   const [expandedAnswerInput, setExpandedAnswerInput] = useState(false);
   const [showAskAIModal, setShowAskAIModal] = useState(false);
-  const [questionSticky, setQuestionSticky] = useState(false);
-  const questionRef = useRef<HTMLDivElement>(null);
 
   const handleAddAnswer = () => {
     if (!newAnswer.trim()) return;
@@ -70,31 +68,12 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
     onAskAI(question.id, 'question', customPrompt);
   };
 
-  // Track if question card should be sticky
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setQuestionSticky(!entry.isIntersecting && entry.boundingClientRect.top < 100);
-      },
-      { threshold: [0], rootMargin: '-100px 0px 0px 0px' }
-    );
-
-    if (questionRef.current) {
-      observer.observe(questionRef.current);
-    }
-
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <div className="space-y-4">
-      {/* Question Card - Separate and Sticky */}
+      {/* Question Card */}
       <Card
-        ref={questionRef}
         id={`question-${question.id}`}
-        className={`border border-gray-200 deep-link-target transition-all ${
-          questionSticky ? 'sticky top-[96px] z-20 shadow-lg' : ''
-        }`}
+        className="border border-gray-200 deep-link-target shadow-sm"
       >
         <CardContent className="p-4">
           <div className="flex items-start space-x-3">
