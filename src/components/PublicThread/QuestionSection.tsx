@@ -23,6 +23,7 @@ interface QuestionSectionProps {
   isAIAnswering: boolean;
   streamingRefs: React.MutableRefObject<any>;
   showThinking: boolean;
+  showAnswerInput: boolean;
   contentInteractions: { [key: string]: {isLiked: boolean, isSaved: boolean} };
   onAddAnswer: (questionId: string, content: string) => void;
   onAskAI: (targetId: string, targetType: 'question' | 'answer', customPrompt?: string) => void;
@@ -30,6 +31,7 @@ interface QuestionSectionProps {
   onLikeAnswer: (answerId: string) => void;
   onSaveAnswer: (answerId: string) => void;
   onShareAnswer: (answerId: string) => void;
+  onToggleAnswerInput: (show: boolean) => void;
 }
 
 export const QuestionSection: React.FC<QuestionSectionProps> = ({
@@ -45,23 +47,24 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
   isAIAnswering,
   streamingRefs,
   showThinking,
+  showAnswerInput,
   contentInteractions,
   onAddAnswer,
   onAskAI,
   onOpenComments,
   onLikeAnswer,
   onSaveAnswer,
-  onShareAnswer
+  onShareAnswer,
+  onToggleAnswerInput
 }) => {
   const [newAnswer, setNewAnswer] = useState('');
-  const [expandedAnswerInput, setExpandedAnswerInput] = useState(false);
   const [showAskAIModal, setShowAskAIModal] = useState(false);
 
   const handleAddAnswer = () => {
     if (!newAnswer.trim()) return;
     onAddAnswer(question.id, newAnswer.trim());
     setNewAnswer('');
-    setExpandedAnswerInput(false);
+    onToggleAnswerInput(false);
   };
 
   const handleAskAIPrompt = (customPrompt: string) => {
@@ -75,68 +78,68 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
         id={`question-${question.id}`}
         className="border border-gray-200 deep-link-target shadow-sm"
       >
-        <CardContent className="p-4">
-          <div className="flex items-start space-x-3">
-            <Avatar className="w-8 h-8">
-              <AvatarImage src={threadCreator.avatar} />
-              <AvatarFallback>{threadCreator.name.charAt(0)}</AvatarFallback>
-            </Avatar>
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center space-x-2">
-                  <span className="font-medium text-gray-800">
-                    {question.isSummary ? 'AI System' : threadCreator.name}
-                  </span>
-                  <Badge variant="outline" className="text-xs">
-                    {question.isSummary 
-                      ? 'Summary' 
-                      : `Question ${sortOrder === 'newest' ? totalQuestions - questionIndex : questionIndex + 1}`
-                    }
-                  </Badge>
-                  <span className="text-xs text-gray-500">
-                    {formatDistanceToNow(question.timestamp)} ago
-                  </span>
-                </div>
-                {/* Ask AI Button for non-summary questions */}
-                {!question.isSummary && !isGuest && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowAskAIModal(true)}
-                    disabled={isAIAnswering}
-                    className="flex items-center space-x-1 text-xs border-green-300 text-green-600 hover:bg-green-50"
-                  >
-                    {isAIAnswering ? (
-                      <Loader2 className="w-3 h-3 animate-spin" />
-                    ) : (
-                      <Brain className="w-3 h-3" />
-                    )}
-                    <span>Ask Echo</span>
-                  </Button>
-                )}
+        <CardContent className="p-2">
+          <div className="relative">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <Avatar className="w-5 h-5 flex-shrink-0">
+                  <AvatarImage src={threadCreator.avatar} />
+                  <AvatarFallback className="text-xs">{threadCreator.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <span className="font-medium text-gray-800 text-sm">
+                  {question.isSummary ? 'AI System' : threadCreator.name}
+                </span>
+                <Badge variant="outline" className="text-xs">
+                  {question.isSummary 
+                    ? 'Summary' 
+                    : `Question ${sortOrder === 'newest' ? totalQuestions - questionIndex : questionIndex + 1}`
+                  }
+                </Badge>
+                <span className="text-xs text-gray-500">
+                  {formatDistanceToNow(question.timestamp)} ago
+                </span>
               </div>
-              <div className={`text-gray-800 leading-relaxed ${question.isSummary ? 'bg-green-50 border border-green-200 rounded-lg p-3' : ''}`}>
-                {question.isSummary ? (
-                  <div>
-                    <div className="flex items-center mb-2">
-                      <div className="w-4 h-4 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mr-2">
-                        <Leaf className="w-2.5 h-2.5 text-white" />
-                      </div>
-                      <span className="text-sm font-medium text-green-700">Previous Discussion Summary</span>
+              {/* Ask AI Button for non-summary questions */}
+              {!question.isSummary && !isGuest && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAskAIModal(true)}
+                  disabled={isAIAnswering}
+                  className="flex items-center space-x-1 text-xs border-green-300 text-green-600 hover:bg-green-50"
+                >
+                  {isAIAnswering ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Brain className="w-3 h-3" />
+                  )}
+                  <span>Ask Echo</span>
+                </Button>
+              )}
+            </div>
+            
+            {/* Question Content - Full Width */}
+            <div className={`text-gray-800 leading-relaxed ${question.isSummary ? 'bg-green-50 border border-green-200 rounded-lg p-2' : ''}`}>
+              {question.isSummary ? (
+                <div>
+                  <div className="flex items-center mb-2">
+                    <div className="w-4 h-4 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center mr-2">
+                      <Leaf className="w-2.5 h-2.5 text-white" />
                     </div>
-                    <p className="text-sm text-green-700">{question.content.replace('**Thread Summary**: ', '')}</p>
+                    <span className="text-sm font-medium text-green-700">Previous Discussion Summary</span>
                   </div>
-                ) : (
-                  <p>{question.content}</p>
-                )}
-              </div>
+                  <p className="text-sm text-green-700">{question.content.replace('**Thread Summary**: ', '')}</p>
+                </div>
+              ) : (
+                <p className="text-sm">{question.content}</p>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Answers Section */}
-      <div className="space-y-4 pl-4">
+      {/* Answers Section - Indented to show hierarchy */}
+      <div className="space-y-4 ml-4">
         {answers.map((answer) => {
           const answerKey = `answer_${answer.id}`;
           const interaction = contentInteractions[answerKey] || { isLiked: false, isSaved: false };
@@ -172,7 +175,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
             streamingRefs.current[question.id].streamingContainer = el;
           }
         }}
-        className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg ml-4"
+        className="mb-4 p-2 bg-green-50 border border-green-200 rounded-lg ml-4"
         style={{ display: 'none' }}
       >
         <div className="flex items-center space-x-2 mb-3">
@@ -237,50 +240,37 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
         </div>
       </div>
 
-      {/* Add Answer Section */}
-      {!question.isSummary && (
-        <div className="ml-4 pt-4 border-t border-gray-100">
-          {!isGuest && (
-            <div className="space-y-3">
-              {!expandedAnswerInput ? (
-                <button
-                  data-answer-button
-                  onClick={() => setExpandedAnswerInput(true)}
-                  className="w-full text-left px-4 py-2 text-gray-500 hover:text-gray-700 hover:bg-gray-50 rounded-lg border border-gray-200 transition-colors"
-                >
-                  Write an answer...
-                </button>
-              ) : (
-                <>
-                  <Textarea
-                    placeholder="Share your thoughts and insights..."
-                    value={newAnswer}
-                    onChange={(e) => setNewAnswer(e.target.value)}
-                    className="min-h-[100px] focus:border-green-500 focus:ring-green-500"
-                    autoFocus
-                  />
-                  <div className="flex justify-end space-x-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setExpandedAnswerInput(false);
-                        setNewAnswer('');
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleAddAnswer}
-                      disabled={!newAnswer.trim()}
-                      className="bg-green-600 hover:bg-green-700 text-white"
-                    >
-                      Post Answer
-                    </Button>
-                  </div>
-                </>
-              )}
+      {/* Add Answer Section - Show only when showAnswerInput is true */}
+      {!question.isSummary && !isGuest && showAnswerInput && (
+        <div className="pt-3 border-t border-gray-100 ml-4">
+          <div className="space-y-3">
+            <Textarea
+              data-answer-input
+              placeholder="Share your thoughts and insights..."
+              value={newAnswer}
+              onChange={(e) => setNewAnswer(e.target.value)}
+              className="min-h-[100px] focus:border-green-500 focus:ring-green-500"
+              autoFocus
+            />
+            <div className="flex justify-end space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  onToggleAnswerInput(false);
+                  setNewAnswer('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAddAnswer}
+                disabled={!newAnswer.trim()}
+                className="bg-green-600 hover:bg-green-700 text-white"
+              >
+                Post Answer
+              </Button>
             </div>
-          )}
+          </div>
         </div>
       )}
       

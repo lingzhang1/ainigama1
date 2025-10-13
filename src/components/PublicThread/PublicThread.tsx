@@ -12,7 +12,6 @@ import { CONTEXT_OVERFLOW_THRESHOLD } from '../../constants/ai';
 import { PublicThreadHeader } from './PublicThreadHeader';
 import { QuestionSection } from './QuestionSection';
 import { CommentPanel } from './CommentPanel';
-import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 // import { ThreadMetricDisplay } from '../ui/MetricDisplay';
 // import { ContentMetricDisplay } from '../ui/MetricDisplay';
 import { ShareModal } from '../ui/ShareModal';
@@ -68,6 +67,13 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [showThinking, setShowThinking] = useState(true);
   const [headerVisible, setHeaderVisible] = useState(true);
   const [currentQuestionInView, setCurrentQuestionInView] = useState<string | null>(null);
+  const [showNewQuestionInput, setShowNewQuestionInput] = useState(false);
+  const [showAnswerInput, setShowAnswerInput] = useState<{ [questionId: string]: boolean }>({});
+  const [buttonPosition, setButtonPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartPos = useRef({ x: 0, y: 0 });
+  const dragStartMousePos = useRef({ x: 0, y: 0 });
+  const hasMoved = useRef(false);
   const lastScrollY = useRef(0);
   const questionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const streamingRefs = React.useRef<{ [questionId: string]: {
@@ -212,6 +218,85 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
       observer.disconnect();
     };
   }, [isLoading, thread, answers]);
+
+  // Handle dragging of floating buttons
+  useEffect(() => {
+    const DRAG_THRESHOLD = 5; // Minimum pixels to move before it's considered a drag
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (dragStartMousePos.current.x === 0 && dragStartMousePos.current.y === 0) return;
+      
+      // Check if user has moved enough to be considered dragging
+      const deltaX = Math.abs(e.clientX - dragStartMousePos.current.x);
+      const deltaY = Math.abs(e.clientY - dragStartMousePos.current.y);
+      
+      if (!hasMoved.current && (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD)) {
+        hasMoved.current = true;
+        setIsDragging(true);
+      }
+      
+      if (!hasMoved.current) return;
+      
+      const newX = e.clientX - dragStartPos.current.x;
+      const newY = e.clientY - dragStartPos.current.y;
+      
+      // Keep buttons within viewport
+      const maxX = window.innerWidth - 150;
+      const maxY = window.innerHeight - 150;
+      
+      setButtonPosition({
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY))
+      });
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (dragStartMousePos.current.x === 0 && dragStartMousePos.current.y === 0) return;
+      
+      const touch = e.touches[0];
+      
+      // Check if user has moved enough to be considered dragging
+      const deltaX = Math.abs(touch.clientX - dragStartMousePos.current.x);
+      const deltaY = Math.abs(touch.clientY - dragStartMousePos.current.y);
+      
+      if (!hasMoved.current && (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD)) {
+        hasMoved.current = true;
+        setIsDragging(true);
+      }
+      
+      if (!hasMoved.current) return;
+      
+      const newX = touch.clientX - dragStartPos.current.x;
+      const newY = touch.clientY - dragStartPos.current.y;
+      
+      // Keep buttons within viewport
+      const maxX = window.innerWidth - 150;
+      const maxY = window.innerHeight - 150;
+      
+      setButtonPosition({
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY))
+      });
+    };
+
+    const handleMouseUp = () => {
+      dragStartMousePos.current = { x: 0, y: 0 };
+      hasMoved.current = false;
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('touchend', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchend', handleMouseUp);
+    };
+  }, []);
 
   // Build context for AI with proper multi-user structure and overflow handling
   const buildThreadContextForAI = async (targetId: string, targetType: 'question' | 'answer' = 'question'): Promise<{ messages: ChatMessage[], summaryAdded: boolean }> => {
@@ -1459,50 +1544,47 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
 
           <div className="p-6">
           <div className="max-w-4xl mx-auto space-y-8">
-            {/* New Question Input - Always at top for thread creator */}
-            {state.currentUser && state.currentUser.id === thread.creator.id && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-                <div className="flex items-start gap-3">
-                  <Avatar className="w-8 h-8">
-                    <AvatarImage src={thread.creator.avatar} />
-                    <AvatarFallback>{thread.creator.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <textarea
-                      data-new-question-input
-                      placeholder="Ask a new question..."
-                      value={newQuestion}
-                      onChange={(e) => setNewQuestion(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
-                      rows={3}
-                    />
-                    {newQuestion.trim() && (
-                      <div className="flex justify-end gap-2 mt-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setNewQuestion('')}
-                        >
-                          Cancel
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={handleAddQuestion}
-                          disabled={isAddingQuestion}
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                        >
-                          {isAddingQuestion ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Posting...
-                            </>
-                          ) : (
-                            'Post Question'
-                          )}
-                        </Button>
-                      </div>
+            {/* New Question Input - Show at top if newest first (latest at bottom) */}
+            {state.currentUser && state.currentUser.id === thread.creator.id && showNewQuestionInput && sortOrder === 'newest' && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 mb-6">
+                <textarea
+                  data-new-question-input
+                  placeholder="Ask a new question..."
+                  value={newQuestion}
+                  onChange={(e) => setNewQuestion(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none text-sm"
+                  rows={3}
+                  autoFocus
+                />
+                <div className="flex justify-end gap-2 mt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setNewQuestion('');
+                      setShowNewQuestionInput(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      handleAddQuestion();
+                      setShowNewQuestionInput(false);
+                    }}
+                    disabled={isAddingQuestion || !newQuestion.trim()}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {isAddingQuestion ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Posting...
+                      </>
+                    ) : (
+                      'Post Question'
                     )}
-                  </div>
+                  </Button>
                 </div>
               </div>
             )}
@@ -1527,16 +1609,68 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
                   isAIAnswering={isAIAnswering[question.id] || false}
                   streamingRefs={streamingRefs}
                   showThinking={showThinking}
+                  showAnswerInput={showAnswerInput[question.id] || false}
                   onAddAnswer={handleAddAnswer}
                   onAskAI={handleAskAI}
                   onOpenComments={handleOpenComments}
                   onLikeAnswer={handleLikeAnswer}
                   onSaveAnswer={handleSaveAnswer}
                   onShareAnswer={handleShareAnswer}
+                  onToggleAnswerInput={(show: boolean) => {
+                    setShowAnswerInput(prev => ({
+                      ...prev,
+                      [question.id]: show
+                    }));
+                  }}
                   contentInteractions={contentInteractions}
                 />
               </div>
             ))}
+
+            {/* New Question Input - Show at bottom if oldest first (latest at bottom) */}
+            {state.currentUser && state.currentUser.id === thread.creator.id && showNewQuestionInput && sortOrder === 'oldest' && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 mt-6">
+                <textarea
+                  data-new-question-input
+                  placeholder="Ask a new question..."
+                  value={newQuestion}
+                  onChange={(e) => setNewQuestion(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none text-sm"
+                  rows={3}
+                  autoFocus
+                />
+                <div className="flex justify-end gap-2 mt-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setNewQuestion('');
+                      setShowNewQuestionInput(false);
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      handleAddQuestion();
+                      setShowNewQuestionInput(false);
+                    }}
+                    disabled={isAddingQuestion || !newQuestion.trim()}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {isAddingQuestion ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Posting...
+                      </>
+                    ) : (
+                      'Post Question'
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
           </div>
 
@@ -1545,23 +1679,65 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         </div>
       </main>
 
-      {/* Floating Action Buttons */}
-      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-30">
+      {/* Floating Action Buttons - Draggable */}
+      <div 
+        className="fixed flex flex-col gap-3 z-30"
+        style={{
+          bottom: buttonPosition.y === 0 ? '24px' : 'auto',
+          right: buttonPosition.x === 0 ? '24px' : 'auto',
+          top: buttonPosition.y !== 0 ? `${buttonPosition.y}px` : 'auto',
+          left: buttonPosition.x !== 0 ? `${buttonPosition.x}px` : 'auto',
+          touchAction: 'none'
+        }}
+      >
         {/* Add Answer Button - Shows for all users except guests */}
         {!isGuest && currentQuestionInView && (
           <button
-            onClick={() => {
-              const questionElement = questionRefs.current[currentQuestionInView];
-              if (questionElement) {
-                // Find the answer input in this question and focus it
-                const answerButton = questionElement.querySelector('[data-answer-button]') as HTMLButtonElement;
-                if (answerButton) {
-                  answerButton.click();
-                  answerButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-              }
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              hasMoved.current = false;
+              dragStartMousePos.current = { x: e.clientX, y: e.clientY };
+              const rect = e.currentTarget.getBoundingClientRect();
+              dragStartPos.current = { 
+                x: e.clientX - rect.left, 
+                y: e.clientY - rect.top
+              };
             }}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white rounded-full px-5 py-3 shadow-lg transition-all hover:scale-105"
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              hasMoved.current = false;
+              const touch = e.touches[0];
+              dragStartMousePos.current = { x: touch.clientX, y: touch.clientY };
+              const rect = e.currentTarget.getBoundingClientRect();
+              dragStartPos.current = { 
+                x: touch.clientX - rect.left, 
+                y: touch.clientY - rect.top
+              };
+            }}
+            onClick={(e) => {
+              if (hasMoved.current) {
+                e.preventDefault();
+                return;
+              }
+              // Show answer input for current question
+              setShowAnswerInput(prev => ({
+                ...prev,
+                [currentQuestionInView]: true
+              }));
+              
+              // Scroll to the answer input
+              setTimeout(() => {
+                const questionElement = questionRefs.current[currentQuestionInView];
+                if (questionElement) {
+                  const answerTextarea = questionElement.querySelector('[data-answer-input]') as HTMLTextAreaElement;
+                  if (answerTextarea) {
+                    answerTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    answerTextarea.focus();
+                  }
+                }
+              }, 100);
+            }}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white rounded-full px-5 py-3 shadow-lg transition-all hover:scale-105 cursor-move"
             title="Add answer to current question"
           >
             <Edit3 className="w-5 h-5" />
@@ -1572,10 +1748,40 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
         {/* Add Question Button - Only for thread creator */}
         {state.currentUser && state.currentUser.id === thread.creator.id && (
           <button
-            onClick={() => {
-              // Scroll to top and show new question input
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              hasMoved.current = false;
+              dragStartMousePos.current = { x: e.clientX, y: e.clientY };
+              const rect = e.currentTarget.getBoundingClientRect();
+              dragStartPos.current = { 
+                x: e.clientX - rect.left, 
+                y: e.clientY - rect.top
+              };
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              hasMoved.current = false;
+              const touch = e.touches[0];
+              dragStartMousePos.current = { x: touch.clientX, y: touch.clientY };
+              const rect = e.currentTarget.getBoundingClientRect();
+              dragStartPos.current = { 
+                x: touch.clientX - rect.left, 
+                y: touch.clientY - rect.top
+              };
+            }}
+            onClick={(e) => {
+              if (hasMoved.current) {
+                e.preventDefault();
+                return;
+              }
+              setShowNewQuestionInput(true);
+              // Scroll to the appropriate location based on sort order
               if (scrollContainerRef.current) {
-                scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                if (sortOrder === 'newest') {
+                  scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                  scrollContainerRef.current.scrollTo({ top: scrollContainerRef.current.scrollHeight, behavior: 'smooth' });
+                }
               }
               // Focus on new question input after scrolling
               setTimeout(() => {
@@ -1585,7 +1791,7 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
                 }
               }, 500);
             }}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 py-3 shadow-lg transition-all hover:scale-105"
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 py-3 shadow-lg transition-all hover:scale-105 cursor-move"
             title="Add new question"
           >
             <Plus className="w-5 h-5" />
