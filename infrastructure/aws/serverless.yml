@@ -916,7 +916,7 @@ functions:
             maxAge: 86400
 
   getUserSaves:
-    handler: src/handlers/metrics.getUserSaves
+    handler: src/handlers/api.getUserSaves
     events:
       - http:
           path: /users/{userId}/saves
@@ -933,6 +933,66 @@ functions:
             maxAge: 86400
       - http:
           path: /users/{userId}/saves
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  getUserLikes:
+    handler: src/handlers/metrics.getUserLikes
+    events:
+      - http:
+          path: /users/{userId}/likes
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /users/{userId}/likes
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  getUserReplies:
+    handler: src/handlers/metrics.getUserReplies
+    events:
+      - http:
+          path: /users/{userId}/replies
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /users/{userId}/replies
           method: options
           cors:
             origin: '*'

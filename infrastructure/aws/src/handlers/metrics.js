@@ -801,6 +801,19 @@ exports.getUserSaves = async (event) => {
           const contentResult = await dbOperations.get(contentTable, { id: save.content_id });
           
           if (contentResult.Item) {
+            // For answers and questions, get the thread ID
+            let threadId = contentResult.Item.thread_id;
+            
+            if (save.content_type === 'answer' && !threadId) {
+              // Get thread ID from question
+              try {
+                const questionResult = await dbOperations.get(tables.questions, { id: contentResult.Item.question_id });
+                threadId = questionResult.Item?.thread_id;
+              } catch (err) {
+                console.error('Failed to get thread ID for answer:', err);
+              }
+            }
+            
             return {
               contentType: save.content_type,
               contentId: save.content_id,
@@ -809,6 +822,7 @@ exports.getUserSaves = async (event) => {
                 preview: contentResult.Item.content?.substring(0, 200) || contentResult.Item.title,
                 creator: contentResult.Item.creator_id || contentResult.Item.user_id
               },
+              threadId: threadId || save.content_id, // Include thread ID for navigation
               timestamp: save.created_at
             };
           }
@@ -1283,6 +1297,246 @@ exports.getUserInteractionsForThread = async (event) => {
       statusCode: 500,
       body: JSON.stringify({ 
         error: 'Failed to get user interactions',
+        message: error.message 
+      })
+    });
+  }
+};
+
+// ==================== USER LIKES ====================
+
+// Get all content liked by a user
+exports.getUserLikes = async (event) => {
+  try {
+    console.log('getUserLikes called with method:', event.httpMethod);
+    
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
+      return handleOptionsRequest();
+    }
+
+    const { userId } = event.pathParameters || {};
+    
+    if (!userId) {
+      return addCorsHeaders({
+        statusCode: 400,
+        body: JSON.stringify({ error: 'User ID is required' })
+      });
+    }
+
+    // Get user's likes using UserIdIndex
+    const likesResult = await dbOperations.query(
+      tables.likes,
+      'user_id = :userId',
+      { ':userId': userId },
+      'UserIdIndex',
+      false,
+      100 // Limit to 100 most recent likes
+    );
+
+    // Get content details for each like
+    const likes = await Promise.all(
+      (likesResult.Items || []).map(async (like) => {
+        try {
+          let contentTable;
+          switch (like.content_type) {
+            case 'thread':
+              contentTable = tables.threads;
+              break;
+            case 'question':
+              contentTable = tables.questions;
+              break;
+            case 'answer':
+              contentTable = tables.answers;
+              break;
+            case 'comment':
+              contentTable = tables.comments;
+              break;
+          }
+
+          const contentResult = await dbOperations.get(contentTable, { id: like.content_id });
+          
+          if (contentResult.Item) {
+            // For answers and questions, get the thread ID
+            let threadId = contentResult.Item.thread_id;
+            
+            if (like.content_type === 'answer' && !threadId) {
+              // Get thread ID from question
+              const questionResult = await dbOperations.get(tables.questions, { id: contentResult.Item.question_id });
+              threadId = questionResult.Item?.thread_id;
+            }
+            
+            return {
+              contentType: like.content_type,
+              contentId: like.content_id,
+              content: {
+                title: contentResult.Item.title || contentResult.Item.content?.substring(0, 100) + '...',
+                preview: contentResult.Item.content?.substring(0, 200) || contentResult.Item.title,
+                creator: contentResult.Item.creator_id || contentResult.Item.user_id
+              },
+              threadId: threadId || like.content_id,
+              timestamp: like.created_at
+            };
+          }
+        } catch (error) {
+          console.error('Failed to get content for like:', error);
+        }
+        return null;
+      })
+    );
+
+    // Filter out null results
+    const validLikes = likes.filter(like => like !== null);
+
+    return addCorsHeaders({
+      statusCode: 200,
+      body: JSON.stringify({
+        likes: validLikes
+      })
+    });
+
+  } catch (error) {
+    console.error('Get user likes error:', error);
+    return addCorsHeaders({
+      statusCode: 500,
+      body: JSON.stringify({ 
+        error: 'Failed to get user likes',
+        message: error.message 
+      })
+    });
+  }
+};
+
+// ==================== USER REPLIES ====================
+
+// Get all answers and comments by a user
+exports.getUserReplies = async (event) => {
+  try {
+    console.log('getUserReplies called with method:', event.httpMethod);
+    
+    // Handle preflight OPTIONS request
+    if (event.httpMethod === 'OPTIONS') {
+      console.log('Handling OPTIONS request');
+      return handleOptionsRequest();
+    }
+
+    const { userId } = event.pathParameters || {};
+    
+    if (!userId) {
+      return addCorsHeaders({
+        statusCode: 400,
+        body: JSON.stringify({ error: 'User ID is required' })
+      });
+    }
+
+    // Get user's answers
+    const answersResult = await dbOperations.scan(
+      tables.answers,
+      'user_id = :userId',
+      { ':userId': userId },
+      100
+    );
+
+    // Get user's comments
+    const commentsResult = await dbOperations.scan(
+      tables.comments,
+      'userId = :userId',
+      { ':userId': userId },
+      100
+    );
+
+    // Transform answers to reply format
+    const answerReplies = await Promise.all(
+      (answersResult.Items || []).map(async (answer) => {
+        try {
+          // Get question to find thread
+          const questionResult = await dbOperations.get(tables.questions, { id: answer.question_id });
+          const threadId = questionResult.Item?.thread_id;
+          
+          // Get thread details if available
+          let threadTitle = '';
+          if (threadId) {
+            const threadResult = await dbOperations.get(tables.threads, { id: threadId });
+            threadTitle = threadResult.Item?.title || '';
+          }
+          
+          return {
+            contentType: 'answer',
+            contentId: answer.id,
+            content: {
+              title: threadTitle || 'Answer',
+              preview: answer.content?.substring(0, 200) || '',
+              creator: answer.user_id
+            },
+            threadId: threadId,
+            timestamp: answer.created_at
+          };
+        } catch (error) {
+          console.error('Failed to get thread for answer:', error);
+          return null;
+        }
+      })
+    );
+
+    // Transform comments to reply format
+    const commentReplies = await Promise.all(
+      (commentsResult.Items || []).map(async (comment) => {
+        try {
+          // Get answer to find question, then thread
+          const answerResult = await dbOperations.get(tables.answers, { id: comment.answerId });
+          const questionId = answerResult.Item?.question_id;
+          
+          let threadId = null;
+          let threadTitle = '';
+          
+          if (questionId) {
+            const questionResult = await dbOperations.get(tables.questions, { id: questionId });
+            threadId = questionResult.Item?.thread_id;
+            
+            if (threadId) {
+              const threadResult = await dbOperations.get(tables.threads, { id: threadId });
+              threadTitle = threadResult.Item?.title || '';
+            }
+          }
+          
+          return {
+            contentType: 'comment',
+            contentId: comment.id,
+            content: {
+              title: threadTitle || 'Comment',
+              preview: comment.content?.substring(0, 200) || '',
+              creator: comment.userId
+            },
+            threadId: threadId,
+            timestamp: comment.timestamp
+          };
+        } catch (error) {
+          console.error('Failed to get thread for comment:', error);
+          return null;
+        }
+      })
+    );
+
+    // Combine and filter out null results
+    const allReplies = [...answerReplies, ...commentReplies].filter(reply => reply !== null);
+    
+    // Sort by timestamp (most recent first)
+    allReplies.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    return addCorsHeaders({
+      statusCode: 200,
+      body: JSON.stringify({
+        replies: allReplies
+      })
+    });
+
+  } catch (error) {
+    console.error('Get user replies error:', error);
+    return addCorsHeaders({
+      statusCode: 500,
+      body: JSON.stringify({ 
+        error: 'Failed to get user replies',
         message: error.message 
       })
     });

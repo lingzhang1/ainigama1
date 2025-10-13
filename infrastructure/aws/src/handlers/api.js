@@ -41,8 +41,10 @@ module.exports = {
   toggleLike: metrics.toggleLike,
   getLikes: metrics.getLikes,
   toggleSave: metrics.toggleSave,
-  getUserSaves: metrics.getUserSaves,
-  getUserInteractionsForThread: metrics.getUserInteractionsForThread,
   trackShare: metrics.trackShare,
-  getShares: metrics.getShares
+  getShares: metrics.getShares,
+  getUserInteractionsForThread: metrics.getUserInteractionsForThread,
+  getUserSaves: metrics.getUserSaves,
+  getUserLikes: metrics.getUserLikes,
+  getUserReplies: metrics.getUserReplies
 };

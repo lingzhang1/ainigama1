@@ -92,7 +92,13 @@ const AppContent: React.FC = () => {
       }
     } else if (currentPath === '/') {
       // Clear current thread when returning to forum, but only if not in categories or other non-route views
-      if (state.viewMode !== 'forum' && state.viewMode !== 'categories' && state.viewMode !== 'user-center' && state.viewMode !== 'account') {
+      // Don't reset if we're in a valid view mode (forum, categories, user-center, account, public-thread, private)
+      if (state.viewMode !== 'forum' && 
+          state.viewMode !== 'categories' && 
+          state.viewMode !== 'user-center' && 
+          state.viewMode !== 'account' &&
+          state.viewMode !== 'public-thread' &&
+          state.viewMode !== 'private') {
         console.log('🔄 Setting view mode to forum, clearing current thread');
         dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' });
         dispatch({ type: 'SET_CURRENT_THREAD', payload: null });

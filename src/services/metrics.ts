@@ -167,6 +167,52 @@ class MetricsService {
     }
   }
 
+  /**
+   * Get user's liked content
+   */
+  async getUserLikes(userId: string): Promise<LikesData> {
+    try {
+      const response = await fetch(`${this.apiUrl}/users/${userId}/likes`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get user likes: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting user likes:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user's replies (answers and comments)
+   */
+  async getUserReplies(userId: string): Promise<any> {
+    try {
+      const response = await fetch(`${this.apiUrl}/users/${userId}/replies`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get user replies: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting user replies:', error);
+      throw error;
+    }
+  }
+
   // ==================== SHARES ====================
 
   /**

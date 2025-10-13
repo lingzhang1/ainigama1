@@ -6,6 +6,7 @@ import { CompactMetricDisplay } from '../ui/MetricDisplay';
 import { useAppContext } from '../../context/AppContext';
 import { MessageSquare, Users, ArrowLeft, Calendar, MessageCircle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { metricsService } from '../../services/metrics';
 
 interface UserCenterProps {
   onBack: () => void;
@@ -26,15 +27,6 @@ interface UserPost {
   };
   status: 'published' | 'draft' | 'archived';
   threadId?: string;
-}
-
-interface Conversation {
-  id: string;
-  title?: string;
-  createdAt?: string;
-  created_at?: string;
-  updatedAt?: string;
-  updated_at?: string;
 }
 
 interface Thread {
@@ -69,9 +61,14 @@ interface Answer {
 
 export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
   const { state, dispatch } = useAppContext();
-  const [userPosts, setUserPosts] = useState<UserPost[]>([]);
-  const [filter, setFilter] = useState<'all' | 'conversations' | 'questions' | 'answers'>('all');
+  const [filter, setFilter] = useState<'my-posts' | 'replied' | 'liked' | 'saved'>('my-posts');
   const [loading, setLoading] = useState(true);
+  
+  // Separate states for different types of posts
+  const [myPosts, setMyPosts] = useState<UserPost[]>([]);
+  const [repliedPosts, setRepliedPosts] = useState<UserPost[]>([]);
+  const [likedPosts, setLikedPosts] = useState<UserPost[]>([]);
+  const [savedPosts, setSavedPosts] = useState<UserPost[]>([]);
 
   // Fetch real user data
   useEffect(() => {
@@ -85,17 +82,15 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
         const userId = state.currentUser.id;
         const apiUrl = (import.meta as any).env?.VITE_API_URL || 'https://t9ir58i9z9.execute-api.us-east-1.amazonaws.com/dev';
         
-        // Fetch user's conversations
-        const conversationsResponse = await fetch(`${apiUrl}/user-conversations/${userId}`);
-        const conversationsData = await conversationsResponse.json();
-        const conversations: Conversation[] = conversationsData.conversations || [];
-
         // Fetch user's threads
         const threadsResponse = await fetch(`${apiUrl}/threads`);
         const threadsData = await threadsResponse.json();
-        const userThreads: Thread[] = (threadsData.threads || []).filter((thread: any) => 
-          thread.creator_id === userId || thread.creatorId === userId
-        );
+        const userThreads: Thread[] = (threadsData.threads || []).filter((thread: any) => {
+          // Check both creator_id and nested creator.id
+          const creatorId = thread.creator_id || thread.creatorId || thread.creator?.id;
+          return creatorId === userId;
+        });
+        
 
         // Note: Questions and answers are fetched per thread, not globally
         // For now, we'll skip these until we implement proper endpoints
@@ -103,17 +98,9 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
         const userAnswers: Answer[] = [];
 
         // Transform data to UserPost format
+        // For "My Posts", only show published threads (public threads)
+        // Private conversations are not considered "posts" - they are private chats
         const posts: UserPost[] = [
-          ...conversations.map((conv): UserPost => ({
-            id: conv.id,
-            type: 'conversation',
-            title: conv.title || 'Private Conversation',
-            content: 'Private conversation with AI',
-            createdAt: new Date(conv.created_at || conv.createdAt || new Date()),
-            stats: { views: 0, replies: 0, likes: 0, saves: 0, shares: 0 },
-            status: 'published',
-            threadId: conv.id  // For conversations, the ID is the conversation ID
-          })),
           ...userThreads.map((thread): UserPost => ({
             id: thread.id,
             type: 'question',
@@ -152,11 +139,92 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
           }))
         ];
 
-        setUserPosts(posts);
+        // Set my posts (posts created by me)
+        setMyPosts(posts);
+        
+        // Fetch user's saved posts
+        try {
+          const savesData = await metricsService.getUserSaves(userId);
+          
+          // Transform saves to UserPost format
+          const savedPostsArray: UserPost[] = (savesData.saves || [])
+            .map((save: any) => {
+              // For threads, use contentId as threadId
+              // For answers/questions, use the provided threadId (if backend updated)
+              const threadId = save.threadId || (save.contentType === 'thread' ? save.contentId : undefined);
+              
+              return {
+                id: save.contentId,
+                type: save.contentType === 'thread' ? 'question' : save.contentType,
+                title: save.content?.title || 'Saved Content',
+                content: save.content?.preview || '',
+                createdAt: new Date(save.timestamp),
+                stats: { views: 0, replies: 0, likes: 0, saves: 0, shares: 0 },
+                status: 'published' as const,
+                threadId: threadId
+              };
+            })
+            .filter((post: UserPost) => post.threadId !== undefined); // Only show posts with valid threadId
+          
+          setSavedPosts(savedPostsArray);
+        } catch (error) {
+          console.error('Failed to fetch saved posts:', error);
+          setSavedPosts([]);
+        }
+        
+        // Fetch user's replies (answers and comments)
+        try {
+          const repliesData = await metricsService.getUserReplies(userId);
+          
+          const repliedPostsArray: UserPost[] = (repliesData.replies || [])
+            .map((reply: any) => ({
+              id: reply.contentId,
+              type: reply.contentType as 'answer' | 'comment',
+              title: reply.content?.title || 'Reply',
+              content: reply.content?.preview || '',
+              createdAt: new Date(reply.timestamp),
+              stats: { views: 0, replies: 0, likes: 0, saves: 0, shares: 0 },
+              status: 'published' as const,
+              threadId: reply.threadId
+            }))
+            .filter((post: UserPost) => post.threadId !== undefined); // Only show posts with valid threadId
+          
+          setRepliedPosts(repliedPostsArray);
+        } catch (error) {
+          console.error('Failed to fetch replied posts:', error);
+          setRepliedPosts([]);
+        }
+        
+        // Fetch user's liked posts
+        try {
+          const likesData = await metricsService.getUserLikes(userId);
+          
+          const likedPostsArray: UserPost[] = ((likesData as any).likes || [])
+            .map((like: any) => ({
+              id: like.contentId,
+              type: like.contentType === 'thread' ? 'question' : like.contentType,
+              title: like.content?.title || 'Liked Content',
+              content: like.content?.preview || '',
+              createdAt: new Date(like.timestamp),
+              stats: { views: 0, replies: 0, likes: 0, saves: 0, shares: 0 },
+              status: 'published' as const,
+              threadId: like.threadId
+            }))
+            .filter((post: UserPost) => post.threadId !== undefined); // Only show posts with valid threadId
+          
+          setLikedPosts(likedPostsArray);
+        } catch (error) {
+          console.error('Failed to fetch liked posts:', error);
+          setLikedPosts([]);
+        }
+        
       } catch (error) {
         console.error('Failed to fetch user posts:', error);
         // Fallback to empty array if API fails
-        setUserPosts([]);
+        setMyPosts([]);
+        setRepliedPosts([]);
+        setLikedPosts([]);
+        setSavedPosts([]);
       } finally {
         setLoading(false);
       }
@@ -165,13 +233,20 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
     fetchUserPosts();
   }, [state.currentUser?.id]);
 
-  const filteredPosts = userPosts.filter(post => {
-    if (filter === 'all') return true;
-    if (filter === 'conversations') return post.type === 'conversation';
-    if (filter === 'questions') return post.type === 'question';
-    if (filter === 'answers') return post.type === 'answer';
-    return true;
-  });
+  const filteredPosts = (() => {
+    switch (filter) {
+      case 'my-posts':
+        return myPosts;
+      case 'replied':
+        return repliedPosts;
+      case 'liked':
+        return likedPosts;
+      case 'saved':
+        return savedPosts;
+      default:
+        return myPosts;
+    }
+  })();
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -201,49 +276,62 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
   };
 
   const handleStatClick = (statType: string) => {
-    // For now, just show an alert with the stat details
-    const statMessages: { [key: string]: string } = {
-      'posts': `You have ${userPosts.length} total posts`,
-      'views': `Your posts have ${userPosts.reduce((sum, post) => sum + post.stats.views, 0)} total views`,
-      'replies': `Your posts have ${userPosts.reduce((sum, post) => sum + post.stats.replies, 0)} total replies`,
-      'likes': `Your posts have ${userPosts.reduce((sum, post) => sum + post.stats.likes, 0)} total likes`,
-      'saves': `Your posts have ${userPosts.reduce((sum, post) => sum + post.stats.saves, 0)} total saves`,
-      'shares': `Your posts have ${userPosts.reduce((sum, post) => sum + post.stats.shares, 0)} total shares`
-    };
-    alert(statMessages[statType] || 'Stat details');
+    // Map stat types to filters
+    switch (statType) {
+      case 'posts':
+        setFilter('my-posts');
+        break;
+      case 'replies':
+        setFilter('replied');
+        break;
+      case 'likes':
+        setFilter('liked');
+        break;
+      case 'saves':
+        setFilter('saved');
+        break;
+    }
   };
 
   const handleViewPost = (post: UserPost) => {
+    console.log('🎯 handleViewPost called:', {
+      type: post.type,
+      threadId: post.threadId,
+      title: post.title
+    });
+    
     switch (post.type) {
       case 'conversation':
         // Navigate to private chat to view the conversation
         if (post.threadId) {
-          dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
+          console.log('✅ Setting conversation ID:', post.threadId);
           dispatch({ type: 'SET_CURRENT_CONVERSATION', payload: post.threadId });
+          console.log('✅ Setting view mode to private');
+          dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
         } else {
-          alert(`View conversation: ${post.title}\n\nConversation ID not available for viewing.`);
+          alert(`Cannot view this conversation.\n\nConversation ID is not available.`);
         }
         break;
       case 'question':
         // Navigate to the thread containing this question
         if (post.threadId) {
-          dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
           dispatch({ type: 'SET_CURRENT_THREAD', payload: post.threadId });
+          dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
         } else {
-          alert(`View question: ${post.title}\n\nThread ID not available for viewing.`);
+          alert(`Cannot view this post.\n\nThread ID is not available.`);
         }
         break;
       case 'answer':
         // Navigate to the thread/answer to view the answer
         if (post.threadId) {
-          dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
           dispatch({ type: 'SET_CURRENT_THREAD', payload: post.threadId });
+          dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
         } else {
-          alert(`View answer: ${post.title}\n\nThread ID not available for viewing.`);
+          alert(`Cannot view this answer.\n\nThread ID is not available.`);
         }
         break;
       default:
-        alert(`View ${post.type}: ${post.title}\n\nView functionality not yet implemented.`);
+        alert(`View functionality for ${post.type} is not yet implemented.`);
     }
   };
 
@@ -298,96 +386,77 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-6">
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <Card 
-            className="bg-white cursor-pointer hover:shadow-md transition-shadow hover:border-green-300"
+            className={`cursor-pointer transition-all ${
+              filter === 'my-posts' 
+                ? 'bg-green-50 border-green-500 shadow-md' 
+                : 'bg-white hover:shadow-md hover:border-green-300'
+            }`}
             onClick={() => handleStatClick('posts')}
           >
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-gray-800">{userPosts.length}</div>
-              <div className="text-sm text-gray-600">Total Posts</div>
-            </CardContent>
-          </Card>
-          <Card 
-            className="bg-white cursor-pointer hover:shadow-md transition-shadow hover:border-green-300"
-            onClick={() => handleStatClick('views')}
-          >
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-gray-800">
-                {userPosts.reduce((sum, post) => sum + post.stats.views, 0)}
+              <div className={`text-2xl font-bold ${filter === 'my-posts' ? 'text-green-700' : 'text-gray-800'}`}>
+                {myPosts.length}
               </div>
-              <div className="text-sm text-gray-600">Total Views</div>
+              <div className={`text-sm ${filter === 'my-posts' ? 'text-green-600' : 'text-gray-600'}`}>
+                My Posts
+              </div>
             </CardContent>
           </Card>
           <Card 
-            className="bg-white cursor-pointer hover:shadow-md transition-shadow hover:border-green-300"
+            className={`cursor-pointer transition-all ${
+              filter === 'replied' 
+                ? 'bg-green-50 border-green-500 shadow-md' 
+                : 'bg-white hover:shadow-md hover:border-green-300'
+            }`}
             onClick={() => handleStatClick('replies')}
           >
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-gray-800">
-                {userPosts.reduce((sum, post) => sum + post.stats.replies, 0)}
+              <div className={`text-2xl font-bold ${filter === 'replied' ? 'text-green-700' : 'text-gray-800'}`}>
+                {repliedPosts.length}
               </div>
-              <div className="text-sm text-gray-600">Total Replies</div>
+              <div className={`text-sm ${filter === 'replied' ? 'text-green-600' : 'text-gray-600'}`}>
+                Replied
+              </div>
             </CardContent>
           </Card>
           <Card 
-            className="bg-white cursor-pointer hover:shadow-md transition-shadow hover:border-green-300"
+            className={`cursor-pointer transition-all ${
+              filter === 'liked' 
+                ? 'bg-green-50 border-green-500 shadow-md' 
+                : 'bg-white hover:shadow-md hover:border-green-300'
+            }`}
             onClick={() => handleStatClick('likes')}
           >
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-gray-800">
-                {userPosts.reduce((sum, post) => sum + post.stats.likes, 0)}
+              <div className={`text-2xl font-bold ${filter === 'liked' ? 'text-green-700' : 'text-gray-800'}`}>
+                {likedPosts.length}
               </div>
-              <div className="text-sm text-gray-600">Total Likes</div>
+              <div className={`text-sm ${filter === 'liked' ? 'text-green-600' : 'text-gray-600'}`}>
+                Liked
+              </div>
             </CardContent>
           </Card>
           <Card 
-            className="bg-white cursor-pointer hover:shadow-md transition-shadow hover:border-green-300"
+            className={`cursor-pointer transition-all ${
+              filter === 'saved' 
+                ? 'bg-green-50 border-green-500 shadow-md' 
+                : 'bg-white hover:shadow-md hover:border-green-300'
+            }`}
             onClick={() => handleStatClick('saves')}
           >
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-gray-800">
-                {userPosts.reduce((sum, post) => sum + post.stats.saves, 0)}
+              <div className={`text-2xl font-bold ${filter === 'saved' ? 'text-green-700' : 'text-gray-800'}`}>
+                {savedPosts.length}
               </div>
-              <div className="text-sm text-gray-600">Total Saves</div>
-            </CardContent>
-          </Card>
-          <Card 
-            className="bg-white cursor-pointer hover:shadow-md transition-shadow hover:border-green-300"
-            onClick={() => handleStatClick('shares')}
-          >
-            <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-gray-800">
-                {userPosts.reduce((sum, post) => sum + post.stats.shares, 0)}
+              <div className={`text-sm ${filter === 'saved' ? 'text-green-600' : 'text-gray-600'}`}>
+                Saved
               </div>
-              <div className="text-sm text-gray-600">Total Shares</div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="flex flex-wrap gap-2 mb-6">
-          {[
-            { key: 'all', label: 'All Posts' },
-            { key: 'conversations', label: 'Private Conversations' },
-            { key: 'questions', label: 'Questions' },
-            { key: 'answers', label: 'Answers' }
-          ].map((tab) => (
-            <Button
-              key={tab.key}
-              onClick={() => setFilter(tab.key as any)}
-              variant={filter === tab.key ? 'default' : 'outline'}
-              size="sm"
-              className={
-                filter === tab.key
-                  ? 'bg-green-600 hover:bg-green-700 text-white'
-                  : 'border-green-300 text-green-600 hover:bg-green-50'
-              }
-            >
-              {tab.label}
-            </Button>
-          ))}
-        </div>
 
         {/* Posts List */}
         <div className="space-y-4">
@@ -397,15 +466,15 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
                 <MessageSquare className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-gray-800 mb-2">No posts found</h3>
                 <p className="text-gray-600">
-                  {filter === 'all' 
+                  {filter === 'my-posts' 
                     ? "You haven't created any posts yet." 
-                    : filter === 'conversations' 
-                      ? "You haven't started any private conversations yet."
-                      : filter === 'questions'
-                        ? "You haven't asked any questions yet."
-                        : filter === 'answers'
-                          ? "You haven't provided any answers yet."
-                          : `You haven't created any ${filter} yet.`
+                    : filter === 'replied' 
+                      ? "You haven't replied to any posts yet."
+                      : filter === 'liked'
+                        ? "You haven't liked any posts yet."
+                        : filter === 'saved'
+                          ? "You haven't saved any posts yet."
+                          : "No posts found."
                   }
                 </p>
               </CardContent>
