@@ -70,7 +70,6 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [showNewQuestionInput, setShowNewQuestionInput] = useState(false);
   const [showAnswerInput, setShowAnswerInput] = useState<{ [questionId: string]: boolean }>({});
   const [buttonPosition, setButtonPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
   const dragStartPos = useRef({ x: 0, y: 0 });
   const dragStartMousePos = useRef({ x: 0, y: 0 });
   const hasMoved = useRef(false);
@@ -232,7 +231,6 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
       
       if (!hasMoved.current && (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD)) {
         hasMoved.current = true;
-        setIsDragging(true);
       }
       
       if (!hasMoved.current) return;
@@ -261,7 +259,6 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
       
       if (!hasMoved.current && (deltaX > DRAG_THRESHOLD || deltaY > DRAG_THRESHOLD)) {
         hasMoved.current = true;
-        setIsDragging(true);
       }
       
       if (!hasMoved.current) return;
@@ -282,7 +279,6 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
     const handleMouseUp = () => {
       dragStartMousePos.current = { x: 0, y: 0 };
       hasMoved.current = false;
-      setIsDragging(false);
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -1021,9 +1017,9 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
             .replace(/\n/g, '<br>');
           refs.contentElement.innerHTML = formattedContent;
         }
-        // Auto-scroll to bottom
-        if (messagesEndRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        // Auto-scroll to the streaming container, not the bottom
+        if (refs.streamingContainer) {
+          refs.streamingContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
       };
 
@@ -1542,7 +1538,7 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
             </div>
           )}
 
-          <div className="p-6">
+          <div className="p-3">
           <div className="max-w-4xl mx-auto space-y-8">
             {/* New Question Input - Show at top if newest first (latest at bottom) */}
             {state.currentUser && state.currentUser.id === thread.creator.id && showNewQuestionInput && sortOrder === 'newest' && (
