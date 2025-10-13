@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Loader2, X } from 'lucide-react';
+import { MessageSquare, Loader2, X, Plus, Edit3 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Thread, Question, Answer, Comment, User } from '../../types';
 import { useAppContext } from '../../context/AppContext';
@@ -11,8 +11,8 @@ import { countChatMessagesTokens } from '../../utils/tokenCounter';
 import { CONTEXT_OVERFLOW_THRESHOLD } from '../../constants/ai';
 import { PublicThreadHeader } from './PublicThreadHeader';
 import { QuestionSection } from './QuestionSection';
-import { NewQuestionInput } from './NewQuestionInput';
 import { CommentPanel } from './CommentPanel';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 // import { ThreadMetricDisplay } from '../ui/MetricDisplay';
 // import { ContentMetricDisplay } from '../ui/MetricDisplay';
 import { ShareModal } from '../ui/ShareModal';
@@ -67,7 +67,9 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [showThinking, setShowThinking] = useState(true);
   const [headerVisible, setHeaderVisible] = useState(true);
+  const [currentQuestionInView, setCurrentQuestionInView] = useState<string | null>(null);
   const lastScrollY = useRef(0);
+  const questionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const streamingRefs = React.useRef<{ [questionId: string]: {
     thinking: string;
     content: string;
@@ -177,6 +179,39 @@ export const PublicThread: React.FC<PublicThreadProps> = ({ onLogout }) => {
       scrollContainer.removeEventListener('scroll', handleScroll);
     };
   }, [isLoading, thread, headerVisible]);
+
+  // Track which question is currently in viewport using Intersection Observer
+  useEffect(() => {
+    if (isLoading || !thread) return;
+
+    const observerOptions = {
+      root: scrollContainerRef.current,
+      rootMargin: '-100px 0px -50% 0px',
+      threshold: 0
+    };
+
+    const observerCallback = (entries: IntersectionObserverEntry[]) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const questionId = entry.target.getAttribute('data-question-id');
+          if (questionId) {
+            setCurrentQuestionInView(questionId);
+          }
+        }
+      });
+    };
+
+    const observer = new IntersectionObserver(observerCallback, observerOptions);
+
+    // Observe all question elements
+    Object.values(questionRefs.current).forEach((ref) => {
+      if (ref) observer.observe(ref);
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [isLoading, thread, answers]);
 
   // Build context for AI with proper multi-user structure and overflow handling
   const buildThreadContextForAI = async (targetId: string, targetType: 'question' | 'answer' = 'question'): Promise<{ messages: ChatMessage[], summaryAdded: boolean }> => {
@@ -1424,50 +1459,84 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
 
           <div className="p-6">
           <div className="max-w-4xl mx-auto space-y-8">
-            {/* Add New Question (Only for thread creator) - Show at top if newest first */}
-            {state.currentUser && state.currentUser.id === thread.creator.id && sortOrder === 'newest' && (
-              <NewQuestionInput
-                newQuestion={newQuestion}
-                isAddingQuestion={isAddingQuestion}
-                onQuestionChange={setNewQuestion}
-                onAddQuestion={handleAddQuestion}
-              />
+            {/* New Question Input - Always at top for thread creator */}
+            {state.currentUser && state.currentUser.id === thread.creator.id && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+                <div className="flex items-start gap-3">
+                  <Avatar className="w-8 h-8">
+                    <AvatarImage src={thread.creator.avatar} />
+                    <AvatarFallback>{thread.creator.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <textarea
+                      data-new-question-input
+                      placeholder="Ask a new question..."
+                      value={newQuestion}
+                      onChange={(e) => setNewQuestion(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
+                      rows={3}
+                    />
+                    {newQuestion.trim() && (
+                      <div className="flex justify-end gap-2 mt-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setNewQuestion('')}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleAddQuestion}
+                          disabled={isAddingQuestion}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                          {isAddingQuestion ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Posting...
+                            </>
+                          ) : (
+                            'Post Question'
+                          )}
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Questions and Answers */}
             {sortedQuestions.map((question, questionIndex) => (
-              <QuestionSection
+              <div 
                 key={question.id}
-                question={question}
-                questionIndex={questionIndex}
-                totalQuestions={sortedQuestions.length}
-                sortOrder={sortOrder}
-                answers={answers[question.id] || []}
-                threadCreator={thread.creator}
-                currentUser={state.currentUser}
-                users={users}
-                isGuest={isGuest}
-                isAIAnswering={isAIAnswering[question.id] || false}
-                streamingRefs={streamingRefs}
-                showThinking={showThinking}
-                onAddAnswer={handleAddAnswer}
-                onAskAI={handleAskAI}
-                onOpenComments={handleOpenComments}
-                onLikeAnswer={handleLikeAnswer}
-                onSaveAnswer={handleSaveAnswer}
-                onShareAnswer={handleShareAnswer}
-              />
+                ref={(el) => { questionRefs.current[question.id] = el; }}
+                data-question-id={question.id}
+              >
+                <QuestionSection
+                  question={question}
+                  questionIndex={questionIndex}
+                  totalQuestions={sortedQuestions.length}
+                  sortOrder={sortOrder}
+                  answers={answers[question.id] || []}
+                  threadCreator={thread.creator}
+                  currentUser={state.currentUser}
+                  users={users}
+                  isGuest={isGuest}
+                  isAIAnswering={isAIAnswering[question.id] || false}
+                  streamingRefs={streamingRefs}
+                  showThinking={showThinking}
+                  onAddAnswer={handleAddAnswer}
+                  onAskAI={handleAskAI}
+                  onOpenComments={handleOpenComments}
+                  onLikeAnswer={handleLikeAnswer}
+                  onSaveAnswer={handleSaveAnswer}
+                  onShareAnswer={handleShareAnswer}
+                  contentInteractions={contentInteractions}
+                />
+              </div>
             ))}
-
-            {/* Add New Question (Only for thread creator) - Show at bottom if oldest first */}
-            {state.currentUser && state.currentUser.id === thread.creator.id && sortOrder === 'oldest' && (
-              <NewQuestionInput
-                newQuestion={newQuestion}
-                isAddingQuestion={isAddingQuestion}
-                onQuestionChange={setNewQuestion}
-                onAddQuestion={handleAddQuestion}
-              />
-            )}
           </div>
           </div>
 
@@ -1475,6 +1544,55 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
           <div ref={messagesEndRef} />
         </div>
       </main>
+
+      {/* Floating Action Buttons */}
+      <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-30">
+        {/* Add Answer Button - Shows for all users except guests */}
+        {!isGuest && currentQuestionInView && (
+          <button
+            onClick={() => {
+              const questionElement = questionRefs.current[currentQuestionInView];
+              if (questionElement) {
+                // Find the answer input in this question and focus it
+                const answerButton = questionElement.querySelector('[data-answer-button]') as HTMLButtonElement;
+                if (answerButton) {
+                  answerButton.click();
+                  answerButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+              }
+            }}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white rounded-full px-5 py-3 shadow-lg transition-all hover:scale-105"
+            title="Add answer to current question"
+          >
+            <Edit3 className="w-5 h-5" />
+            <span className="font-medium">Answer</span>
+          </button>
+        )}
+
+        {/* Add Question Button - Only for thread creator */}
+        {state.currentUser && state.currentUser.id === thread.creator.id && (
+          <button
+            onClick={() => {
+              // Scroll to top and show new question input
+              if (scrollContainerRef.current) {
+                scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+              // Focus on new question input after scrolling
+              setTimeout(() => {
+                const questionInput = document.querySelector('[data-new-question-input]') as HTMLTextAreaElement;
+                if (questionInput) {
+                  questionInput.focus();
+                }
+              }, 500);
+            }}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 py-3 shadow-lg transition-all hover:scale-105"
+            title="Add new question"
+          >
+            <Plus className="w-5 h-5" />
+            <span className="font-medium">Question</span>
+          </button>
+        )}
+      </div>
 
       {/* Comment Side Panel */}
       <CommentPanel

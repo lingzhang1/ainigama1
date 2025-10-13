@@ -46,6 +46,13 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
   streamingRefs
 }) => {
   const [showAskAIModal, setShowAskAIModal] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Determine if content is long (more than 500 characters or 5 lines)
+  const PREVIEW_LENGTH = 500;
+  const isLongContent = answer.content.length > PREVIEW_LENGTH;
+  const previewContent = isLongContent ? answer.content.substring(0, PREVIEW_LENGTH) + '...' : answer.content;
+  const contentToShow = isExpanded || !isLongContent ? answer.content : previewContent;
 
   const handleAskAIPrompt = (customPrompt: string) => {
     onAskAI(answer.id, 'answer', customPrompt);
@@ -73,22 +80,78 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
     return `User${userId.slice(-4)}`;
   };
 
+  // Metrics component
+  const MetricsBar = () => (
+    <div className="flex items-center space-x-4">
+      {/* Like Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onLike && onLike(answer.id)}
+        disabled={!currentUser || isGuest}
+        className={`flex items-center space-x-1 p-1 h-auto ${
+          isLiked ? 'text-red-500 hover:text-red-600' : 'text-gray-500 hover:text-gray-700'
+        }`}
+      >
+        <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
+        <span className="text-xs">{answer.likeCount || 0}</span>
+      </Button>
+
+      {/* Save Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onSave && onSave(answer.id)}
+        disabled={!currentUser || isGuest}
+        className={`flex items-center space-x-1 p-1 h-auto ${
+          isSaved ? 'text-blue-500 hover:text-blue-600' : 'text-gray-500 hover:text-gray-700'
+        }`}
+      >
+        <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
+        <span className="text-xs">{answer.saveCount || 0}</span>
+      </Button>
+
+      {/* Share Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onShare && onShare(answer.id)}
+        className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 p-1 h-auto"
+      >
+        <Share2 className="w-4 h-4" />
+        <span className="text-xs">{answer.shareCount || 0}</span>
+      </Button>
+
+      {/* Comment Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => onOpenComments(answer.id)}
+        className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 p-1 h-auto"
+      >
+        <MessageCircle className="w-4 h-4" />
+        <span className="text-xs">{commentCount}</span>
+      </Button>
+    </div>
+  );
+
   return (
-    <div id={`answer-${answer.id}`} className="border-l-2 border-gray-100 pl-3 md:pl-4 deep-link-target">
-      <div className="flex items-start gap-2 md:gap-3">
-        <Avatar className="w-6 h-6 flex-shrink-0">
-          {answer.isAI ? (
-            <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
-              <Leaf className="w-3.5 h-3.5 text-white" />
-            </div>
-          ) : (
-            <>
-              <AvatarImage src="/img-5.svg" />
-              <AvatarFallback>U</AvatarFallback>
-            </>
-          )}
-        </Avatar>
-        <div className="flex-1 min-w-0">
+    <div id={`answer-${answer.id}`} className="bg-white rounded-lg border border-gray-200 shadow-sm deep-link-target relative">
+      <div className="p-4">
+        <div className="flex items-start gap-2 md:gap-3">
+          <Avatar className="w-6 h-6 flex-shrink-0">
+            {answer.isAI ? (
+              <div className="w-6 h-6 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+                <Leaf className="w-3.5 h-3.5 text-white" />
+              </div>
+            ) : (
+              <>
+                <AvatarImage src="/img-5.svg" />
+                <AvatarFallback>U</AvatarFallback>
+              </>
+            )}
+          </Avatar>
+          <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center justify-between gap-1.5 md:gap-2 mb-2">
             <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
               <span className="font-medium text-gray-700 text-sm md:text-base">
@@ -135,127 +198,68 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
             </div>
           )}
           
-          {/* Render AI responses with markdown formatting */}
-          {answer.isAI ? (
-            <div className="text-gray-700 leading-relaxed mb-3 prose prose-sm max-w-none">
-              <ReactMarkdown
-                components={{
-                  h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0" {...props} />,
-                  h2: ({node, ...props}) => <h2 className="text-base font-semibold mb-2 mt-3 first:mt-0" {...props} />,
-                  h3: ({node, ...props}) => <h3 className="text-sm font-medium mb-2 mt-3 first:mt-0" {...props} />,
-                  p: ({node, ...props}) => <p className="mb-3 last:mb-0" {...props} />,
-                  ul: ({node, ...props}) => <ul className="list-disc list-inside mb-3 space-y-1" {...props} />,
-                  ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-3 space-y-1" {...props} />,
-                  li: ({node, ...props}) => <li className="ml-2" {...props} />,
-                  code: ({node, inline, ...props}) => 
-                    inline ? (
-                      <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-gray-800" {...props} />
-                    ) : (
-                      <code className="block bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />
-                    ),
-                  pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />,
-                  blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-3" {...props} />,
-                  strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
-                  em: ({node, ...props}) => <em className="italic" {...props} />,
-                  a: ({node, ...props}) => <a className="text-green-600 hover:text-green-800 underline" {...props} />
-                }}
-              >
-                {answer.content}
-              </ReactMarkdown>
-            </div>
-          ) : (
-            <div className="text-gray-700 leading-relaxed mb-3 prose prose-sm max-w-none">
-              <ReactMarkdown
-                components={{
-                  h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0" {...props} />,
-                  h2: ({node, ...props}) => <h2 className="text-base font-semibold mb-2 mt-3 first:mt-0" {...props} />,
-                  h3: ({node, ...props}) => <h3 className="text-sm font-medium mb-2 mt-3 first:mt-0" {...props} />,
-                  p: ({node, ...props}) => <p className="mb-3 last:mb-0" {...props} />,
-                  ul: ({node, ...props}) => <ul className="list-disc list-inside mb-3 space-y-1" {...props} />,
-                  ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-3 space-y-1" {...props} />,
-                  li: ({node, ...props}) => <li className="ml-2" {...props} />,
-                  code: ({node, inline, ...props}) => 
-                    inline ? (
-                      <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-gray-800" {...props} />
-                    ) : (
-                      <code className="block bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />
-                    ),
-                  pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />,
-                  blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-3" {...props} />,
-                  strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
-                  em: ({node, ...props}) => <em className="italic" {...props} />,
-                  a: ({node, ...props}) => <a className="text-green-600 hover:text-green-800 underline" {...props} />
-                }}
-              >
-                {answer.content}
-              </ReactMarkdown>
-            </div>
-          )}
-          
-          {/* Answer Metrics: Like, Save, Share, Comment */}
-          <div className="flex items-center space-x-4">
-            {/* Like Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onLike && onLike(answer.id)}
-              disabled={!currentUser || isGuest}
-              className={`flex items-center space-x-1 p-1 h-auto ${
-                isLiked ? 'text-red-500 hover:text-red-600' : 'text-gray-500 hover:text-gray-700'
-              }`}
+          {/* Render content with markdown formatting */}
+          <div className={`text-gray-700 leading-relaxed prose prose-sm max-w-none ${isLongContent && !isExpanded ? 'mb-0' : 'mb-3'}`}>
+            <ReactMarkdown
+              components={{
+                h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0" {...props} />,
+                h2: ({node, ...props}) => <h2 className="text-base font-semibold mb-2 mt-3 first:mt-0" {...props} />,
+                h3: ({node, ...props}) => <h3 className="text-sm font-medium mb-2 mt-3 first:mt-0" {...props} />,
+                p: ({node, ...props}) => <p className="mb-3 last:mb-0" {...props} />,
+                ul: ({node, ...props}) => <ul className="list-disc list-inside mb-3 space-y-1" {...props} />,
+                ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-3 space-y-1" {...props} />,
+                li: ({node, ...props}) => <li className="ml-2" {...props} />,
+                code: ({node, inline, ...props}) => 
+                  inline ? (
+                    <code className="bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-gray-800" {...props} />
+                  ) : (
+                    <code className="block bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />
+                  ),
+                pre: ({node, ...props}) => <pre className="bg-gray-100 p-3 rounded text-sm font-mono text-gray-800 mb-3 overflow-x-auto" {...props} />,
+                blockquote: ({node, ...props}) => <blockquote className="border-l-4 border-gray-300 pl-4 italic text-gray-600 mb-3" {...props} />,
+                strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
+                em: ({node, ...props}) => <em className="italic" {...props} />,
+                a: ({node, ...props}) => <a className="text-green-600 hover:text-green-800 underline" {...props} />
+              }}
             >
-              <Heart className={`w-4 h-4 ${isLiked ? 'fill-current' : ''}`} />
-              <span className="text-xs">{answer.likeCount || 0}</span>
-            </Button>
-
-            {/* Save Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onSave && onSave(answer.id)}
-              disabled={!currentUser || isGuest}
-              className={`flex items-center space-x-1 p-1 h-auto ${
-                isSaved ? 'text-blue-500 hover:text-blue-600' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
-              <span className="text-xs">{answer.saveCount || 0}</span>
-            </Button>
-
-            {/* Share Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onShare && onShare(answer.id)}
-              className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 p-1 h-auto"
-            >
-              <Share2 className="w-4 h-4" />
-              <span className="text-xs">{answer.shareCount || 0}</span>
-            </Button>
-
-            {/* Comment Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onOpenComments(answer.id)}
-              className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 p-1 h-auto"
-            >
-              <MessageCircle className="w-4 h-4" />
-              <span className="text-xs">{commentCount}</span>
-            </Button>
+              {contentToShow}
+            </ReactMarkdown>
           </div>
 
-          {/* AI Streaming Response for Comments - Only for non-AI answers */}
-          {!answer.isAI && streamingRefs && (
-            <div 
-              ref={(el) => { 
-                if (streamingRefs.current[answer.id]) {
-                  streamingRefs.current[answer.id].streamingContainer = el;
-                }
-              }}
-              className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg"
-              style={{ display: 'none' }}
+          {/* Show More/Less Button */}
+          {isLongContent && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-green-600 hover:text-green-700 text-sm font-medium mb-3 inline-block"
             >
+              {isExpanded ? '▲ Show less' : '▼ Show more...'}
+            </button>
+          )}
+          
+          {/* Metrics - inline for short content */}
+          {!isLongContent && <MetricsBar />}
+        </div>
+      </div>
+    </div>
+
+      {/* Metrics - sticky footer for long content */}
+      {isLongContent && (
+        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-2 rounded-b-lg">
+          <MetricsBar />
+        </div>
+      )}
+
+      {/* AI Streaming Response for Comments - Only for non-AI answers */}
+      {!answer.isAI && streamingRefs && (
+        <div 
+          ref={(el) => { 
+            if (streamingRefs.current[answer.id]) {
+              streamingRefs.current[answer.id].streamingContainer = el;
+            }
+          }}
+          className="mt-3 p-3 bg-green-50 border border-green-200 rounded-lg"
+          style={{ display: 'none' }}
+        >
               <div className="flex items-center space-x-2 mb-2">
                 <div className="w-5 h-5 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
                   <Leaf className="w-3 h-3 text-white" />
@@ -316,10 +320,8 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
                 />
                 <span className="animate-pulse text-green-500">▋</span>
               </div>
-            </div>
-          )}
         </div>
-      </div>
+      )}
       
       {/* Ask AI Prompt Modal */}
       <AskAIPromptModal
