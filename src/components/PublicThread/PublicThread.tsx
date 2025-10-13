@@ -1733,11 +1733,11 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
                 }
               }, 100);
             }}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white rounded-full px-5 py-3 shadow-lg transition-all hover:scale-105 cursor-move"
+            className="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white rounded-full px-4 py-2 shadow-lg transition-all hover:scale-105 cursor-move text-sm"
             title="Add answer to current question"
           >
-            <Edit3 className="w-5 h-5" />
-            <span className="font-medium">Answer</span>
+            <Edit3 className="w-4 h-4" />
+            <span>Answer</span>
           </button>
         )}
 
@@ -1787,11 +1787,11 @@ ${hasSummaries ? '\nNote: This conversation includes summaries of previous discu
                 }
               }, 500);
             }}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 py-3 shadow-lg transition-all hover:scale-105 cursor-move"
+            className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full px-4 py-2 shadow-lg transition-all hover:scale-105 cursor-move text-sm"
             title="Add new question"
           >
-            <Plus className="w-5 h-5" />
-            <span className="font-medium">Question</span>
+            <Plus className="w-4 h-4" />
+            <span>Question</span>
           </button>
         )}
       </div>

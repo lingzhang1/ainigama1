@@ -99,14 +99,12 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
                   {formatDistanceToNow(question.timestamp)} ago
                 </span>
               </div>
-              {/* Ask AI Button for non-summary questions */}
+              {/* Ask Echo Button for non-summary questions */}
               {!question.isSummary && !isGuest && (
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
                   onClick={() => setShowAskAIModal(true)}
                   disabled={isAIAnswering}
-                  className="flex items-center space-x-1 text-xs border-green-300 text-green-600 hover:bg-green-50"
+                  className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 disabled:opacity-50"
                 >
                   {isAIAnswering ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
@@ -114,7 +112,7 @@ export const QuestionSection: React.FC<QuestionSectionProps> = ({
                     <Brain className="w-3 h-3" />
                   )}
                   <span>Ask Echo</span>
-                </Button>
+                </button>
               )}
             </div>
             

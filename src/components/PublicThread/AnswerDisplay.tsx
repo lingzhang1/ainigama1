@@ -163,14 +163,12 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
                 {formatDistanceToNow(answer.timestamp)} ago
               </span>
             </div>
-            {/* Ask AI Button for non-AI answers */}
+            {/* Ask Echo Button for non-AI answers */}
             {!answer.isAI && !isGuest && (
-              <Button
-                variant="outline"
-                size="sm"
+              <button
                 onClick={() => setShowAskAIModal(true)}
                 disabled={isAIAnswering}
-                className="flex items-center space-x-1 text-xs"
+                className="flex items-center gap-1 text-xs text-green-600 hover:text-green-700 disabled:opacity-50"
               >
                 {isAIAnswering ? (
                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -178,7 +176,7 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
                   <Brain className="w-3 h-3" />
                 )}
                 <span>Ask Echo</span>
-              </Button>
+              </button>
             )}
           </div>
 
@@ -321,7 +319,7 @@ export const AnswerDisplay: React.FC<AnswerDisplayProps> = ({
         </div>
       )}
       
-      {/* Ask AI Prompt Modal */}
+      {/* Ask Echo Prompt Modal */}
       <AskAIPromptModal
         isOpen={showAskAIModal}
         onClose={() => setShowAskAIModal(false)}

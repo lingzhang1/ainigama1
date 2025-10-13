@@ -102,7 +102,7 @@ export const AskAIPromptModal: React.FC<AskAIPromptModalProps> = ({
               ) : (
                 <>
                   <Brain className="w-4 h-4" />
-                  <span>Ask AI</span>
+                  <span>Ask Echo</span>
                 </>
               )}
             </Button>

@@ -50,9 +50,9 @@ export const PublicThreadHeader: React.FC<PublicThreadHeaderProps> = ({
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-base md:text-lg font-semibold text-green-700 truncate">
-          {thread.title}
-        </h1>
+            <h1 className="text-base md:text-lg font-semibold text-gray-800 truncate">
+              {thread.title}
+            </h1>
       </div>
       
       {/* Row 2: Left controls and Right subscribe */}
