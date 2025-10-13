@@ -102,7 +102,7 @@ export interface PrivateConversation {
 }
 
 export type ViewMode = 'forum' | 'private' | 'public-thread' | 'user-center' | 'account' | 'categories';
-export type FeedFilter = 'recent' | 'trending';
+export type FeedFilter = 'recent' | 'trending' | 'recommended';
 
 // Metrics API Response Types
 export interface MetricResponse {
@@ -205,4 +205,31 @@ export interface NotificationResponse {
   unreadCount: number;
   hasMore: boolean;
   nextOffset?: number;
+}
+
+// ==================== RECOMMENDATION TYPES ====================
+
+export type InteractionType = 'view' | 'like' | 'save' | 'share' | 'question' | 'answer' | 'time_spent';
+
+export interface UserInteraction {
+  userId: string;
+  threadId: string;
+  interactionType: InteractionType;
+  metadata?: {
+    timeSpentSeconds?: number;
+  };
+}
+
+export interface UserPreferences {
+  userId: string;
+  categoryAffinities: Record<string, number>; // { "tech": 45, "science": 30, ... }
+  favoriteCreators: string[];
+  totalEngagementScore: number;
+  lastUpdated: Date;
+}
+
+export interface RecommendedThreadsResponse {
+  threads: Thread[];
+  hasMore: boolean;
+  recommendationType: 'personalized' | 'cold_start' | 'exploration';
 }

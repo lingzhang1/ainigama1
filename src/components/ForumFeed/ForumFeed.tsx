@@ -10,6 +10,7 @@ import { NewThreadModal } from './NewThreadModal';
 import { Thread } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { metricsService } from '../../services/metrics';
+import { trackThreadView } from '../../services/recommendations';
 import { useMobileDrawer } from '../../hooks/useMobileDrawer';
 import { useSwipeGesture } from '../../hooks/useSwipeGesture';
 import { useNotifications } from '../../context/NotificationContext';
@@ -105,10 +106,13 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
       const offset = pageNum * PAGE_SIZE;
       
-      console.log(`📄 Loading threads page ${pageNum} (limit: ${PAGE_SIZE}, offset: ${offset})`);
+      // Add userId for recommendations
+      const userIdParam = state.currentUser?.id ? `&userId=${state.currentUser.id}` : '';
+      
+      console.log(`📄 Loading threads page ${pageNum} (filter: ${state.feedFilter}, limit: ${PAGE_SIZE}, offset: ${offset})`);
       
       const response = await fetch(
-        `${apiUrl}/threads?filter=${state.feedFilter}&limit=${PAGE_SIZE}&offset=${offset}`
+        `${apiUrl}/threads?filter=${state.feedFilter}&limit=${PAGE_SIZE}&offset=${offset}${userIdParam}`
       );
       
       if (response.ok) {
@@ -116,7 +120,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
         const threadsArray = data.threads || [];
         const hasMoreData = data.hasMore ?? (threadsArray.length === PAGE_SIZE);
         
-        console.log(`✅ Loaded ${threadsArray.length} threads, hasMore: ${hasMoreData}`);
+        console.log(`✅ Loaded ${threadsArray.length} threads, hasMore: ${hasMoreData}`, data.recommendationType ? `(${data.recommendationType})` : '');
         
         if (append) {
           setThreads(prev => [...prev, ...threadsArray]);
@@ -164,6 +168,13 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
   const handleThreadClick = (threadId: string) => {
     // Track view when thread is clicked
     handleViewThread(threadId);
+    
+    // Track view for recommendation engine
+    if (state.currentUser?.id) {
+      trackThreadView(threadId, state.currentUser.id).catch(err => {
+        console.error('Failed to track thread view:', err);
+      });
+    }
     
     // Navigate using React Router
     navigate(`/thread/${threadId}`);
@@ -261,10 +272,11 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
         <button
           onClick={() => {
             console.log('✨ Recommend icon clicked - showing recommended feeds');
-            dispatch({ type: 'SET_FEED_FILTER', payload: 'recent' });
+            dispatch({ type: 'SET_FEED_FILTER', payload: 'recommended' });
           }}
-          className={`p-2 rounded-lg ${state.feedFilter === 'recent' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-600'}`}
+          className={`p-2 rounded-lg ${state.feedFilter === 'recommended' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-600'}`}
           aria-label="Recommended for you"
+          title="For You"
         >
           <SparklesIcon className="w-5 h-5" />
         </button>

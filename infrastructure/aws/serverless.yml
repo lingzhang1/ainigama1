@@ -20,6 +20,11 @@ provider:
     DYNAMODB_TABLE_SAVES: ${self:service}-${self:provider.stage}-saves
     DYNAMODB_TABLE_SHARES: ${self:service}-${self:provider.stage}-shares
     DYNAMODB_TABLE_NOTIFICATIONS: ${self:service}-${self:provider.stage}-notifications
+    DYNAMODB_TABLE_USER_INTERACTIONS: ${self:service}-${self:provider.stage}-user-interactions
+    DYNAMODB_TABLE_USER_PREFERENCES: ${self:service}-${self:provider.stage}-user-preferences
+    DYNAMODB_TABLE_RECOMMENDATION_CACHE: ${self:service}-${self:provider.stage}-recommendation-cache
+    DYNAMODB_TABLE_THREAD_METRICS_CACHE: ${self:service}-${self:provider.stage}-thread-metrics-cache
+    DYNAMODB_TABLE_TIME_TRACKING: ${self:service}-${self:provider.stage}-time-tracking
     DEEPSEEK_API_KEY: ${env:DEEPSEEK_API_KEY, 'sk-0dcbd0d5eca74684919812e175de65b7'}
     NODE_ENV: ${self:provider.stage}
     AWS_NODEJS_CONNECTION_REUSE_ENABLED: 1
@@ -72,6 +77,16 @@ provider:
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_NOTIFICATIONS}"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_NOTIFICATIONS}/index/RecipientIdIndex"
         - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_NOTIFICATIONS}/index/RecipientIdReadIndex"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_USER_INTERACTIONS}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_USER_INTERACTIONS}/index/UserIdIndex"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_USER_INTERACTIONS}/index/ThreadIdIndex"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_USER_PREFERENCES}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_RECOMMENDATION_CACHE}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_RECOMMENDATION_CACHE}/index/UserIdScoreIndex"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_THREAD_METRICS_CACHE}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_THREAD_METRICS_CACHE}/index/TrendingScoreIndex"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_TIME_TRACKING}"
+        - "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE_TIME_TRACKING}/index/UserIdIndex"
 
     - Effect: Allow
       Action:
@@ -1266,6 +1281,204 @@ functions:
             allowCredentials: false
             maxAge: 86400
 
+  # ==================== RECOMMENDATIONS API ====================
+  
+  getRecommendedThreads:
+    handler: src/handlers/recommendations.getRecommendedThreads
+    timeout: 30
+    events:
+      - http:
+          path: /recommendations/threads
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /recommendations/threads
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  trackInteraction:
+    handler: src/handlers/recommendations.trackInteraction
+    events:
+      - http:
+          path: /interactions
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /interactions
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  getUserPreferences:
+    handler: src/handlers/recommendations.getUserPreferences
+    events:
+      - http:
+          path: /users/{userId}/preferences
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /users/{userId}/preferences
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  # ==================== UNIFIED SYSTEM FUNCTIONS ====================
+  
+  trackEngagement:
+    handler: src/handlers/unifiedEngagement.trackEngagement
+    timeout: 10
+    events:
+      - http:
+          path: /engagement/track
+          method: post
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /engagement/track
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  aggregateMetrics:
+    handler: src/handlers/unifiedEngagement.aggregateMetrics
+    timeout: 300
+    memorySize: 1024
+    events:
+      - schedule:
+          rate: rate(5 minutes)
+          enabled: true
+          description: Updates trending scores and user preferences every 5 minutes
+
+  getPersonalizedTrending:
+    handler: src/handlers/personalizedTrending.getPersonalizedTrending
+    timeout: 30
+    events:
+      - http:
+          path: /trending/personalized
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /trending/personalized
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  getTrendingThreads:
+    handler: src/handlers/trending.getTrendingThreads
+    timeout: 30
+    events:
+      - http:
+          path: /trending/threads
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+      - http:
+          path: /trending/threads
+          method: options
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
 resources:
   Resources:
     # WebSocket Connections Table
@@ -1601,6 +1814,140 @@ resources:
               ProjectionType: ALL
         TimeToLiveSpecification:
           AttributeName: expires_at
+          Enabled: true
+        BillingMode: PAY_PER_REQUEST
+
+    # ==================== RECOMMENDATION TABLES ====================
+
+    UserInteractionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_USER_INTERACTIONS}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: user_id
+            AttributeType: S
+          - AttributeName: thread_id
+            AttributeType: S
+          - AttributeName: created_at
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UserIdIndex
+            KeySchema:
+              - AttributeName: user_id
+                KeyType: HASH
+              - AttributeName: created_at
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: ThreadIdIndex
+            KeySchema:
+              - AttributeName: thread_id
+                KeyType: HASH
+              - AttributeName: created_at
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        BillingMode: PAY_PER_REQUEST
+
+    UserPreferencesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_USER_PREFERENCES}
+        AttributeDefinitions:
+          - AttributeName: user_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: user_id
+            KeyType: HASH
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        BillingMode: PAY_PER_REQUEST
+
+    RecommendationCacheTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.DYNAMODB_TABLE_RECOMMENDATION_CACHE}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: user_id
+            AttributeType: S
+          - AttributeName: score
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UserIdScoreIndex
+            KeySchema:
+              - AttributeName: user_id
+                KeyType: HASH
+              - AttributeName: score
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: expires_at
+          Enabled: true
+        BillingMode: PAY_PER_REQUEST
+
+    # ==================== UNIFIED SYSTEM TABLES ====================
+
+    ThreadMetricsCacheTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-thread-metrics-cache
+        AttributeDefinitions:
+          - AttributeName: thread_id
+            AttributeType: S
+          - AttributeName: trending_score
+            AttributeType: N
+        KeySchema:
+          - AttributeName: thread_id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: TrendingScoreIndex
+            KeySchema:
+              - AttributeName: trending_score
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: ttl
+          Enabled: true
+        BillingMode: PAY_PER_REQUEST
+
+    TimeTrackingTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:service}-${self:provider.stage}-time-tracking
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: user_id
+            AttributeType: S
+          - AttributeName: created_at
+            AttributeType: N
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UserIdIndex
+            KeySchema:
+              - AttributeName: user_id
+                KeyType: HASH
+              - AttributeName: created_at
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        TimeToLiveSpecification:
+          AttributeName: ttl
           Enabled: true
         BillingMode: PAY_PER_REQUEST
 
