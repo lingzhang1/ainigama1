@@ -4,7 +4,7 @@ import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { CompactMetricDisplay } from '../ui/MetricDisplay';
 import { useAppContext } from '../../context/AppContext';
-import { MessageSquare, Users, ArrowLeft, Calendar, Eye, MessageCircle } from 'lucide-react';
+import { MessageSquare, Users, ArrowLeft, Calendar, MessageCircle } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 interface UserCenterProps {
@@ -143,9 +143,9 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
             stats: { 
               views: 0, 
               replies: 0, 
-              likes: answer.likeCount || 0,
-              saves: answer.saveCount || 0,
-              shares: answer.shareCount || 0
+              likes: answer.interactionCount || 0,
+              saves: 0,
+              shares: 0
             },
             status: 'published',
             threadId: answer.threadId || answer.id
@@ -198,6 +198,19 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
       case 'archived': return 'bg-gray-100 text-gray-800';
       default: return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  const handleStatClick = (statType: string) => {
+    // For now, just show an alert with the stat details
+    const statMessages: { [key: string]: string } = {
+      'posts': `You have ${userPosts.length} total posts`,
+      'views': `Your posts have ${userPosts.reduce((sum, post) => sum + post.stats.views, 0)} total views`,
+      'replies': `Your posts have ${userPosts.reduce((sum, post) => sum + post.stats.replies, 0)} total replies`,
+      'likes': `Your posts have ${userPosts.reduce((sum, post) => sum + post.stats.likes, 0)} total likes`,
+      'saves': `Your posts have ${userPosts.reduce((sum, post) => sum + post.stats.saves, 0)} total saves`,
+      'shares': `Your posts have ${userPosts.reduce((sum, post) => sum + post.stats.shares, 0)} total shares`
+    };
+    alert(statMessages[statType] || 'Stat details');
   };
 
   const handleViewPost = (post: UserPost) => {
@@ -286,13 +299,19 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-6">
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card className="bg-white">
+          <Card 
+            className="bg-white cursor-pointer hover:shadow-md transition-shadow hover:border-green-300"
+            onClick={() => handleStatClick('posts')}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-gray-800">{userPosts.length}</div>
               <div className="text-sm text-gray-600">Total Posts</div>
             </CardContent>
           </Card>
-          <Card className="bg-white">
+          <Card 
+            className="bg-white cursor-pointer hover:shadow-md transition-shadow hover:border-green-300"
+            onClick={() => handleStatClick('views')}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-gray-800">
                 {userPosts.reduce((sum, post) => sum + post.stats.views, 0)}
@@ -300,7 +319,10 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
               <div className="text-sm text-gray-600">Total Views</div>
             </CardContent>
           </Card>
-          <Card className="bg-white">
+          <Card 
+            className="bg-white cursor-pointer hover:shadow-md transition-shadow hover:border-green-300"
+            onClick={() => handleStatClick('replies')}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-gray-800">
                 {userPosts.reduce((sum, post) => sum + post.stats.replies, 0)}
@@ -308,7 +330,10 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
               <div className="text-sm text-gray-600">Total Replies</div>
             </CardContent>
           </Card>
-          <Card className="bg-white">
+          <Card 
+            className="bg-white cursor-pointer hover:shadow-md transition-shadow hover:border-green-300"
+            onClick={() => handleStatClick('likes')}
+          >
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-gray-800">
                 {userPosts.reduce((sum, post) => sum + post.stats.likes, 0)}
@@ -316,20 +341,26 @@ export const UserCenter: React.FC<UserCenterProps> = ({ onBack }) => {
               <div className="text-sm text-gray-600">Total Likes</div>
             </CardContent>
           </Card>
-          <Card className="bg-white">
+          <Card 
+            className="bg-white cursor-pointer hover:shadow-md transition-shadow hover:border-green-300"
+            onClick={() => handleStatClick('saves')}
+          >
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-800">
+              <div className="text-2xl font-bold text-gray-800">
                 {userPosts.reduce((sum, post) => sum + post.stats.saves, 0)}
               </div>
-              <div className="text-sm text-green-600">Total Saves</div>
+              <div className="text-sm text-gray-600">Total Saves</div>
             </CardContent>
           </Card>
-          <Card className="bg-white">
+          <Card 
+            className="bg-white cursor-pointer hover:shadow-md transition-shadow hover:border-green-300"
+            onClick={() => handleStatClick('shares')}
+          >
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-800">
+              <div className="text-2xl font-bold text-gray-800">
                 {userPosts.reduce((sum, post) => sum + post.stats.shares, 0)}
               </div>
-              <div className="text-sm text-green-600">Total Shares</div>
+              <div className="text-sm text-gray-600">Total Shares</div>
             </CardContent>
           </Card>
         </div>
