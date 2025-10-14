@@ -9,8 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { NewThreadModal } from './NewThreadModal';
 import { Thread } from '../../types';
 import { useAppContext } from '../../context/AppContext';
-import { metricsService } from '../../services/metrics';
-import { trackThreadView } from '../../services/recommendations';
+import { engagementTracker } from '../../services/engagementTracker';
 import { useMobileDrawer } from '../../hooks/useMobileDrawer';
 import { useSwipeGesture } from '../../hooks/useSwipeGesture';
 import { useNotifications } from '../../context/NotificationContext';
@@ -66,24 +65,6 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
     },
     enabled: isMobile && !isLeftDrawerOpen && !isRightDrawerOpen,
   });
-
-  // Metric interaction handlers
-
-
-  const handleViewThread = async (threadId: string) => {
-    try {
-      await metricsService.trackView(threadId, state.currentUser?.id);
-      
-      // Update thread view count in local state
-      setThreads(prev => prev.map(thread => 
-        thread.id === threadId 
-          ? { ...thread, viewCount: thread.viewCount + 1 }
-          : thread
-      ));
-    } catch (error) {
-      console.error('Failed to track view:', error);
-    }
-  };
 
   // Close dropdown when drawer closes
   useEffect(() => {
@@ -166,15 +147,17 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
   };
 
   const handleThreadClick = (threadId: string) => {
-    // Track view when thread is clicked
-    handleViewThread(threadId);
-    
-    // Track view for recommendation engine
+    // Track view with unified tracker
     if (state.currentUser?.id) {
-      trackThreadView(threadId, state.currentUser.id).catch(err => {
-        console.error('Failed to track thread view:', err);
-      });
+      engagementTracker.trackView(state.currentUser.id, threadId);
     }
+    
+    // Update local view count
+    setThreads(prev => prev.map(thread => 
+      thread.id === threadId 
+        ? { ...thread, viewCount: thread.viewCount + 1 }
+        : thread
+    ));
     
     // Navigate using React Router
     navigate(`/thread/${threadId}`);
