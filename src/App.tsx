@@ -11,7 +11,7 @@ import { ForumFeed } from './components/ForumFeed/ForumFeed';
 import { CategoriesPage } from './components/ForumFeed/CategoriesPage';
 import { PrivateChat } from './components/PrivateChat/PrivateChat';
 import { PublicThread } from './components/PublicThread/PublicThread';
-import UserCenter from './components/UserCenter/UserCenterLightningFast';
+import UserCenter from './components/UserCenter/UserCenter';
 import { AccountManagement } from './components/Account/AccountManagement';
 import { NotificationBell } from './components/Notifications/NotificationBell';
 import { NotificationCenter } from './components/Notifications/NotificationCenter';
