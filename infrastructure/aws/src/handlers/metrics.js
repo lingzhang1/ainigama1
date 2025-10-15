@@ -1542,3 +1542,380 @@ exports.getUserReplies = async (event) => {
     });
   }
 };
+
+/**
+ * Get user dashboard data (all user interactions in one call)
+ * This is a performance optimization for User Center
+ */
+exports.getUserDashboard = async (event) => {
+  try {
+    const userId = event.pathParameters.userId;
+    
+    if (!userId) {
+      return addCorsHeaders({
+        statusCode: 400,
+        body: JSON.stringify({ error: 'User ID is required' })
+      });
+    }
+
+    // Get all user data in parallel
+    const [savesData, likesData, repliesData, threadsData] = await Promise.all([
+      getUserSavesData(userId),
+      getUserLikesData(userId), 
+      getUserRepliesData(userId),
+      getUserThreadsData(userId)
+    ]);
+
+    return addCorsHeaders({
+      statusCode: 200,
+      body: JSON.stringify({
+        myPosts: threadsData,
+        saved: savesData,
+        liked: likesData,
+        replied: repliesData,
+        timestamp: new Date().toISOString()
+      })
+    });
+  } catch (error) {
+    console.error('Error getting user dashboard:', error);
+    return addCorsHeaders({
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Failed to get user dashboard data' })
+    });
+  }
+};
+
+/**
+ * Get user stats only (counts without full data)
+ * Ultra-fast endpoint for initial loading
+ */
+exports.getUserStats = async (event) => {
+  try {
+    const userId = event.pathParameters.userId;
+    
+    if (!userId) {
+      return addCorsHeaders({
+        statusCode: 400,
+        body: JSON.stringify({ error: 'User ID is required' })
+      });
+    }
+
+    // Get counts only in parallel - much faster
+    const [savesCount, likesCount, repliesCount, threadsCount] = await Promise.all([
+      getSavesCount(userId),
+      getLikesCount(userId),
+      getRepliesCount(userId),
+      getThreadsCount(userId)
+    ]);
+
+    return addCorsHeaders({
+      statusCode: 200,
+      body: JSON.stringify({
+        myPosts: threadsCount,
+        saved: savesCount,
+        liked: likesCount,
+        replied: repliesCount,
+        timestamp: new Date().toISOString()
+      })
+    });
+  } catch (error) {
+    console.error('Error getting user stats:', error);
+    return addCorsHeaders({
+      statusCode: 500,
+      body: JSON.stringify({ error: 'Failed to get user stats' })
+    });
+  }
+};
+
+// Lightweight count functions for ultra-fast stats
+async function getSavesCount(userId) {
+  try {
+    const savesResult = await dbOperations.query(
+      tables.saves,
+      'user_id = :userId',
+      { ':userId': userId },
+      'UserIdIndex',
+      false,
+      1000 // Get all saves to count them
+    );
+    return savesResult.Items?.length || 0;
+  } catch (error) {
+    console.error('Error getting saves count:', error);
+    return 0;
+  }
+}
+
+async function getLikesCount(userId) {
+  try {
+    const likesResult = await dbOperations.query(
+      tables.likes,
+      'user_id = :userId',
+      { ':userId': userId },
+      'UserIdIndex',
+      false,
+      1000 // Get all likes to count them
+    );
+    return likesResult.Items?.length || 0;
+  } catch (error) {
+    console.error('Error getting likes count:', error);
+    return 0;
+  }
+}
+
+async function getRepliesCount(userId) {
+  try {
+    const repliesResult = await dbOperations.scan(
+      tables.answers,
+      'user_id = :userId',
+      { ':userId': userId },
+      1000 // Get all replies to count them
+    );
+    return repliesResult.Items?.length || 0;
+  } catch (error) {
+    console.error('Error getting replies count:', error);
+    return 0;
+  }
+}
+
+async function getThreadsCount(userId) {
+  try {
+    // Scan all threads
+    const result = await dbOperations.scan(tables.threads, null, null, 1000);
+    
+    // Filter threads where creator.id OR creator_id matches userId
+    const userThreads = (result.Items || []).filter(thread => {
+      // Handle both object and direct ID formats
+      const creatorId = thread.creator?.id || thread.creator_id || thread.creatorId;
+      return creatorId === userId;
+    });
+    
+    return userThreads.length;
+  } catch (error) {
+    console.error('Error getting threads count:', error);
+    return 0;
+  }
+}
+
+// Helper functions for getUserDashboard
+async function getUserSavesData(userId) {
+  try {
+    // Use the same logic as getUserSaves API
+    const savesResult = await dbOperations.query(
+      tables.saves,
+      'user_id = :userId',
+      { ':userId': userId },
+      'UserIdIndex',
+      false,
+      50
+    );
+    
+    // Get content details for each save
+    const savesWithContent = await Promise.all(
+      (savesResult.Items || []).map(async (save) => {
+        try {
+          let contentTable;
+          switch (save.content_type) {
+            case 'thread':
+              contentTable = tables.threads;
+              break;
+            case 'question':
+              contentTable = tables.questions;
+              break;
+            case 'answer':
+              contentTable = tables.answers;
+              break;
+            case 'comment':
+              contentTable = tables.comments;
+              break;
+          }
+
+          const contentResult = await dbOperations.get(contentTable, { id: save.content_id });
+          
+          if (contentResult.Item) {
+            // For answers and questions, get the thread ID
+            let threadId = contentResult.Item.thread_id;
+            
+            if (save.content_type === 'answer' && !threadId) {
+              // Get thread ID from question
+              try {
+                const questionResult = await dbOperations.get(tables.questions, { id: contentResult.Item.question_id });
+                threadId = questionResult.Item?.thread_id;
+              } catch (err) {
+                console.error('Failed to get thread ID for answer:', err);
+              }
+            }
+            
+            return {
+              id: save.content_id,
+              type: save.content_type === 'thread' ? 'question' : save.content_type,
+              title: contentResult.Item.title || contentResult.Item.content?.substring(0, 100) + '...',
+              content: contentResult.Item.content?.substring(0, 100) || '',
+              createdAt: save.created_at,
+              stats: { views: 0, replies: 0, likes: 0, saves: 0, shares: 0 },
+              status: 'published',
+              threadId: threadId || save.content_id
+            };
+          }
+        } catch (error) {
+          console.error('Failed to get content for save:', error);
+        }
+        return null;
+      })
+    );
+    
+    return savesWithContent.filter(save => save !== null);
+  } catch (error) {
+    console.error('Error getting user saves:', error);
+    return [];
+  }
+}
+
+async function getUserLikesData(userId) {
+  try {
+    // Use the same logic as getUserLikes API
+    const likesResult = await dbOperations.query(
+      tables.likes,
+      'user_id = :userId',
+      { ':userId': userId },
+      'UserIdIndex',
+      false,
+      100
+    );
+    
+    // Get content details for each like
+    const likesWithContent = await Promise.all(
+      (likesResult.Items || []).map(async (like) => {
+        try {
+          let contentTable;
+          switch (like.content_type) {
+            case 'thread':
+              contentTable = tables.threads;
+              break;
+            case 'question':
+              contentTable = tables.questions;
+              break;
+            case 'answer':
+              contentTable = tables.answers;
+              break;
+            case 'comment':
+              contentTable = tables.comments;
+              break;
+          }
+
+          const contentResult = await dbOperations.get(contentTable, { id: like.content_id });
+          
+          if (contentResult.Item) {
+            // For answers and questions, get the thread ID
+            let threadId = contentResult.Item.thread_id;
+            
+            if (like.content_type === 'answer' && !threadId) {
+              // Get thread ID from question
+              try {
+                const questionResult = await dbOperations.get(tables.questions, { id: contentResult.Item.question_id });
+                threadId = questionResult.Item?.thread_id;
+              } catch (err) {
+                console.error('Failed to get thread ID for answer:', err);
+              }
+            }
+            
+            return {
+              id: like.content_id,
+              type: like.content_type === 'thread' ? 'question' : like.content_type,
+              title: contentResult.Item.title || contentResult.Item.content?.substring(0, 100) + '...',
+              content: contentResult.Item.content?.substring(0, 100) || '',
+              createdAt: like.created_at,
+              stats: { views: 0, replies: 0, likes: 0, saves: 0, shares: 0 },
+              status: 'published',
+              threadId: threadId || like.content_id
+            };
+          }
+        } catch (error) {
+          console.error('Failed to get content for like:', error);
+        }
+        return null;
+      })
+    );
+    
+    return likesWithContent.filter(like => like !== null);
+  } catch (error) {
+    console.error('Error getting user likes:', error);
+    return [];
+  }
+}
+
+async function getUserRepliesData(userId) {
+  try {
+    // Get user's answers
+    const answersResult = await dbOperations.scan(
+      tables.answers,
+      'user_id = :userId',
+      { ':userId': userId },
+      100
+    );
+    
+    // Transform answers to reply format
+    const answerReplies = await Promise.all(
+      (answersResult.Items || []).map(async (answer) => {
+        try {
+          // Get question to find thread
+          const questionResult = await dbOperations.get(tables.questions, { id: answer.question_id });
+          const threadId = questionResult.Item?.thread_id;
+          
+          // Get thread details if available
+          let threadTitle = '';
+          if (threadId) {
+            const threadResult = await dbOperations.get(tables.threads, { id: threadId });
+            threadTitle = threadResult.Item?.title || '';
+          }
+          
+          return {
+            id: answer.id,
+            type: 'answer',
+            title: threadTitle || 'Reply: ' + (answer.content?.substring(0, 50) || 'Reply'),
+            content: answer.content || '',
+            createdAt: answer.created_at,
+            stats: { views: 0, replies: 0, likes: 0, saves: 0, shares: 0 },
+            status: 'published',
+            threadId: threadId
+          };
+        } catch (error) {
+          console.error('Failed to get thread for answer:', error);
+          return null;
+        }
+      })
+    );
+    
+    return answerReplies.filter(reply => reply !== null);
+  } catch (error) {
+    console.error('Error getting user replies:', error);
+    return [];
+  }
+}
+
+async function getUserThreadsData(userId) {
+  try {
+    // Scan all threads
+    const threadsResult = await dbOperations.scan(tables.threads, null, null, 1000);
+    
+    // Filter threads where creator.id OR creator_id matches userId
+    const userThreads = (threadsResult.Items || []).filter(thread => {
+      // Handle both object and direct ID formats
+      const creatorId = thread.creator?.id || thread.creator_id || thread.creatorId;
+      return creatorId === userId;
+    });
+    
+    return userThreads.map(thread => ({
+      id: thread.id,
+      type: 'question',
+      title: thread.title,
+      content: thread.title,
+      createdAt: thread.createdAt,
+      stats: { views: 0, replies: 0, likes: 0, saves: 0, shares: 0 },
+      status: 'published',
+      threadId: thread.id
+    }));
+  } catch (error) {
+    console.error('Error getting user threads:', error);
+    return [];
+  }
+}

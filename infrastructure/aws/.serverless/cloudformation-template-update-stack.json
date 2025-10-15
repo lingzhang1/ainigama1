@@ -299,6 +299,18 @@
         "LogGroupName": "/aws/lambda/ainigama-backend-dev-getUserReplies"
       }
     },
+    "GetUserDashboardLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/ainigama-backend-dev-getUserDashboard"
+      }
+    },
+    "GetUserStatsLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/ainigama-backend-dev-getUserStats"
+      }
+    },
     "GetUserInteractionsForThreadLogGroup": {
       "Type": "AWS::Logs::LogGroup",
       "Properties": {
@@ -550,7 +562,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/test.testHandler",
         "Runtime": "nodejs18.x",
@@ -615,7 +627,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/websocket.connect",
         "Runtime": "nodejs18.x",
@@ -680,7 +692,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/websocket.disconnect",
         "Runtime": "nodejs18.x",
@@ -745,7 +757,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/websocket.default",
         "Runtime": "nodejs18.x",
@@ -810,7 +822,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/websocket.authenticate",
         "Runtime": "nodejs18.x",
@@ -875,7 +887,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/websocket.subscribeNotifications",
         "Runtime": "nodejs18.x",
@@ -940,7 +952,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/privateChat.saveConversation",
         "Runtime": "nodejs18.x",
@@ -1005,7 +1017,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/publicThread.joinThread",
         "Runtime": "nodejs18.x",
@@ -1070,7 +1082,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/publicThread.addAnswer",
         "Runtime": "nodejs18.x",
@@ -1135,7 +1147,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/publicThread.addComment",
         "Runtime": "nodejs18.x",
@@ -1200,7 +1212,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.getThreads",
         "Runtime": "nodejs18.x",
@@ -1265,7 +1277,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.createThread",
         "Runtime": "nodejs18.x",
@@ -1330,7 +1342,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.getThread",
         "Runtime": "nodejs18.x",
@@ -1395,7 +1407,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.getThreadAnswers",
         "Runtime": "nodejs18.x",
@@ -1460,7 +1472,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.getUserConversations",
         "Runtime": "nodejs18.x",
@@ -1525,7 +1537,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.saveMessages",
         "Runtime": "nodejs18.x",
@@ -1590,7 +1602,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.getMessages",
         "Runtime": "nodejs18.x",
@@ -1655,7 +1667,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.createNewConversation",
         "Runtime": "nodejs18.x",
@@ -1720,7 +1732,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.updateConversationTitle",
         "Runtime": "nodejs18.x",
@@ -1785,7 +1797,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.deleteConversation",
         "Runtime": "nodejs18.x",
@@ -1850,7 +1862,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.addQuestion",
         "Runtime": "nodejs18.x",
@@ -1915,7 +1927,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.addAnswer",
         "Runtime": "nodejs18.x",
@@ -1980,7 +1992,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.getAnswerComments",
         "Runtime": "nodejs18.x",
@@ -2045,7 +2057,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.addAnswerComment",
         "Runtime": "nodejs18.x",
@@ -2110,7 +2122,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.checkUserExists",
         "Runtime": "nodejs18.x",
@@ -2175,7 +2187,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.registerUser",
         "Runtime": "nodejs18.x",
@@ -2240,7 +2252,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.loginUser",
         "Runtime": "nodejs18.x",
@@ -2305,7 +2317,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.updatePassword",
         "Runtime": "nodejs18.x",
@@ -2370,7 +2382,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.checkAlias",
         "Runtime": "nodejs18.x",
@@ -2435,7 +2447,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.getUserById",
         "Runtime": "nodejs18.x",
@@ -2500,7 +2512,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.getAnswerById",
         "Runtime": "nodejs18.x",
@@ -2565,7 +2577,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/metrics.trackView",
         "Runtime": "nodejs18.x",
@@ -2630,7 +2642,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/metrics.toggleLike",
         "Runtime": "nodejs18.x",
@@ -2695,7 +2707,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/metrics.getLikes",
         "Runtime": "nodejs18.x",
@@ -2760,7 +2772,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/metrics.toggleSave",
         "Runtime": "nodejs18.x",
@@ -2825,7 +2837,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.getUserSaves",
         "Runtime": "nodejs18.x",
@@ -2890,7 +2902,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/metrics.getUserLikes",
         "Runtime": "nodejs18.x",
@@ -2955,7 +2967,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/metrics.getUserReplies",
         "Runtime": "nodejs18.x",
@@ -3013,6 +3025,136 @@
         "GetUserRepliesLogGroup"
       ]
     },
+    "GetUserDashboardLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
+        },
+        "Handler": "src/handlers/metrics.getUserDashboard",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "ainigama-backend-dev-getUserDashboard",
+        "MemorySize": 1024,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "DYNAMODB_TABLE_USERS": "ainigama-backend-dev-users",
+            "DYNAMODB_TABLE_CONVERSATIONS": "ainigama-backend-dev-conversations",
+            "DYNAMODB_TABLE_THREADS": "ainigama-backend-dev-threads",
+            "DYNAMODB_TABLE_MESSAGES": "ainigama-backend-dev-messages",
+            "DYNAMODB_TABLE_QUESTIONS": "ainigama-backend-dev-questions",
+            "DYNAMODB_TABLE_ANSWERS": "ainigama-backend-dev-answers",
+            "DYNAMODB_TABLE_COMMENTS": "ainigama-backend-dev-comments",
+            "DYNAMODB_TABLE_CONNECTIONS": "ainigama-backend-dev-connections",
+            "DYNAMODB_TABLE_THREAD_VIEWS": "ainigama-backend-dev-thread-views",
+            "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
+            "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
+            "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+            "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
+            "DYNAMODB_TABLE_USER_INTERACTIONS": "ainigama-backend-dev-user-interactions",
+            "DYNAMODB_TABLE_USER_PREFERENCES": "ainigama-backend-dev-user-preferences",
+            "DYNAMODB_TABLE_RECOMMENDATION_CACHE": "ainigama-backend-dev-recommendation-cache",
+            "DYNAMODB_TABLE_THREAD_METRICS_CACHE": "ainigama-backend-dev-thread-metrics-cache",
+            "DYNAMODB_TABLE_TIME_TRACKING": "ainigama-backend-dev-time-tracking",
+            "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
+            "NODE_ENV": "dev",
+            "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
+            "WEBSOCKET_ENDPOINT": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "WebsocketsApi"
+                  },
+                  ".execute-api.",
+                  "us-east-1",
+                  ".amazonaws.com/",
+                  "dev"
+                ]
+              ]
+            }
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "GetUserDashboardLogGroup"
+      ]
+    },
+    "GetUserStatsLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
+        },
+        "Handler": "src/handlers/metrics.getUserStats",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "ainigama-backend-dev-getUserStats",
+        "MemorySize": 1024,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "DYNAMODB_TABLE_USERS": "ainigama-backend-dev-users",
+            "DYNAMODB_TABLE_CONVERSATIONS": "ainigama-backend-dev-conversations",
+            "DYNAMODB_TABLE_THREADS": "ainigama-backend-dev-threads",
+            "DYNAMODB_TABLE_MESSAGES": "ainigama-backend-dev-messages",
+            "DYNAMODB_TABLE_QUESTIONS": "ainigama-backend-dev-questions",
+            "DYNAMODB_TABLE_ANSWERS": "ainigama-backend-dev-answers",
+            "DYNAMODB_TABLE_COMMENTS": "ainigama-backend-dev-comments",
+            "DYNAMODB_TABLE_CONNECTIONS": "ainigama-backend-dev-connections",
+            "DYNAMODB_TABLE_THREAD_VIEWS": "ainigama-backend-dev-thread-views",
+            "DYNAMODB_TABLE_LIKES": "ainigama-backend-dev-likes",
+            "DYNAMODB_TABLE_SAVES": "ainigama-backend-dev-saves",
+            "DYNAMODB_TABLE_SHARES": "ainigama-backend-dev-shares",
+            "DYNAMODB_TABLE_NOTIFICATIONS": "ainigama-backend-dev-notifications",
+            "DYNAMODB_TABLE_USER_INTERACTIONS": "ainigama-backend-dev-user-interactions",
+            "DYNAMODB_TABLE_USER_PREFERENCES": "ainigama-backend-dev-user-preferences",
+            "DYNAMODB_TABLE_RECOMMENDATION_CACHE": "ainigama-backend-dev-recommendation-cache",
+            "DYNAMODB_TABLE_THREAD_METRICS_CACHE": "ainigama-backend-dev-thread-metrics-cache",
+            "DYNAMODB_TABLE_TIME_TRACKING": "ainigama-backend-dev-time-tracking",
+            "DEEPSEEK_API_KEY": "sk-0dcbd0d5eca74684919812e175de65b7",
+            "NODE_ENV": "dev",
+            "AWS_NODEJS_CONNECTION_REUSE_ENABLED": "1",
+            "WEBSOCKET_ENDPOINT": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "WebsocketsApi"
+                  },
+                  ".execute-api.",
+                  "us-east-1",
+                  ".amazonaws.com/",
+                  "dev"
+                ]
+              ]
+            }
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "GetUserStatsLogGroup"
+      ]
+    },
     "GetUserInteractionsForThreadLambdaFunction": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
@@ -3020,7 +3162,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/api.getUserInteractionsForThread",
         "Runtime": "nodejs18.x",
@@ -3085,7 +3227,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/metrics.trackShare",
         "Runtime": "nodejs18.x",
@@ -3150,7 +3292,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/metrics.getShares",
         "Runtime": "nodejs18.x",
@@ -3215,7 +3357,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/notifications.getNotifications",
         "Runtime": "nodejs18.x",
@@ -3280,7 +3422,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/notifications.getUnreadCount",
         "Runtime": "nodejs18.x",
@@ -3345,7 +3487,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/notifications.markRead",
         "Runtime": "nodejs18.x",
@@ -3410,7 +3552,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/notifications.markAllRead",
         "Runtime": "nodejs18.x",
@@ -3475,7 +3617,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/notifications.deleteNotification",
         "Runtime": "nodejs18.x",
@@ -3540,7 +3682,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/notifications.clearAll",
         "Runtime": "nodejs18.x",
@@ -3605,7 +3747,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/recommendations.getRecommendedThreads",
         "Runtime": "nodejs18.x",
@@ -3670,7 +3812,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/recommendations.trackInteraction",
         "Runtime": "nodejs18.x",
@@ -3735,7 +3877,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/recommendations.getUserPreferences",
         "Runtime": "nodejs18.x",
@@ -3800,7 +3942,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/unifiedEngagement.trackEngagement",
         "Runtime": "nodejs18.x",
@@ -3865,7 +4007,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/unifiedEngagement.aggregateMetrics",
         "Runtime": "nodejs18.x",
@@ -3930,7 +4072,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/personalizedTrending.getPersonalizedTrending",
         "Runtime": "nodejs18.x",
@@ -3995,7 +4137,7 @@
           "S3Bucket": {
             "Ref": "ServerlessDeploymentBucket"
           },
-          "S3Key": "serverless/ainigama-backend/dev/1760413850990-2025-10-14T03:50:50.990Z/ainigama-backend.zip"
+          "S3Key": "serverless/ainigama-backend/dev/1760504506786-2025-10-15T05:01:46.786Z/ainigama-backend.zip"
         },
         "Handler": "src/handlers/trending.getTrendingThreads",
         "Runtime": "nodejs18.x",
@@ -4053,544 +4195,564 @@
         "GetTrendingThreadsLogGroup"
       ]
     },
-    "TestHandlerLambdaVersionYX5xq4mZs433N3qsdLe4fXyZDiy75c2FsRyL5q2tySY": {
+    "TestHandlerLambdaVersionDvCSkKJ8wv8oFSpIZAZ1zTgKLixOGKw0sVDtgAYJw": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "TestHandlerLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "WebsocketConnectLambdaVersioncr2Qzx7EK0etuWlLY9A5jIrFovqm290ulU05FbxzXQc": {
+    "WebsocketConnectLambdaVersionuxknnY7XqX5mJ1lhfEJvXW3SHu1yfMMOg70I5BTDs": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "WebsocketConnectLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "WebsocketDisconnectLambdaVersionhKcPUqTbgGU0VKOut4DF58DCluPZaVHsihJBHChIYw": {
+    "WebsocketDisconnectLambdaVersionDINpTZh8KBQ1zdAp0ypwy4YD3NZccYHp3PEl85PJlOM": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "WebsocketDisconnectLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "WebsocketDefaultLambdaVersionpuT6pe5cHFjjEVzb1MMejwKW63HJUHcEjMtQKJU": {
+    "WebsocketDefaultLambdaVersionB1LfMRpEHagFvzkXxorpx4XHz6ycACCHYF8kppmABk": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "WebsocketDefaultLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "WebsocketAuthenticateLambdaVersionl5TQPKK5jPlwAUgXn3ElYCpv0rDxb1gcJ7aCcqbUg": {
+    "WebsocketAuthenticateLambdaVersionsn8POl29F6FeRSPNDOfQPFSHfsFeH2SkAhX4ETBgs": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "WebsocketAuthenticateLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "SubscribeNotificationsLambdaVersionbJFMf0SYVWo1VNumpnOTOABManS5vyJA2rNpZtkq7E": {
+    "SubscribeNotificationsLambdaVersionMsRZ4U5ajziDypqqkPFXsSw95fFz6Flm8K9iVoOk": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "SubscribeNotificationsLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "SaveConversationLambdaVersionoQo1f77z1bCyaLSFesIsmiObqyEQB4Yr2jw4OOr8": {
+    "SaveConversationLambdaVersionI9fkNhuPTFEDBv0g1fzqJMU4n3LnTyc1AEtU4A7T4XY": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "SaveConversationLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "JoinThreadLambdaVersionInUwHCwPPTgKcDQFfFJk534R8xFgK7CGBCNgoFageM": {
+    "JoinThreadLambdaVersiongaRTg50mm5yHIEDefjd6M9EFLyU4oKHufp34tV4VU": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "JoinThreadLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "AddAnswerLambdaVersioniH8nLEFn34IyW50RCQPyWUNPooJqGQCx2IamyxvMXg": {
+    "AddAnswerLambdaVersion4GVMdzcgY6yRt3K6lI0OL8yKxW0QLaAG1o1FjtIqhY": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "AddAnswerLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "AddCommentLambdaVersion7XSvK8egl7Y2hLkNOY0iq8snFIjC0FW24CTv1VAdk": {
+    "AddCommentLambdaVersionoIvHOU0gC7w2dGdmVQqzSdEVEvKsyPIwp6oSVKHg": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "AddCommentLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetThreadsLambdaVersionJpq0btL4y2GBue1acCtHVxEHgn3mFBUmdlVz6ZdUQD8": {
+    "GetThreadsLambdaVersionNtLeICRqGXoCZeHqMj1qlXtVMsj9zMy0hrDWycmMMJ8": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetThreadsLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "CreateThreadLambdaVersionmXXGUjKiVKpQAOhLlOzPCd4eoQpTKNMoGxG7YVmaiqM": {
+    "CreateThreadLambdaVersionAekCBNYzbF0sInCoi0mVHVrcwDKZsr154EDAIDdz4": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "CreateThreadLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetThreadLambdaVersionjKdZywbdn0CC7CPw7jv9rhPjSWKNS0dctV7erpsMNE": {
+    "GetThreadLambdaVersionpnYDguyXlVWZn6YYOzBAppaRHP03LtyHjUIWT9wwU": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetThreadLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetThreadAnswersLambdaVersionRaidLtHGS1rXcHCuPShdTGL7TDMYNnSKu8mtlNhVft8": {
+    "GetThreadAnswersLambdaVersionzahpJdSSZeyJMsDlu6sGou60mzlB13Rj7NDgluc": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetThreadAnswersLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetUserConversationsLambdaVersionGCvIp8EWTXYLnsVVR92WPJSmyA26EeoZpW2h3bCOs": {
+    "GetUserConversationsLambdaVersiongmgweghfYFPzsHGrRJYlN3w5yLSMEdWTsOQNAy7es": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetUserConversationsLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "SaveMessagesLambdaVersionjgG5YHTtQyEPEk3qPslqgKSIDzGoT0J3sSQNL6Luc": {
+    "SaveMessagesLambdaVersionHYxOvr5AviAHQbrz6JHOksY23IDx4oabCcfHx5gU": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "SaveMessagesLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetMessagesLambdaVersionDZq5QF1EsLZ008QL7ivBjJt1cb2LiVg5cuQdYRf4WU0": {
+    "GetMessagesLambdaVersioneacq6nuwmz8aP8XBnO78XHxVZV75PBLPRpVnvl7DDs": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetMessagesLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "CreateNewConversationLambdaVersionFNEK2LfIaleNT9yTwdDnoX9hXwTMrf7VJDIGk12Fhs": {
+    "CreateNewConversationLambdaVersion1qwAFC1Lf2bpx6usmXsWaPfhWcqt9Kzzx1mricFw": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "CreateNewConversationLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "UpdateConversationTitleLambdaVersionshK57UY0XjmaNpoAQeMjosS8zrgBFHV9aarNN3BiI": {
+    "UpdateConversationTitleLambdaVersionGIMZDgpy6v487it7xnU2fijgPghospCIdh0uwv6Ok": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "UpdateConversationTitleLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "DeleteConversationLambdaVersionIceMnq7n0bwGIT2dQiDTYfmqcO6eASLXiUC1xmLlGYY": {
+    "DeleteConversationLambdaVersionizbxGTvd9aCgF1d50uPy12FHPnPaa28N3qyfnIN9uk": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "DeleteConversationLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "AddQuestionLambdaVersionPWbJLL4mFBjxNJQfSYHqkuFuDVb2puLbAA0QCRx1qc": {
+    "AddQuestionLambdaVersion7JnB15adBe3jC0LBn8H7MGrqQK8k3D6jjudAC2Tc": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "AddQuestionLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "AddAnswerToQuestionLambdaVersionDO8pDzAzxLxIImBTmOccPYhVxVf1N6XMjHDpGKs9OQ": {
+    "AddAnswerToQuestionLambdaVersion6tLHQ1xuf64aTuexrd2NMvASQk0m0e2gwR3fU6sAqFE": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "AddAnswerToQuestionLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetAnswerCommentsLambdaVersionM38CZ2UV3TdGlQuoGT7sEcPEoon6hO4ObZHdeFw0vA": {
+    "GetAnswerCommentsLambdaVersionbUDzxExnghe7C2RGiPQ4ulvUktlGLNkKBDgKJ5lDBfQ": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetAnswerCommentsLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "AddAnswerCommentLambdaVersioneMvMzZ4yLrsaIjgbohTc8JoeYiqADhybTW4SeowNo": {
+    "AddAnswerCommentLambdaVersionw1uwCNJe5axXEyHr6lzHGmzqfxHrS9HqfpIlEqDl60": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "AddAnswerCommentLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "CheckUserExistsLambdaVersionafptQKtIPaju8kVFn58mLLWhEjTnyaR3LP2sXL2wE1Y": {
+    "CheckUserExistsLambdaVersionnxJwqVrMSts1VJzSIExru4fHFnMn9u1YsHK9WpzDus": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "CheckUserExistsLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "RegisterUserLambdaVersionKoM2Pwi8zpADKGzJvljzmfaUD5O8JHAB12nlVmESKwY": {
+    "RegisterUserLambdaVersion4TID0iVnfbR2duyvWsof4KQu4v89v3U1OiDNQ6CZbM": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "RegisterUserLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "LoginUserLambdaVersionpeXRmt0qhkJMlXwSO01yRiUUFs4snsUoRU5HRneMrU": {
+    "LoginUserLambdaVersionVjIJGaCM15ago52oT7G1TRc1B3VBhwzjMlL6xIbNLA": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "LoginUserLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "UpdatePasswordLambdaVersionTzKhhy8xk9zpmHziwrDLAFVoSCgq5QebaJQdc6Ts9g": {
+    "UpdatePasswordLambdaVersionD8bOUHxWhoLr23wbysGfCMyIBjRRcNwa8uHJomHOI": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "UpdatePasswordLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "CheckAliasLambdaVersion14jOzwKb5Fnih0dQ1T9BDCo8CXDUYWWHvxpms5p79g": {
+    "CheckAliasLambdaVersionnOP12xusfFxXGnLPxnqfWD0qWvlbbPNVjOHgMbhx2R0": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "CheckAliasLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetUserByIdLambdaVersionH69SX0aB0DJuhvH3ln2qRd99iTklQQfOUijHztQPi0": {
+    "GetUserByIdLambdaVersion30E7cpb0hnMCANIgRZj9sNwdBqVNvNxEFYVMFe7nU": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetUserByIdLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetAnswerByIdLambdaVersionBv7ZV4Xq78X8GR7gGD5wbpHzJEteTUZ96elPzKR4yc": {
+    "GetAnswerByIdLambdaVersion4zB667Hbfia499A2buWLe8vhXdtBbzT1GCXSLCGV7o": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetAnswerByIdLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "TrackViewLambdaVersionv38qLcO1hSvhNHIv6Q6cav0na2YuZSDEoQThba57g": {
+    "TrackViewLambdaVersionVcoWOBn5ld12XDOaa31IChxwwW8fgifWwlQEFcDJY": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "TrackViewLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "ToggleLikeLambdaVersionZX5RHU9WSei4lSiajUqWmN2OHZZDtMr9KWmcF06n1Y": {
+    "ToggleLikeLambdaVersionVCpLVDlo83HGhtOUhvrKtSaX0ufTlhCUIoDEKjeUXEs": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ToggleLikeLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetLikesLambdaVersionEqzNG3X0tW5uEwBasdop3ewOAAApK4dQWtQ99q6DD8": {
+    "GetLikesLambdaVersion0dstdIRxzZ0qXhEUVXR62EQXHFIScZNxCoMprQvZY": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetLikesLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "ToggleSaveLambdaVersionJHNsKkElp19FEPE7YOxPmrjnosaeTBZVOUSKmfC7w0": {
+    "ToggleSaveLambdaVersion5FIuI0oHNUDToDNXintAVYe5Hus0sT1w5aMqiJ69FOA": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ToggleSaveLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetUserSavesLambdaVersionIi81M7KK1dThFx90uAPvjQOOr5V4AS4DPCqiUQN8IGA": {
+    "GetUserSavesLambdaVersionAZkg5vzZQJxn6Tcpft7ZKcZGW6gdiqN5RdT2kcCfekY": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetUserSavesLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetUserLikesLambdaVersionsppEP7jFpWUv7DcR8lmHZxOFU5GfWIHqPsafkUSU24": {
+    "GetUserLikesLambdaVersionWRlJmEo2f2lXnBgw5sAwEnwhzeHJXEOo8ruz4XxPgs": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetUserLikesLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetUserRepliesLambdaVersion9NcUutHrZCO0L1DOcKBdH1mSTEZm77fThTFSHtrb1l0": {
+    "GetUserRepliesLambdaVersionXlnKdiIodxaZeko9PDTEHD1ehA3rcBXhlsOPH5syG9o": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetUserRepliesLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetUserInteractionsForThreadLambdaVersiongFFZ1G69wwwxlpPDUBtdSpXfYujgRto7JkKLmK4Akc": {
+    "GetUserDashboardLambdaVersionlCiBHyLRlk4235L03y078UZhOHPXmOVWV41jaouctPc": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "GetUserDashboardLambdaFunction"
+        },
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
+      }
+    },
+    "GetUserStatsLambdaVersionpVAuGW2gEustoPv5lYBxT3ZpzhUhGGExIPgCvv9mmqc": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "GetUserStatsLambdaFunction"
+        },
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
+      }
+    },
+    "GetUserInteractionsForThreadLambdaVersionQtr9QkerhlOXTXoYmZJevN9EvTz08DLLSmDIJ4gz0": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetUserInteractionsForThreadLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "TrackShareLambdaVersionjEa7aKxZ0vzmDCTvfBDmXlYeNwPYkIiJdOzzCgOtVW8": {
+    "TrackShareLambdaVersionlVhgVN3W891jAcG9t6VbMiqacXJIyBGL7zo3SLRN4M": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "TrackShareLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetSharesLambdaVersionmFOTnHtNpjBAgaVmiZNOqWMa7d1bHxmB9bSLzAp8": {
+    "GetSharesLambdaVersiono8WCn108737OYWqbBeh0rRw9ZD8wS7ERVZc2eKKzfU": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetSharesLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetNotificationsLambdaVersionaPT0aXVOg8lCVM8ELRcgrBMxQWhorv9igNxGpTwnjBY": {
+    "GetNotificationsLambdaVersiongBsWwVE0HsshMJA7doDdLWLcV32ho4ueOq47IngzSY": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetNotificationsLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetUnreadCountLambdaVersionbbW1qrGo0YSWUOhjSr4G2G6OkMYahgkbcfwvCWfriY": {
+    "GetUnreadCountLambdaVersionb84nSlWfKRivI75ICUhFkjHKpxQXjoa9XjeL5Lu7Wjs": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetUnreadCountLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "MarkNotificationReadLambdaVersionyCkA5MAUijPYYLDBDuZo76aZWtx4JM1F9j9Quaw7U": {
+    "MarkNotificationReadLambdaVersionzhn2ufz4Oh4Ijq5cXR2KToDhNvbcPArMzDF3GPNE": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "MarkNotificationReadLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "MarkAllNotificationsReadLambdaVersion53JCaxcQSnkJ7Jqj0gy94cNp159Csxj8eNZfksj9E": {
+    "MarkAllNotificationsReadLambdaVersionfMoG3xVr6yJasbfDza7NXsEGIfwi5EmB4fa1KZHRq0": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "MarkAllNotificationsReadLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "DeleteNotificationLambdaVersionj7WbeQsrkF2TDaqx4F0pXQIefcOSyYzeRCCSb66EHd0": {
+    "DeleteNotificationLambdaVersionJIhBt3RAitcWeck81rNGpOTYhziJdo1SnWVOHxmqiA": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "DeleteNotificationLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "ClearAllNotificationsLambdaVersionqj0BkTSESVHPZf1DFrgA6Co6CA7z7tSUlkx7BGIdw": {
+    "ClearAllNotificationsLambdaVersionjrWNpRmVJCulPaFAppCRJcK1kdbTnliuN5gZdLBwk": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "ClearAllNotificationsLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetRecommendedThreadsLambdaVersionO9Nv2F1N8lYhkA1G6fri9bm3Eherwmz8KtUTL5USu6c": {
+    "GetRecommendedThreadsLambdaVersionqtErSAEFPlLgNLJeWEUQ5F5CPxKPiKTCqJPaBGF53Y": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetRecommendedThreadsLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "TrackInteractionLambdaVersionz6h6koUpGqOHpGEuNXWtRFHAonnkFbUg0kF4zS6iU4": {
+    "TrackInteractionLambdaVersionyir2dBFV75337o5eWqJmObNLtiyHqpBrje4waMAJ0": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "TrackInteractionLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetUserPreferencesLambdaVersionf8iqmkr9k1pKlPUI7U2qFglGDbPwWTlfBaPBD4zQ5zE": {
+    "GetUserPreferencesLambdaVersionHYec1aOSiLg0CybGfBl66Nh1QuDZzdvH2zNFaFYQ": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetUserPreferencesLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "TrackEngagementLambdaVersionXE9bCwtyomoaP25cw8LRZBxyYmnMW1MNi0a8VpX24": {
+    "TrackEngagementLambdaVersionvxFZhjj6jnutV7h2QGDPi1pGhD2F0og9yye6BImYuKY": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "TrackEngagementLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "AggregateMetricsLambdaVersion4r5LGa1G7LaYlxFLDirwq0sielUPpebAzZ6n0AXA5o0": {
+    "AggregateMetricsLambdaVersionvoHKYtaqM4lJFgPVRkzCkviMzU1qg3HhcPWhciwems": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "AggregateMetricsLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetPersonalizedTrendingLambdaVersionA4uoCOqm0oA2bM0D5snuNoiwdbI7LdktgX4Tzby07A": {
+    "GetPersonalizedTrendingLambdaVersion1SYH6C8X48fgniRS8Ki2uqZxzW6rL9B01VHIEVJro": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetPersonalizedTrendingLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
-    "GetTrendingThreadsLambdaVersionDCdWu2DcdFxg7kYW61HfiDI7vvL91Kwm167B6gmRCuU": {
+    "GetTrendingThreadsLambdaVersionIwfDjcdUBIIgLRZ6lld7P0X8uKYnxxqZo3sZ6U": {
       "Type": "AWS::Lambda::Version",
       "DeletionPolicy": "Retain",
       "Properties": {
         "FunctionName": {
           "Ref": "GetTrendingThreadsLambdaFunction"
         },
-        "CodeSha256": "zpEylil3awn7KcGwrXgCp/cjRo+turFvGYmN5o24x8E="
+        "CodeSha256": "ZZGm/ORyUrouqbK8ZVSzykYkDOuI6Fh6TZtHq2hTclk="
       }
     },
     "AggregateMetricsEventsRuleSchedule1": {
@@ -5067,6 +5229,30 @@
           "Ref": "ApiGatewayResourceUsersUseridVar"
         },
         "PathPart": "replies",
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        }
+      }
+    },
+    "ApiGatewayResourceUsersUseridVarDashboard": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "ApiGatewayResourceUsersUseridVar"
+        },
+        "PathPart": "dashboard",
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        }
+      }
+    },
+    "ApiGatewayResourceUsersUseridVarStats": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "ParentId": {
+          "Ref": "ApiGatewayResourceUsersUseridVar"
+        },
+        "PathPart": "stats",
         "RestApiId": {
           "Ref": "ApiGatewayRestApi"
         }
@@ -7243,6 +7429,100 @@
         "GetUserLikesLambdaPermissionApiGateway"
       ]
     },
+    "ApiGatewayMethodUsersUseridVarDashboardOptions": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "MethodResponses": [
+          {
+            "StatusCode": "200",
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Methods": true,
+              "method.response.header.Access-Control-Max-Age": true
+            },
+            "ResponseModels": {}
+          }
+        ],
+        "RequestParameters": {},
+        "Integration": {
+          "Type": "MOCK",
+          "RequestTemplates": {
+            "application/json": "{statusCode:200}"
+          },
+          "ContentHandling": "CONVERT_TO_TEXT",
+          "IntegrationResponses": [
+            {
+              "StatusCode": "200",
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET'",
+                "method.response.header.Access-Control-Max-Age": "'86400'"
+              },
+              "ResponseTemplates": {
+                "application/json": ""
+              }
+            }
+          ]
+        },
+        "ResourceId": {
+          "Ref": "ApiGatewayResourceUsersUseridVarDashboard"
+        },
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        }
+      }
+    },
+    "ApiGatewayMethodUsersUseridVarStatsOptions": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "OPTIONS",
+        "MethodResponses": [
+          {
+            "StatusCode": "200",
+            "ResponseParameters": {
+              "method.response.header.Access-Control-Allow-Origin": true,
+              "method.response.header.Access-Control-Allow-Headers": true,
+              "method.response.header.Access-Control-Allow-Methods": true,
+              "method.response.header.Access-Control-Max-Age": true
+            },
+            "ResponseModels": {}
+          }
+        ],
+        "RequestParameters": {},
+        "Integration": {
+          "Type": "MOCK",
+          "RequestTemplates": {
+            "application/json": "{statusCode:200}"
+          },
+          "ContentHandling": "CONVERT_TO_TEXT",
+          "IntegrationResponses": [
+            {
+              "StatusCode": "200",
+              "ResponseParameters": {
+                "method.response.header.Access-Control-Allow-Origin": "'*'",
+                "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET'",
+                "method.response.header.Access-Control-Max-Age": "'86400'"
+              },
+              "ResponseTemplates": {
+                "application/json": ""
+              }
+            }
+          ]
+        },
+        "ResourceId": {
+          "Ref": "ApiGatewayResourceUsersUseridVarStats"
+        },
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        }
+      }
+    },
     "ApiGatewayMethodUsersUseridVarRepliesOptions": {
       "Type": "AWS::ApiGateway::Method",
       "Properties": {
@@ -7273,7 +7553,7 @@
               "ResponseParameters": {
                 "method.response.header.Access-Control-Allow-Origin": "'*'",
                 "method.response.header.Access-Control-Allow-Headers": "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'",
-                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS,GET'",
+                "method.response.header.Access-Control-Allow-Methods": "'OPTIONS'",
                 "method.response.header.Access-Control-Max-Age": "'86400'"
               },
               "ResponseTemplates": {
@@ -7297,7 +7577,7 @@
                 ":lambda:path/2015-03-31/functions/",
                 {
                   "Fn::GetAtt": [
-                    "GetUserRepliesLambdaFunction",
+                    "GetUserStatsLambdaFunction",
                     "Arn"
                   ]
                 },
@@ -7315,7 +7595,7 @@
         "ApiKeyRequired": false
       },
       "DependsOn": [
-        "GetUserRepliesLambdaPermissionApiGateway"
+        "GetUserStatsLambdaPermissionApiGateway"
       ]
     },
     "ApiGatewayMethodUsersUseridVarInteractionsOptions": {
@@ -9674,6 +9954,98 @@
         "GetUserRepliesLambdaPermissionApiGateway"
       ]
     },
+    "ApiGatewayMethodUsersUseridVarDashboardGet": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "HttpMethod": "GET",
+        "RequestParameters": {},
+        "ResourceId": {
+          "Ref": "ApiGatewayResourceUsersUseridVarDashboard"
+        },
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        },
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "GetUserDashboardLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "MethodResponses": []
+      },
+      "DependsOn": [
+        "GetUserDashboardLambdaPermissionApiGateway"
+      ]
+    },
+    "ApiGatewayMethodUsersUseridVarStatsGet": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "HttpMethod": "GET",
+        "RequestParameters": {},
+        "ResourceId": {
+          "Ref": "ApiGatewayResourceUsersUseridVarStats"
+        },
+        "RestApiId": {
+          "Ref": "ApiGatewayRestApi"
+        },
+        "ApiKeyRequired": false,
+        "AuthorizationType": "NONE",
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:",
+                {
+                  "Ref": "AWS::Partition"
+                },
+                ":apigateway:",
+                {
+                  "Ref": "AWS::Region"
+                },
+                ":lambda:path/2015-03-31/functions/",
+                {
+                  "Fn::GetAtt": [
+                    "GetUserStatsLambdaFunction",
+                    "Arn"
+                  ]
+                },
+                "/invocations"
+              ]
+            ]
+          }
+        },
+        "MethodResponses": []
+      },
+      "DependsOn": [
+        "GetUserStatsLambdaPermissionApiGateway"
+      ]
+    },
     "ApiGatewayMethodUsersUseridVarInteractionsGet": {
       "Type": "AWS::ApiGateway::Method",
       "Properties": {
@@ -10364,7 +10736,7 @@
         "GetTrendingThreadsLambdaPermissionApiGateway"
       ]
     },
-    "ApiGatewayDeployment1760413847149": {
+    "ApiGatewayDeployment1760504502014": {
       "Type": "AWS::ApiGateway::Deployment",
       "Properties": {
         "RestApiId": {
@@ -10398,6 +10770,8 @@
         "ApiGatewayMethodSavesContenttypeVarContentidVarOptions",
         "ApiGatewayMethodUsersUseridVarSavesOptions",
         "ApiGatewayMethodUsersUseridVarLikesOptions",
+        "ApiGatewayMethodUsersUseridVarDashboardOptions",
+        "ApiGatewayMethodUsersUseridVarStatsOptions",
         "ApiGatewayMethodUsersUseridVarRepliesOptions",
         "ApiGatewayMethodUsersUseridVarInteractionsOptions",
         "ApiGatewayMethodSharesContenttypeVarContentidVarOptions",
@@ -10469,6 +10843,8 @@
         "ApiGatewayMethodUsersUseridVarLikesGet",
         "ApiGatewayMethodUsersUseridVarLikesOptions",
         "ApiGatewayMethodUsersUseridVarRepliesGet",
+        "ApiGatewayMethodUsersUseridVarDashboardGet",
+        "ApiGatewayMethodUsersUseridVarStatsGet",
         "ApiGatewayMethodUsersUseridVarRepliesOptions",
         "ApiGatewayMethodUsersUseridVarInteractionsGet",
         "ApiGatewayMethodSharesContenttypeVarContentidVarPost",
@@ -11543,6 +11919,80 @@
         "FunctionName": {
           "Fn::GetAtt": [
             "GetUserRepliesLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "/*/*"
+            ]
+          ]
+        }
+      }
+    },
+    "GetUserDashboardLambdaPermissionApiGateway": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "GetUserDashboardLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "ApiGatewayRestApi"
+              },
+              "/*/*"
+            ]
+          ]
+        }
+      }
+    },
+    "GetUserStatsLambdaPermissionApiGateway": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "GetUserStatsLambdaFunction",
             "Arn"
           ]
         },
@@ -13670,7 +14120,7 @@
     "TestHandlerLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "TestHandlerLambdaVersionYX5xq4mZs433N3qsdLe4fXyZDiy75c2FsRyL5q2tySY"
+        "Ref": "TestHandlerLambdaVersionDvCSkKJ8wv8oFSpIZAZ1zTgKLixOGKw0sVDtgAYJw"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-TestHandlerLambdaFunctionQualifiedArn"
@@ -13679,7 +14129,7 @@
     "WebsocketConnectLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "WebsocketConnectLambdaVersioncr2Qzx7EK0etuWlLY9A5jIrFovqm290ulU05FbxzXQc"
+        "Ref": "WebsocketConnectLambdaVersionuxknnY7XqX5mJ1lhfEJvXW3SHu1yfMMOg70I5BTDs"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-WebsocketConnectLambdaFunctionQualifiedArn"
@@ -13688,7 +14138,7 @@
     "WebsocketDisconnectLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "WebsocketDisconnectLambdaVersionhKcPUqTbgGU0VKOut4DF58DCluPZaVHsihJBHChIYw"
+        "Ref": "WebsocketDisconnectLambdaVersionDINpTZh8KBQ1zdAp0ypwy4YD3NZccYHp3PEl85PJlOM"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-WebsocketDisconnectLambdaFunctionQualifiedArn"
@@ -13697,7 +14147,7 @@
     "WebsocketDefaultLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "WebsocketDefaultLambdaVersionpuT6pe5cHFjjEVzb1MMejwKW63HJUHcEjMtQKJU"
+        "Ref": "WebsocketDefaultLambdaVersionB1LfMRpEHagFvzkXxorpx4XHz6ycACCHYF8kppmABk"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-WebsocketDefaultLambdaFunctionQualifiedArn"
@@ -13706,7 +14156,7 @@
     "WebsocketAuthenticateLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "WebsocketAuthenticateLambdaVersionl5TQPKK5jPlwAUgXn3ElYCpv0rDxb1gcJ7aCcqbUg"
+        "Ref": "WebsocketAuthenticateLambdaVersionsn8POl29F6FeRSPNDOfQPFSHfsFeH2SkAhX4ETBgs"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-WebsocketAuthenticateLambdaFunctionQualifiedArn"
@@ -13715,7 +14165,7 @@
     "SubscribeNotificationsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "SubscribeNotificationsLambdaVersionbJFMf0SYVWo1VNumpnOTOABManS5vyJA2rNpZtkq7E"
+        "Ref": "SubscribeNotificationsLambdaVersionMsRZ4U5ajziDypqqkPFXsSw95fFz6Flm8K9iVoOk"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-SubscribeNotificationsLambdaFunctionQualifiedArn"
@@ -13724,7 +14174,7 @@
     "SaveConversationLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "SaveConversationLambdaVersionoQo1f77z1bCyaLSFesIsmiObqyEQB4Yr2jw4OOr8"
+        "Ref": "SaveConversationLambdaVersionI9fkNhuPTFEDBv0g1fzqJMU4n3LnTyc1AEtU4A7T4XY"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-SaveConversationLambdaFunctionQualifiedArn"
@@ -13733,7 +14183,7 @@
     "JoinThreadLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "JoinThreadLambdaVersionInUwHCwPPTgKcDQFfFJk534R8xFgK7CGBCNgoFageM"
+        "Ref": "JoinThreadLambdaVersiongaRTg50mm5yHIEDefjd6M9EFLyU4oKHufp34tV4VU"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-JoinThreadLambdaFunctionQualifiedArn"
@@ -13742,7 +14192,7 @@
     "AddAnswerLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "AddAnswerLambdaVersioniH8nLEFn34IyW50RCQPyWUNPooJqGQCx2IamyxvMXg"
+        "Ref": "AddAnswerLambdaVersion4GVMdzcgY6yRt3K6lI0OL8yKxW0QLaAG1o1FjtIqhY"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-AddAnswerLambdaFunctionQualifiedArn"
@@ -13751,7 +14201,7 @@
     "AddCommentLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "AddCommentLambdaVersion7XSvK8egl7Y2hLkNOY0iq8snFIjC0FW24CTv1VAdk"
+        "Ref": "AddCommentLambdaVersionoIvHOU0gC7w2dGdmVQqzSdEVEvKsyPIwp6oSVKHg"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-AddCommentLambdaFunctionQualifiedArn"
@@ -13760,7 +14210,7 @@
     "GetThreadsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetThreadsLambdaVersionJpq0btL4y2GBue1acCtHVxEHgn3mFBUmdlVz6ZdUQD8"
+        "Ref": "GetThreadsLambdaVersionNtLeICRqGXoCZeHqMj1qlXtVMsj9zMy0hrDWycmMMJ8"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetThreadsLambdaFunctionQualifiedArn"
@@ -13769,7 +14219,7 @@
     "CreateThreadLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "CreateThreadLambdaVersionmXXGUjKiVKpQAOhLlOzPCd4eoQpTKNMoGxG7YVmaiqM"
+        "Ref": "CreateThreadLambdaVersionAekCBNYzbF0sInCoi0mVHVrcwDKZsr154EDAIDdz4"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-CreateThreadLambdaFunctionQualifiedArn"
@@ -13778,7 +14228,7 @@
     "GetThreadLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetThreadLambdaVersionjKdZywbdn0CC7CPw7jv9rhPjSWKNS0dctV7erpsMNE"
+        "Ref": "GetThreadLambdaVersionpnYDguyXlVWZn6YYOzBAppaRHP03LtyHjUIWT9wwU"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetThreadLambdaFunctionQualifiedArn"
@@ -13787,7 +14237,7 @@
     "GetThreadAnswersLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetThreadAnswersLambdaVersionRaidLtHGS1rXcHCuPShdTGL7TDMYNnSKu8mtlNhVft8"
+        "Ref": "GetThreadAnswersLambdaVersionzahpJdSSZeyJMsDlu6sGou60mzlB13Rj7NDgluc"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetThreadAnswersLambdaFunctionQualifiedArn"
@@ -13796,7 +14246,7 @@
     "GetUserConversationsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetUserConversationsLambdaVersionGCvIp8EWTXYLnsVVR92WPJSmyA26EeoZpW2h3bCOs"
+        "Ref": "GetUserConversationsLambdaVersiongmgweghfYFPzsHGrRJYlN3w5yLSMEdWTsOQNAy7es"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetUserConversationsLambdaFunctionQualifiedArn"
@@ -13805,7 +14255,7 @@
     "SaveMessagesLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "SaveMessagesLambdaVersionjgG5YHTtQyEPEk3qPslqgKSIDzGoT0J3sSQNL6Luc"
+        "Ref": "SaveMessagesLambdaVersionHYxOvr5AviAHQbrz6JHOksY23IDx4oabCcfHx5gU"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-SaveMessagesLambdaFunctionQualifiedArn"
@@ -13814,7 +14264,7 @@
     "GetMessagesLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetMessagesLambdaVersionDZq5QF1EsLZ008QL7ivBjJt1cb2LiVg5cuQdYRf4WU0"
+        "Ref": "GetMessagesLambdaVersioneacq6nuwmz8aP8XBnO78XHxVZV75PBLPRpVnvl7DDs"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetMessagesLambdaFunctionQualifiedArn"
@@ -13823,7 +14273,7 @@
     "CreateNewConversationLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "CreateNewConversationLambdaVersionFNEK2LfIaleNT9yTwdDnoX9hXwTMrf7VJDIGk12Fhs"
+        "Ref": "CreateNewConversationLambdaVersion1qwAFC1Lf2bpx6usmXsWaPfhWcqt9Kzzx1mricFw"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-CreateNewConversationLambdaFunctionQualifiedArn"
@@ -13832,7 +14282,7 @@
     "UpdateConversationTitleLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "UpdateConversationTitleLambdaVersionshK57UY0XjmaNpoAQeMjosS8zrgBFHV9aarNN3BiI"
+        "Ref": "UpdateConversationTitleLambdaVersionGIMZDgpy6v487it7xnU2fijgPghospCIdh0uwv6Ok"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-UpdateConversationTitleLambdaFunctionQualifiedArn"
@@ -13841,7 +14291,7 @@
     "DeleteConversationLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "DeleteConversationLambdaVersionIceMnq7n0bwGIT2dQiDTYfmqcO6eASLXiUC1xmLlGYY"
+        "Ref": "DeleteConversationLambdaVersionizbxGTvd9aCgF1d50uPy12FHPnPaa28N3qyfnIN9uk"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-DeleteConversationLambdaFunctionQualifiedArn"
@@ -13850,7 +14300,7 @@
     "AddQuestionLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "AddQuestionLambdaVersionPWbJLL4mFBjxNJQfSYHqkuFuDVb2puLbAA0QCRx1qc"
+        "Ref": "AddQuestionLambdaVersion7JnB15adBe3jC0LBn8H7MGrqQK8k3D6jjudAC2Tc"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-AddQuestionLambdaFunctionQualifiedArn"
@@ -13859,7 +14309,7 @@
     "AddAnswerToQuestionLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "AddAnswerToQuestionLambdaVersionDO8pDzAzxLxIImBTmOccPYhVxVf1N6XMjHDpGKs9OQ"
+        "Ref": "AddAnswerToQuestionLambdaVersion6tLHQ1xuf64aTuexrd2NMvASQk0m0e2gwR3fU6sAqFE"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-AddAnswerToQuestionLambdaFunctionQualifiedArn"
@@ -13868,7 +14318,7 @@
     "GetAnswerCommentsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetAnswerCommentsLambdaVersionM38CZ2UV3TdGlQuoGT7sEcPEoon6hO4ObZHdeFw0vA"
+        "Ref": "GetAnswerCommentsLambdaVersionbUDzxExnghe7C2RGiPQ4ulvUktlGLNkKBDgKJ5lDBfQ"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetAnswerCommentsLambdaFunctionQualifiedArn"
@@ -13877,7 +14327,7 @@
     "AddAnswerCommentLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "AddAnswerCommentLambdaVersioneMvMzZ4yLrsaIjgbohTc8JoeYiqADhybTW4SeowNo"
+        "Ref": "AddAnswerCommentLambdaVersionw1uwCNJe5axXEyHr6lzHGmzqfxHrS9HqfpIlEqDl60"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-AddAnswerCommentLambdaFunctionQualifiedArn"
@@ -13886,7 +14336,7 @@
     "CheckUserExistsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "CheckUserExistsLambdaVersionafptQKtIPaju8kVFn58mLLWhEjTnyaR3LP2sXL2wE1Y"
+        "Ref": "CheckUserExistsLambdaVersionnxJwqVrMSts1VJzSIExru4fHFnMn9u1YsHK9WpzDus"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-CheckUserExistsLambdaFunctionQualifiedArn"
@@ -13895,7 +14345,7 @@
     "RegisterUserLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "RegisterUserLambdaVersionKoM2Pwi8zpADKGzJvljzmfaUD5O8JHAB12nlVmESKwY"
+        "Ref": "RegisterUserLambdaVersion4TID0iVnfbR2duyvWsof4KQu4v89v3U1OiDNQ6CZbM"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-RegisterUserLambdaFunctionQualifiedArn"
@@ -13904,7 +14354,7 @@
     "LoginUserLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "LoginUserLambdaVersionpeXRmt0qhkJMlXwSO01yRiUUFs4snsUoRU5HRneMrU"
+        "Ref": "LoginUserLambdaVersionVjIJGaCM15ago52oT7G1TRc1B3VBhwzjMlL6xIbNLA"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-LoginUserLambdaFunctionQualifiedArn"
@@ -13913,7 +14363,7 @@
     "UpdatePasswordLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "UpdatePasswordLambdaVersionTzKhhy8xk9zpmHziwrDLAFVoSCgq5QebaJQdc6Ts9g"
+        "Ref": "UpdatePasswordLambdaVersionD8bOUHxWhoLr23wbysGfCMyIBjRRcNwa8uHJomHOI"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-UpdatePasswordLambdaFunctionQualifiedArn"
@@ -13922,7 +14372,7 @@
     "CheckAliasLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "CheckAliasLambdaVersion14jOzwKb5Fnih0dQ1T9BDCo8CXDUYWWHvxpms5p79g"
+        "Ref": "CheckAliasLambdaVersionnOP12xusfFxXGnLPxnqfWD0qWvlbbPNVjOHgMbhx2R0"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-CheckAliasLambdaFunctionQualifiedArn"
@@ -13931,7 +14381,7 @@
     "GetUserByIdLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetUserByIdLambdaVersionH69SX0aB0DJuhvH3ln2qRd99iTklQQfOUijHztQPi0"
+        "Ref": "GetUserByIdLambdaVersion30E7cpb0hnMCANIgRZj9sNwdBqVNvNxEFYVMFe7nU"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetUserByIdLambdaFunctionQualifiedArn"
@@ -13940,7 +14390,7 @@
     "GetAnswerByIdLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetAnswerByIdLambdaVersionBv7ZV4Xq78X8GR7gGD5wbpHzJEteTUZ96elPzKR4yc"
+        "Ref": "GetAnswerByIdLambdaVersion4zB667Hbfia499A2buWLe8vhXdtBbzT1GCXSLCGV7o"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetAnswerByIdLambdaFunctionQualifiedArn"
@@ -13949,7 +14399,7 @@
     "TrackViewLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "TrackViewLambdaVersionv38qLcO1hSvhNHIv6Q6cav0na2YuZSDEoQThba57g"
+        "Ref": "TrackViewLambdaVersionVcoWOBn5ld12XDOaa31IChxwwW8fgifWwlQEFcDJY"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-TrackViewLambdaFunctionQualifiedArn"
@@ -13958,7 +14408,7 @@
     "ToggleLikeLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ToggleLikeLambdaVersionZX5RHU9WSei4lSiajUqWmN2OHZZDtMr9KWmcF06n1Y"
+        "Ref": "ToggleLikeLambdaVersionVCpLVDlo83HGhtOUhvrKtSaX0ufTlhCUIoDEKjeUXEs"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-ToggleLikeLambdaFunctionQualifiedArn"
@@ -13967,7 +14417,7 @@
     "GetLikesLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetLikesLambdaVersionEqzNG3X0tW5uEwBasdop3ewOAAApK4dQWtQ99q6DD8"
+        "Ref": "GetLikesLambdaVersion0dstdIRxzZ0qXhEUVXR62EQXHFIScZNxCoMprQvZY"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetLikesLambdaFunctionQualifiedArn"
@@ -13976,7 +14426,7 @@
     "ToggleSaveLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ToggleSaveLambdaVersionJHNsKkElp19FEPE7YOxPmrjnosaeTBZVOUSKmfC7w0"
+        "Ref": "ToggleSaveLambdaVersion5FIuI0oHNUDToDNXintAVYe5Hus0sT1w5aMqiJ69FOA"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-ToggleSaveLambdaFunctionQualifiedArn"
@@ -13985,7 +14435,7 @@
     "GetUserSavesLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetUserSavesLambdaVersionIi81M7KK1dThFx90uAPvjQOOr5V4AS4DPCqiUQN8IGA"
+        "Ref": "GetUserSavesLambdaVersionAZkg5vzZQJxn6Tcpft7ZKcZGW6gdiqN5RdT2kcCfekY"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetUserSavesLambdaFunctionQualifiedArn"
@@ -13994,7 +14444,7 @@
     "GetUserLikesLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetUserLikesLambdaVersionsppEP7jFpWUv7DcR8lmHZxOFU5GfWIHqPsafkUSU24"
+        "Ref": "GetUserLikesLambdaVersionWRlJmEo2f2lXnBgw5sAwEnwhzeHJXEOo8ruz4XxPgs"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetUserLikesLambdaFunctionQualifiedArn"
@@ -14003,16 +14453,34 @@
     "GetUserRepliesLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetUserRepliesLambdaVersion9NcUutHrZCO0L1DOcKBdH1mSTEZm77fThTFSHtrb1l0"
+        "Ref": "GetUserRepliesLambdaVersionXlnKdiIodxaZeko9PDTEHD1ehA3rcBXhlsOPH5syG9o"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetUserRepliesLambdaFunctionQualifiedArn"
       }
     },
+    "GetUserDashboardLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "GetUserDashboardLambdaVersionlCiBHyLRlk4235L03y078UZhOHPXmOVWV41jaouctPc"
+      },
+      "Export": {
+        "Name": "sls-ainigama-backend-dev-GetUserDashboardLambdaFunctionQualifiedArn"
+      }
+    },
+    "GetUserStatsLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "GetUserStatsLambdaVersionpVAuGW2gEustoPv5lYBxT3ZpzhUhGGExIPgCvv9mmqc"
+      },
+      "Export": {
+        "Name": "sls-ainigama-backend-dev-GetUserStatsLambdaFunctionQualifiedArn"
+      }
+    },
     "GetUserInteractionsForThreadLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetUserInteractionsForThreadLambdaVersiongFFZ1G69wwwxlpPDUBtdSpXfYujgRto7JkKLmK4Akc"
+        "Ref": "GetUserInteractionsForThreadLambdaVersionQtr9QkerhlOXTXoYmZJevN9EvTz08DLLSmDIJ4gz0"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetUserInteractionsForThreadLambdaFunctionQualifiedArn"
@@ -14021,7 +14489,7 @@
     "TrackShareLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "TrackShareLambdaVersionjEa7aKxZ0vzmDCTvfBDmXlYeNwPYkIiJdOzzCgOtVW8"
+        "Ref": "TrackShareLambdaVersionlVhgVN3W891jAcG9t6VbMiqacXJIyBGL7zo3SLRN4M"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-TrackShareLambdaFunctionQualifiedArn"
@@ -14030,7 +14498,7 @@
     "GetSharesLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetSharesLambdaVersionmFOTnHtNpjBAgaVmiZNOqWMa7d1bHxmB9bSLzAp8"
+        "Ref": "GetSharesLambdaVersiono8WCn108737OYWqbBeh0rRw9ZD8wS7ERVZc2eKKzfU"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetSharesLambdaFunctionQualifiedArn"
@@ -14039,7 +14507,7 @@
     "GetNotificationsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetNotificationsLambdaVersionaPT0aXVOg8lCVM8ELRcgrBMxQWhorv9igNxGpTwnjBY"
+        "Ref": "GetNotificationsLambdaVersiongBsWwVE0HsshMJA7doDdLWLcV32ho4ueOq47IngzSY"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetNotificationsLambdaFunctionQualifiedArn"
@@ -14048,7 +14516,7 @@
     "GetUnreadCountLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetUnreadCountLambdaVersionbbW1qrGo0YSWUOhjSr4G2G6OkMYahgkbcfwvCWfriY"
+        "Ref": "GetUnreadCountLambdaVersionb84nSlWfKRivI75ICUhFkjHKpxQXjoa9XjeL5Lu7Wjs"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetUnreadCountLambdaFunctionQualifiedArn"
@@ -14057,7 +14525,7 @@
     "MarkNotificationReadLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "MarkNotificationReadLambdaVersionyCkA5MAUijPYYLDBDuZo76aZWtx4JM1F9j9Quaw7U"
+        "Ref": "MarkNotificationReadLambdaVersionzhn2ufz4Oh4Ijq5cXR2KToDhNvbcPArMzDF3GPNE"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-MarkNotificationReadLambdaFunctionQualifiedArn"
@@ -14066,7 +14534,7 @@
     "MarkAllNotificationsReadLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "MarkAllNotificationsReadLambdaVersion53JCaxcQSnkJ7Jqj0gy94cNp159Csxj8eNZfksj9E"
+        "Ref": "MarkAllNotificationsReadLambdaVersionfMoG3xVr6yJasbfDza7NXsEGIfwi5EmB4fa1KZHRq0"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-MarkAllNotificationsReadLambdaFunctionQualifiedArn"
@@ -14075,7 +14543,7 @@
     "DeleteNotificationLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "DeleteNotificationLambdaVersionj7WbeQsrkF2TDaqx4F0pXQIefcOSyYzeRCCSb66EHd0"
+        "Ref": "DeleteNotificationLambdaVersionJIhBt3RAitcWeck81rNGpOTYhziJdo1SnWVOHxmqiA"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-DeleteNotificationLambdaFunctionQualifiedArn"
@@ -14084,7 +14552,7 @@
     "ClearAllNotificationsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "ClearAllNotificationsLambdaVersionqj0BkTSESVHPZf1DFrgA6Co6CA7z7tSUlkx7BGIdw"
+        "Ref": "ClearAllNotificationsLambdaVersionjrWNpRmVJCulPaFAppCRJcK1kdbTnliuN5gZdLBwk"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-ClearAllNotificationsLambdaFunctionQualifiedArn"
@@ -14093,7 +14561,7 @@
     "GetRecommendedThreadsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetRecommendedThreadsLambdaVersionO9Nv2F1N8lYhkA1G6fri9bm3Eherwmz8KtUTL5USu6c"
+        "Ref": "GetRecommendedThreadsLambdaVersionqtErSAEFPlLgNLJeWEUQ5F5CPxKPiKTCqJPaBGF53Y"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetRecommendedThreadsLambdaFunctionQualifiedArn"
@@ -14102,7 +14570,7 @@
     "TrackInteractionLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "TrackInteractionLambdaVersionz6h6koUpGqOHpGEuNXWtRFHAonnkFbUg0kF4zS6iU4"
+        "Ref": "TrackInteractionLambdaVersionyir2dBFV75337o5eWqJmObNLtiyHqpBrje4waMAJ0"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-TrackInteractionLambdaFunctionQualifiedArn"
@@ -14111,7 +14579,7 @@
     "GetUserPreferencesLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetUserPreferencesLambdaVersionf8iqmkr9k1pKlPUI7U2qFglGDbPwWTlfBaPBD4zQ5zE"
+        "Ref": "GetUserPreferencesLambdaVersionHYec1aOSiLg0CybGfBl66Nh1QuDZzdvH2zNFaFYQ"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetUserPreferencesLambdaFunctionQualifiedArn"
@@ -14120,7 +14588,7 @@
     "TrackEngagementLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "TrackEngagementLambdaVersionXE9bCwtyomoaP25cw8LRZBxyYmnMW1MNi0a8VpX24"
+        "Ref": "TrackEngagementLambdaVersionvxFZhjj6jnutV7h2QGDPi1pGhD2F0og9yye6BImYuKY"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-TrackEngagementLambdaFunctionQualifiedArn"
@@ -14129,7 +14597,7 @@
     "AggregateMetricsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "AggregateMetricsLambdaVersion4r5LGa1G7LaYlxFLDirwq0sielUPpebAzZ6n0AXA5o0"
+        "Ref": "AggregateMetricsLambdaVersionvoHKYtaqM4lJFgPVRkzCkviMzU1qg3HhcPWhciwems"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-AggregateMetricsLambdaFunctionQualifiedArn"
@@ -14138,7 +14606,7 @@
     "GetPersonalizedTrendingLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetPersonalizedTrendingLambdaVersionA4uoCOqm0oA2bM0D5snuNoiwdbI7LdktgX4Tzby07A"
+        "Ref": "GetPersonalizedTrendingLambdaVersion1SYH6C8X48fgniRS8Ki2uqZxzW6rL9B01VHIEVJro"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetPersonalizedTrendingLambdaFunctionQualifiedArn"
@@ -14147,7 +14615,7 @@
     "GetTrendingThreadsLambdaFunctionQualifiedArn": {
       "Description": "Current Lambda function version",
       "Value": {
-        "Ref": "GetTrendingThreadsLambdaVersionDCdWu2DcdFxg7kYW61HfiDI7vvL91Kwm167B6gmRCuU"
+        "Ref": "GetTrendingThreadsLambdaVersionIwfDjcdUBIIgLRZ6lld7P0X8uKYnxxqZo3sZ6U"
       },
       "Export": {
         "Name": "sls-ainigama-backend-dev-GetTrendingThreadsLambdaFunctionQualifiedArn"

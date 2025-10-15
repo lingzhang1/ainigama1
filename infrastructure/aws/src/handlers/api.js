@@ -46,5 +46,7 @@ module.exports = {
   getUserInteractionsForThread: metrics.getUserInteractionsForThread,
   getUserSaves: metrics.getUserSaves,
   getUserLikes: metrics.getUserLikes,
-  getUserReplies: metrics.getUserReplies
+  getUserReplies: metrics.getUserReplies,
+  getUserDashboard: metrics.getUserDashboard,
+  getUserStats: metrics.getUserStats
 };

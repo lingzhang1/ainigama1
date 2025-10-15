@@ -12,7 +12,7 @@ class MetricsService {
   private apiUrl: string;
 
   constructor() {
-    this.apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+    this.apiUrl = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3002/api';
   }
 
   // ==================== VIEWS ====================
@@ -209,6 +209,66 @@ class MetricsService {
       return await response.json();
     } catch (error) {
       console.error('Error getting user replies:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user dashboard data (all user interactions in one call)
+   * This is a performance optimization for User Center
+   */
+  async getUserDashboard(userId: string): Promise<{
+    myPosts: any[];
+    saved: any[];
+    liked: any[];
+    replied: any[];
+    timestamp: string;
+  }> {
+    try {
+      const response = await fetch(`${this.apiUrl}/users/${userId}/dashboard`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get user dashboard: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting user dashboard:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get user stats only (counts without full data)
+   * Ultra-fast endpoint for initial loading
+   */
+  async getUserStats(userId: string): Promise<{
+    myPosts: number;
+    saved: number;
+    liked: number;
+    replied: number;
+    timestamp: string;
+  }> {
+    try {
+      const response = await fetch(`${this.apiUrl}/users/${userId}/stats`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to get user stats: ${response.statusText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error getting user stats:', error);
       throw error;
     }
   }

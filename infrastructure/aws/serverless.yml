@@ -997,6 +997,31 @@ functions:
           path: /users/{userId}/replies
           method: get
           cors:
+
+  getUserDashboard:
+    handler: src/handlers/metrics.getUserDashboard
+    events:
+      - http:
+          path: /users/{userId}/dashboard
+          method: get
+          cors:
+            origin: '*'
+            headers:
+              - Content-Type
+              - X-Amz-Date
+              - Authorization
+              - X-Api-Key
+              - X-Amz-Security-Token
+            allowCredentials: false
+            maxAge: 86400
+
+  getUserStats:
+    handler: src/handlers/metrics.getUserStats
+    events:
+      - http:
+          path: /users/{userId}/stats
+          method: get
+          cors:
             origin: '*'
             headers:
               - Content-Type
