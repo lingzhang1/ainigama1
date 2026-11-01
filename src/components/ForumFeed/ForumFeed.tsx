@@ -79,10 +79,10 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
 
   // Close dropdown when drawer closes
   useEffect(() => {
-    if (!isLeftDrawerOpen && showNewThreadDropdown) {
+    if (isMobile && !isLeftDrawerOpen && showNewThreadDropdown) {
       setShowNewThreadDropdown(false);
     }
-  }, [isLeftDrawerOpen, showNewThreadDropdown]);
+  }, [isMobile, isLeftDrawerOpen, showNewThreadDropdown]);
 
   useEffect(() => {
     const loadThreads = async () => {
