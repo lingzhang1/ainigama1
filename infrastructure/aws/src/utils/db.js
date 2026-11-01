@@ -11,21 +11,7 @@ const tables = {
   questions: process.env.DYNAMODB_TABLE_QUESTIONS || 'ainigama-dev-questions',
   answers: process.env.DYNAMODB_TABLE_ANSWERS,
   comments: process.env.DYNAMODB_TABLE_COMMENTS,
-  connections: process.env.DYNAMODB_TABLE_CONNECTIONS || 'ainigama-dev-connections',
-  // New metrics tables
-  threadViews: process.env.DYNAMODB_TABLE_THREAD_VIEWS || 'ainigama-dev-thread-views',
-  likes: process.env.DYNAMODB_TABLE_LIKES || 'ainigama-dev-likes',
-  saves: process.env.DYNAMODB_TABLE_SAVES || 'ainigama-dev-saves',
-  shares: process.env.DYNAMODB_TABLE_SHARES || 'ainigama-dev-shares',
-  // Notifications table
-  notifications: process.env.DYNAMODB_TABLE_NOTIFICATIONS || 'ainigama-dev-notifications',
-  // Recommendation tables
-  userInteractions: process.env.DYNAMODB_TABLE_USER_INTERACTIONS || 'ainigama-dev-user-interactions',
-  userPreferences: process.env.DYNAMODB_TABLE_USER_PREFERENCES || 'ainigama-dev-user-preferences',
-  recommendationCache: process.env.DYNAMODB_TABLE_RECOMMENDATION_CACHE || 'ainigama-dev-recommendation-cache',
-  // Unified system tables
-  threadMetricsCache: process.env.DYNAMODB_TABLE_THREAD_METRICS_CACHE || 'ainigama-dev-thread-metrics-cache',
-  timeTracking: process.env.DYNAMODB_TABLE_TIME_TRACKING || 'ainigama-dev-time-tracking'
+  connections: process.env.DYNAMODB_TABLE_CONNECTIONS || 'ainigama-dev-connections'
 };
 
 // Common database operations

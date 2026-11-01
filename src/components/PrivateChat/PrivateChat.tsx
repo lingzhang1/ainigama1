@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Menu, Globe, Leaf } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Message, PrivateConversation } from '../../types';
 import { useAppContext } from '../../context/AppContext';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -42,7 +41,6 @@ interface PrivateChatProps {
 
 export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
-  const navigate = useNavigate();
   const isGuest = state.isGuestMode && !state.isAuthenticated;
   
   // Main state management
@@ -56,7 +54,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   const [conversationSummary, setConversationSummary] = useState<string | null>(null);
   const [showContextWarning, setShowContextWarning] = useState(false);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-  const [lastUserQuestion, setLastUserQuestion] = useState<string | null>(null);
   
   // Refs for managing streaming and preventing race conditions
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -68,11 +65,11 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   // Swipe gestures for mobile
   useSwipeGesture({
     onSwipeRight: () => {
-      if (isMobile && !isSidebarOpen) {
+      if (isMobile && !isSidebarOpen && currentConversation) {
         openSidebar();
       }
     },
-    enabled: isMobile && !isSidebarOpen,
+    enabled: isMobile && !isSidebarOpen && !!currentConversation,
   });
 
   // Streaming state management using refs (to avoid state update issues)
@@ -129,9 +126,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           );
           setConversations(sortedConversations);
           
-          // ✅ FIX: Don't auto-select first conversation
-          // Let user explicitly select or start new conversation
-          // This ensures "No conversation selected" screen shows by default
+          // Set first conversation as current if none selected
+          if (sortedConversations.length > 0 && !currentConversation) {
+            setCurrentConversation(sortedConversations[0]);
+          }
         } else {
           console.error('Failed to load conversations:', response.status, response.statusText);
         }
@@ -153,12 +151,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     const loadMessages = async () => {
       if (!currentConversation?.id) {
         console.log('❌ No current conversation ID, skipping message load');
-        return;
-      }
-      
-      // ✅ FIX: Skip loading for temp conversations (not saved to backend yet)
-      if (currentConversation.id.startsWith('temp-')) {
-        console.log('⏭️ Skipping message load for temp conversation:', currentConversation.id);
         return;
       }
       
@@ -266,41 +258,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     }
     setNewMessage('');
     
-    // ✅ FIX: Create conversation in backend if this is the first message (temp conversation)
-    if (!isGuest && state.currentUser?.id && workingConversation.id.startsWith('temp-') && workingConversation.messages.length === 0) {
-      try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-        const response = await fetch(`${apiUrl}/new-conversation`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: state.currentUser.id,
-            title: null
-          })
-        });
-        
-        if (response.ok) {
-          const backendConversation = await response.json();
-          // Replace temp ID with real backend ID
-          workingConversation = {
-            ...workingConversation,
-            id: backendConversation.id
-          };
-          updatedConversation.id = backendConversation.id;
-          setCurrentConversation(updatedConversation);
-          setConversations(prev => prev.map(c => 
-            c.id.startsWith('temp-') ? updatedConversation : c
-          ));
-          console.log('✅ Created conversation in backend:', backendConversation.id);
-        }
-      } catch (error) {
-        console.error('Failed to create conversation in backend:', error);
-        // Continue anyway with temp ID - will try to save later
-      }
-    }
-    
     console.log('🔒 Processing locked, starting AI stream...');
     
     // Check for context window overflow BEFORE processing
@@ -315,9 +272,6 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
     // If context window is exceeded, handle overflow
     if (currentTokenCount > CONTEXT_OVERFLOW_THRESHOLD) {
       console.warn('⚠️ Private chat context overflow detected. Triggering summarization.');
-      
-      // Store the user's last question for later answering
-      setLastUserQuestion(newMessage.trim());
       
       // Release processing lock immediately since we're not calling AI
       isProcessingRef.current = false;
@@ -345,14 +299,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         isGuest ? [conversationWithSystemMessage] : prev.map(c => c.id === conversationWithSystemMessage.id ? conversationWithSystemMessage : c)
       );
       
-      // Generate summary asynchronously (exclude the last user message)
+      // Generate summary asynchronously
       try {
-        // Remove the last user message from the summary to avoid duplication
-        const messagesForSummary = chatMessagesForTokenCount.slice(0, -1);
-        const summary = await deepSeekService.summarizeConversation(messagesForSummary);
+        const summary = await deepSeekService.summarizeConversation(chatMessagesForTokenCount);
         setConversationSummary(summary);
         setIsGeneratingSummary(false);
-        console.log('✅ Summary generated successfully (excluding last user message)');
+        console.log('✅ Summary generated successfully');
       } catch (error) {
         console.error('❌ Summarization failed:', error);
         setIsGeneratingSummary(false);
@@ -414,18 +366,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           streamingRef.current.thinkingElement.textContent = streamingRef.current.thinking;
         }
         if (streamingRef.current.contentElement) {
-          // For streaming content, we'll use innerHTML to support basic markdown formatting
-          // This is a simplified approach for real-time streaming
-          const formattedContent = streamingRef.current.content
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">$1</code>')
-            .replace(/^### (.*$)/gim, '<h3 class="text-sm font-medium mb-1 mt-2">$1</h3>')
-            .replace(/^## (.*$)/gim, '<h2 class="text-sm font-semibold mb-1 mt-2">$1</h2>')
-            .replace(/^# (.*$)/gim, '<h1 class="text-base font-bold mb-2 mt-3">$1</h1>')
-            .replace(/^- (.*$)/gim, '<li class="ml-2">$1</li>')
-            .replace(/\n/g, '<br>');
-          streamingRef.current.contentElement.innerHTML = formattedContent;
+          streamingRef.current.contentElement.textContent = streamingRef.current.content;
         }
         // Auto-scroll
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -436,12 +377,14 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
       // Stream AI response using DeepSeek service
       await deepSeekService.streamChat(chatMessages, {
         onThinking: (thinking) => {
+          console.log('🧠 Received thinking chunk:', thinking.length, 'chars');
           if (streamingRef.current.isActive) {
             streamingRef.current.thinking += thinking;
             updateStreamingDisplay();
           }
         },
         onContent: (content) => {
+          console.log('📝 Received content chunk:', content.length, 'chars');
           if (streamingRef.current.isActive) {
             // Mark as typing when content starts streaming
             if (!streamingRef.current.isTyping) {
@@ -625,60 +568,65 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
   /**
    * Handle creating a new conversation
-   * ✅ FIX: Create locally only, save to backend when first message is sent
    */
   const handleNewConversation = async () => {
-    if (!state.currentUser?.id && !isGuest) return;
-    
-    // Create conversation locally (not saved to backend yet)
-    const newConversation: PrivateConversation = {
-      id: isGuest ? `guest-${Date.now()}` : `temp-${Date.now()}`, // Temp ID for now
-      userId: isGuest ? 'guest' : (state.currentUser?.id || ''),
-      messages: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      title: isGuest ? 'Guest Conversation' : 'New Conversation'
-    };
-    
-    setCurrentConversation(newConversation);
-    
-    // For guest users, add to local list
+    // For guest users, create a temporary conversation
     if (isGuest) {
-      setConversations([newConversation]);
-    } else {
-      // For authenticated users, add to local list (will be saved when first message sent)
-      setConversations(prev => [newConversation, ...prev].sort((a, b) => 
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-      ));
+      const guestConversation: PrivateConversation = {
+        id: `guest-${Date.now()}`,
+        userId: 'guest',
+        messages: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        title: 'Guest Conversation'
+      };
+      setCurrentConversation(guestConversation);
+      setConversations([guestConversation]);
+      return;
     }
     
-    console.log('✅ Created local conversation:', newConversation.id, '(will save to backend when first message sent)');
+    if (!state.currentUser?.id) return;
+    
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+      const response = await fetch(`${apiUrl}/new-conversation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: state.currentUser.id,
+          title: null
+        })
+      });
+      
+      if (response.ok) {
+        const newConversation = await response.json();
+        setConversations(prev => [newConversation, ...prev].sort((a, b) => 
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+        ));
+        setCurrentConversation(newConversation);
+      }
+    } catch (error) {
+      console.error('Failed to create conversation:', error);
+    }
   };
 
   /**
    * Handle deleting a conversation
-   * ✅ FIX: Handle temp conversations (not saved to backend yet)
    */
   const handleDeleteConversation = async (conversationId: string, e: React.MouseEvent) => {
+    // Guest users can't delete conversations (they're not persisted anyway)
+    if (isGuest) {
+      return;
+    }
+    
     e.stopPropagation(); // Prevent conversation selection when clicking delete
     
     if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
       return;
     }
     
-    // If it's a temp or guest conversation, just remove from local state
-    if (conversationId.startsWith('temp-') || conversationId.startsWith('guest-') || isGuest) {
-      setConversations(prev => prev.filter(c => c.id !== conversationId));
-      
-      if (currentConversation?.id === conversationId) {
-        setCurrentConversation(null);
-      }
-      
-      console.log('✅ Removed local conversation:', conversationId);
-      return;
-    }
-    
-    // For real backend conversations, delete from backend
     try {
       const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
       const response = await fetch(`${apiUrl}/conversations/${conversationId}`, {
@@ -697,7 +645,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
           setCurrentConversation(null);
         }
         
-        console.log('✅ Conversation deleted from backend:', conversationId);
+        console.log('✅ Conversation deleted:', conversationId);
       } else {
         console.error('Failed to delete conversation:', response.statusText);
         alert('Failed to delete conversation. Please try again.');
@@ -801,7 +749,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
 
   // Navigation handlers
   const handleGoToForum = () => {
-    navigate('/');
+    dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' });
   };
 
   const handleSignIn = () => {
@@ -809,292 +757,77 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   };
 
   /**
-   * Handle AI response to user's question with summary context
-   */
-  const handleAIResponse = async (conversation: PrivateConversation, userQuestion: string, summary: string) => {
-    try {
-      // First, add the user's question to the conversation
-      const userMessage: Message = {
-        id: uuidv4(),
-        content: userQuestion,
-        timestamp: new Date(),
-        sender: 'user'
-      };
-
-      const conversationWithUserMessage = {
-        ...conversation,
-        messages: [...conversation.messages, userMessage],
-        updatedAt: new Date()
-      };
-
-      // Update the conversation state
-      setCurrentConversation(conversationWithUserMessage);
-      setConversations(prev => 
-        isGuest ? [conversationWithUserMessage] : prev.map(c => c.id === conversationWithUserMessage.id ? conversationWithUserMessage : c)
-      );
-
-      // Build context with summary and user's question
-      const contextMessages: ChatMessage[] = [
-        {
-          role: 'system',
-          content: `You are a helpful AI assistant. Here's a summary of the previous conversation: ${summary}\n\nNow the user is asking: "${userQuestion}"\n\nPlease provide a helpful response based on both the summary context and the current question.`
-        },
-        {
-          role: 'user',
-          content: userQuestion
-        }
-      ];
-
-      // Initialize streaming for this response
-      streamingRef.current = {
-        thinking: '',
-        content: '',
-        isTyping: true,
-        isActive: true,
-        thinkingElement: null,
-        contentElement: null,
-        streamingContainer: null,
-      };
-
-      // Show streaming UI
-      const showStreamingUI = () => {
-        const container = streamingRef.current?.streamingContainer;
-        if (container) {
-          container.style.display = 'block';
-        }
-      };
-
-      const updateStreamingDisplay = () => {
-        showStreamingUI();
-        if (streamingRef.current?.thinkingElement) {
-          streamingRef.current.thinkingElement.textContent = streamingRef.current.thinking;
-        }
-        if (streamingRef.current?.contentElement) {
-          // For streaming content, we'll use innerHTML to support basic markdown formatting
-          // This is a simplified approach for real-time streaming
-          const formattedContent = streamingRef.current.content
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/`(.*?)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">$1</code>')
-            .replace(/^### (.*$)/gim, '<h3 class="text-sm font-medium mb-1 mt-2">$1</h3>')
-            .replace(/^## (.*$)/gim, '<h2 class="text-sm font-semibold mb-1 mt-2">$1</h2>')
-            .replace(/^# (.*$)/gim, '<h1 class="text-base font-bold mb-2 mt-3">$1</h1>')
-            .replace(/^- (.*$)/gim, '<li class="ml-2">$1</li>')
-            .replace(/\n/g, '<br>');
-          streamingRef.current.contentElement.innerHTML = formattedContent;
-        }
-        // Auto-scroll to bottom
-        if (messagesEndRef.current) {
-          messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-      };
-
-      // Stream AI response
-      await deepSeekService.streamChat(contextMessages, {
-        onThinking: (thinking) => {
-          if (streamingRef.current?.isTyping) {
-            streamingRef.current.thinking += thinking;
-            updateStreamingDisplay();
-          }
-        },
-        onContent: (content) => {
-          if (streamingRef.current?.isTyping) {
-            streamingRef.current.content += content;
-            updateStreamingDisplay();
-          }
-        },
-        onComplete: async (finalContent) => {
-          // Mark as not typing and hide streaming UI
-          if (streamingRef.current) {
-            streamingRef.current.isTyping = false;
-            const container = streamingRef.current.streamingContainer;
-            if (container) {
-              container.style.display = 'none';
-            }
-          }
-
-          // Create AI message
-          const aiMessage: Message = {
-            id: uuidv4(),
-            content: finalContent,
-            timestamp: new Date(),
-            sender: 'ai',
-            thinking: streamingRef.current?.thinking || undefined
-          };
-
-          // Update conversation with AI response
-          const finalConversation = {
-            ...conversationWithUserMessage,
-            messages: [...conversationWithUserMessage.messages, aiMessage],
-            updatedAt: new Date()
-          };
-
-          setCurrentConversation(finalConversation);
-          setConversations(prev => 
-            isGuest ? [finalConversation] : prev.map(c => c.id === finalConversation.id ? finalConversation : c)
-          );
-
-          // Save to backend if not guest
-          if (!isGuest) {
-            if (ws.socket?.connected) {
-              ws.socket.emit('save_conversation', {
-                conversationId: finalConversation.id,
-                messages: finalConversation.messages
-              });
-            } else {
-              // Fallback: save via REST API
-              const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-              fetch(`${apiUrl}/save-messages`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  conversationId: finalConversation.id,
-                  messages: finalConversation.messages
-                })
-              }).catch(apiError => {
-                console.error('Failed to save AI response via API:', apiError);
-              });
-            }
-          } else {
-            // For guest users, update the conversations list
-            setConversations([finalConversation]);
-          }
-
-          console.log('✅ AI response completed for user\'s question after summary');
-        },
-        onError: (error) => {
-          console.error('AI streaming error in summary response:', error);
-          if (streamingRef.current) {
-            streamingRef.current.isTyping = false;
-            const container = streamingRef.current.streamingContainer;
-            if (container) {
-              container.style.display = 'none';
-            }
-          }
-        }
-      });
-
-    } catch (error) {
-      console.error('Failed to generate AI response after summary:', error);
-    }
-  };
-
-  /**
    * Handle starting a new conversation with summary context
-   * New Conversation:
-   *├── AI: "Here's a summary of our previous discussion: [summary]"
-   *├── User: "[user's last question]"
-   *└── AI: "[AI's response using summary context]"
    */
   const handleStartNewConversationWithSummary = async (summary: string) => {
     try {
-      console.log('🚀 Starting new conversation with summary...');
+      // Create a new conversation first
+      await handleNewConversation();
       
-      // Store the question to answer before clearing state
-      const questionToAnswer = lastUserQuestion;
-      
-      // Get the original conversation title for the new conversation
-      const originalTitle = currentConversation?.title || 'Discussion';
-      const newTitle = `Continued: ${originalTitle}`;
-      
-      // Clear the warning state first
-      setConversationSummary(null);
-      setShowContextWarning(false);
-      setIsGeneratingSummary(false);
-      setLastUserQuestion(null);
-      
-      // Create a new conversation with summary message directly
-      const aiSummaryMessage: Message = {
-        id: uuidv4(),
-        content: `Here's a summary of our previous discussion: ${summary}`,
-        timestamp: new Date(),
-        sender: 'ai'
-      };
+      // Wait a bit for the new conversation to be set
+      setTimeout(() => {
+        setCurrentConversation(prev => {
+          if (!prev) {
+            console.error('No current conversation after creating new one');
+            return null;
+          }
 
-      let newConversation: PrivateConversation;
-
-      if (isGuest) {
-        // For guest users, create a temporary conversation
-        newConversation = {
-          id: `guest-${Date.now()}`,
-          userId: 'guest',
-          messages: [aiSummaryMessage],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          title: newTitle
-        };
-        setCurrentConversation(newConversation);
-        setConversations([newConversation]);
-      } else {
-        // For authenticated users, create via API
-        if (!state.currentUser?.id) {
-          console.error('No current user for creating conversation');
-          return;
-        }
-
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-        const response = await fetch(`${apiUrl}/new-conversation`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            userId: state.currentUser.id,
-            title: newTitle
-          })
-        });
-        
-        if (response.ok) {
-          const createdConversation = await response.json();
-          newConversation = {
-            ...createdConversation,
-            messages: [aiSummaryMessage],
-            updatedAt: new Date()
+          const aiSummaryMessage: Message = {
+            id: uuidv4(),
+            content: `Here's a summary of our previous discussion: ${summary}`,
+            timestamp: new Date(),
+            sender: 'ai'
           };
 
-          // Update conversations list
-          setConversations(prev => [newConversation, ...prev].sort((a, b) => 
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
-          ));
-          setCurrentConversation(newConversation);
+          const userContinuationMessage: Message = {
+            id: uuidv4(),
+            content: "Based on this summary, let's continue our discussion.",
+            timestamp: new Date(),
+            sender: 'user'
+          };
 
-          // Save the summary message to backend
-          if (ws.socket?.connected) {
-            console.log('💾 Saving summary message to backend via WebSocket');
+          const newMessages = [aiSummaryMessage, userContinuationMessage];
+
+          // Update the new conversation with these messages
+          const updatedNewConversation = {
+            ...prev,
+            messages: newMessages,
+            updatedAt: new Date(),
+            title: 'Continued Discussion'
+          };
+
+          // Persist these initial messages to the backend
+          if (ws.socket?.connected && !isGuest) {
+            console.log('💾 Saving summary continuation messages to backend');
             ws.socket.emit('save_conversation', {
-              conversationId: newConversation.id,
-              messages: [aiSummaryMessage]
+              conversationId: updatedNewConversation.id,
+              messages: newMessages
             });
-          } else {
-            // Fallback: save via REST API
+          } else if (!isGuest) {
+            // Fallback: save via REST API if WebSocket is not available
+            const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
             fetch(`${apiUrl}/save-messages`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                conversationId: newConversation.id,
-                messages: [aiSummaryMessage]
+                conversationId: updatedNewConversation.id,
+                messages: newMessages
               })
             }).catch(apiError => {
-              console.error('Failed to save summary message via API:', apiError);
+              console.error('Failed to save initial summary messages via API:', apiError);
             });
           }
-        } else {
-          console.error('Failed to create new conversation');
-          return;
-        }
-      }
-      
-      console.log('✅ Successfully started new conversation with summary');
-      
-      // If we have a stored question, automatically answer it
-      if (questionToAnswer) {
-        console.log('🤖 Auto-answering user\'s last question after summary');
+
+          return updatedNewConversation;
+        });
+
+        // Clear the warning state
+        setConversationSummary(null);
+        setShowContextWarning(false);
+        setIsGeneratingSummary(false);
         
-        // Small delay to ensure conversation is fully set in UI
-        setTimeout(() => {
-          handleAIResponse(newConversation, questionToAnswer, summary);
-        }, 300);
-      }
+        console.log('✅ Successfully started new conversation with summary');
+      }, 100); // Small delay to ensure new conversation is set
       
     } catch (error) {
       console.error('Failed to start new conversation with summary:', error);
@@ -1105,47 +838,19 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
   };
   return (
     <div className="flex w-full h-screen bg-gray-50">
-      {/* Mobile Header - Always show when sidebar is closed */}
-      {isMobile && !isSidebarOpen && (
-        <div className="fixed top-0 left-0 right-0 bg-white border-b z-30 px-3 py-2.5 flex items-center justify-between">
-          {/* Left side - Foliage icon to return to forum */}
+      {/* Mobile Header */}
+      {isMobile && currentConversation && (
+        <div className="fixed top-0 left-0 right-0 bg-white border-b z-30 px-4 py-3 flex items-center">
           <button
-            onClick={() => navigate('/')}
-            className="p-2 hover:bg-gray-100 rounded-lg"
-            aria-label="Return to forum"
+            onClick={toggleSidebar}
+            className="p-2 hover:bg-gray-100 rounded-lg mr-3"
+            aria-label="Toggle conversations"
           >
-            <Leaf className="w-5 h-5 text-green-600" />
+            <Menu className="w-6 h-6 text-gray-700" />
           </button>
-          
-          {/* Center - Menu icon and title */}
-          <div className="flex items-center gap-2 flex-1 justify-center">
-            <button
-              onClick={toggleSidebar}
-              className="p-2 hover:bg-gray-100 rounded-lg"
-              aria-label="Toggle conversations"
-            >
-              <Menu className="w-5 h-5 text-gray-700" />
-            </button>
-            <h1 className="text-base font-semibold text-gray-800 truncate max-w-[120px]">
-              {currentConversation ? (currentConversation.title || 'Private') : 'Private Chat'}
-            </h1>
-          </div>
-          
-          {/* Right side - Publish Button - Only show when conversation exists */}
-          {currentConversation ? (
-            <button
-              onClick={handleMakePublic}
-              disabled={currentConversation.messages.length === 0 || isGuest}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:hover:bg-green-600"
-            >
-              <Globe className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                {isGuest ? 'Sign In' : 'Publish'}
-              </span>
-            </button>
-          ) : (
-            <div className="w-[88px]"></div>
-          )}
+          <h1 className="text-lg font-semibold text-gray-800 truncate">
+            {currentConversation.title || 'Private Conversation'}
+          </h1>
         </div>
       )}
 
@@ -1172,12 +877,10 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         onLogout={onLogout}
         onSignIn={handleSignIn}
         onClose={closeSidebar}
-        onGoToUserCenter={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'user-center' })}
-        onGoToAccount={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'account' })}
       />
 
       {/* Main Chat Area */}
-      <main className={`flex-1 flex flex-col ${isMobile && currentConversation && !isSidebarOpen ? 'pt-14' : ''}`}>
+      <main className={`flex-1 flex flex-col ${isMobile && currentConversation ? 'mt-14' : ''}`}>
         {/* Context Warning Banner */}
         {showContextWarning && (
           <ConversationContextWarning
@@ -1190,18 +893,15 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         
         {currentConversation ? (
           <>
-            {/* Chat Header - Hidden on mobile since we show buttons in mobile header */}
-            <div className="hidden md:block">
-              <ChatHeader
-                conversationTitle={currentConversation.title || 'Private Conversation'}
-                showThinking={showThinking}
-                canPublish={currentConversation.messages.length > 0}
-                isGuest={isGuest}
-                onToggleThinking={() => setShowThinking(!showThinking)}
-                onMakePublic={handleMakePublic}
-                onReturnToForum={() => navigate('/')}
-              />
-            </div>
+            {/* Chat Header */}
+            <ChatHeader
+              conversationTitle={currentConversation.title || 'Private Conversation'}
+              showThinking={showThinking}
+              canPublish={currentConversation.messages.length > 0}
+              isGuest={isGuest}
+              onToggleThinking={() => setShowThinking(!showThinking)}
+              onMakePublic={handleMakePublic}
+            />
 
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -1221,8 +921,8 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                 style={{ display: 'none' }}
               >
                 <div className="flex items-start space-x-3 max-w-[70%]">
-                  <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-lg">🍃</span>
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+                    <span className="text-white text-xs font-bold">AI</span>
                   </div>
                   
                   <div className="space-y-2 flex-1">
@@ -1247,7 +947,7 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                             ref={(el) => { streamingRef.current.thinkingElement = el; }}
                             className="min-h-[1em]"
                           />
-                          <span className="animate-pulse text-green-500">▋</span>
+                          <span className="animate-pulse text-blue-500">▋</span>
                         </div>
                       </div>
                     )}
@@ -1258,18 +958,18 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
                         <span className="text-xs font-medium text-gray-600">Response</span>
                         <div className="ml-2">
                           <div className="flex space-x-1">
-                            <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                            <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                            <div className="w-1 h-1 bg-green-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                            <div className="w-1 h-1 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                           </div>
                         </div>
                       </div>
-                      <div className="text-sm">
+                      <div className="text-sm whitespace-pre-wrap">
                         <div 
                           ref={(el) => { streamingRef.current.contentElement = el; }}
-                          className="min-h-[1em] text-gray-800 prose prose-sm max-w-none"
+                          className="min-h-[1em] text-gray-800"
                         />
-                        <span className="animate-pulse text-green-500">▋</span>
+                        <span className="animate-pulse text-blue-500">▋</span>
                       </div>
                     </div>
                   </div>
@@ -1304,12 +1004,12 @@ export const PrivateChat: React.FC<PrivateChatProps> = ({ onLogout }) => {
         defaultTitle={currentConversation?.title || "Relationship advice discussion"}
       />
 
-      {/* Floating Action Button - Mobile Only, shows when no conversation and sidebar closed */}
-      {!currentConversation && isMobile && !isSidebarOpen && (
+      {/* Floating Action Button - Mobile Only */}
+      {!currentConversation && (
         <FloatingActionButton
-          onClick={openSidebar}
+          onClick={handleNewConversation}
           icon={<Menu className="w-6 h-6" />}
-          label="Menu"
+          label="Chat"
         />
       )}
     </div>

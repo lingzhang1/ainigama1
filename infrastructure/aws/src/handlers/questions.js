@@ -1,7 +1,6 @@
 const crypto = require('crypto');
 const { addCorsHeaders, handleOptionsRequest } = require('../utils/cors');
 const { tables, dbOperations, parseRequestBody } = require('../utils/db');
-const { createNotification, NotificationTypes } = require('./notifications');
 
 // Add question to thread
 exports.addQuestion = async (event) => {
@@ -82,11 +81,7 @@ exports.addQuestion = async (event) => {
       timestamp: now,
       userId: userId,
       threadId: threadId,
-      isSummary: Boolean(isSummary), // Return summary flag
-      // New metrics (initialize to 0 for new questions)
-      likeCount: 0,
-      saveCount: 0,
-      shareCount: 0
+      isSummary: Boolean(isSummary) // Return summary flag
     };
 
     console.log('✅ Created question:', questionId, 'for thread:', threadId);
@@ -102,107 +97,6 @@ exports.addQuestion = async (event) => {
       statusCode: 500,
       body: JSON.stringify({ 
         error: 'Failed to add question',
-        message: error.message 
-      })
-    });
-  }
-};
-
-// Get single answer by ID (for deep link optimization)
-exports.getAnswerById = async (event) => {
-  try {
-    console.log('getAnswerById called with method:', event.httpMethod);
-    
-    // Handle preflight OPTIONS request
-    if (event.httpMethod === 'OPTIONS') {
-      console.log('Handling OPTIONS request');
-      return handleOptionsRequest();
-    }
-
-    const { answerId } = event.pathParameters || {};
-    
-    if (!answerId) {
-      return addCorsHeaders({
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Answer ID is required' })
-      });
-    }
-
-    console.log('🎯 Fetching single answer:', answerId);
-
-    // Get the answer
-    const answerResult = await dbOperations.get(tables.answers, { id: answerId });
-
-    if (!answerResult.Item) {
-      return addCorsHeaders({
-        statusCode: 404,
-        body: JSON.stringify({ error: 'Answer not found' })
-      });
-    }
-
-    const answer = answerResult.Item;
-
-    // Get comment count for this answer
-    let commentCount = answer.comment_count || 0;
-    if (commentCount === 0) {
-      try {
-        const commentsResult = await dbOperations.query(
-          tables.comments,
-          'answerId = :answerId',
-          { ':answerId': answerId },
-          'AnswerIdIndex'
-        );
-        commentCount = commentsResult.Count || 0;
-      } catch (error) {
-        console.error('Error counting comments:', error);
-      }
-    }
-
-    // Get the question to find thread info
-    const questionResult = await dbOperations.get(tables.questions, { id: answer.question_id });
-    
-    if (!questionResult.Item) {
-      return addCorsHeaders({
-        statusCode: 404,
-        body: JSON.stringify({ error: 'Question not found for answer' })
-      });
-    }
-
-    const question = questionResult.Item;
-
-    // Return answer with metadata
-    const response = {
-      id: answer.id,
-      content: answer.content,
-      timestamp: answer.created_at || answer.timestamp,
-      userId: answer.user_id,
-      questionId: answer.question_id,
-      isPinned: Boolean(answer.is_pinned),
-      isAI: Boolean(answer.is_ai),
-      thinking: answer.thinking || null,
-      interactionCount: answer.interaction_count || 0,
-      commentCount: commentCount,
-      likeCount: answer.like_count || 0,
-      saveCount: answer.save_count || 0,
-      shareCount: answer.share_count || 0,
-      // Include thread metadata for navigation
-      threadId: question.thread_id,
-      questionContent: question.content
-    };
-
-    console.log('✅ Found answer:', answerId);
-
-    return addCorsHeaders({
-      statusCode: 200,
-      body: JSON.stringify(response)
-    });
-
-  } catch (error) {
-    console.error('Get answer by ID error:', error);
-    return addCorsHeaders({
-      statusCode: 500,
-      body: JSON.stringify({ 
-        error: 'Failed to fetch answer',
         message: error.message 
       })
     });
@@ -279,45 +173,6 @@ exports.addAnswer = async (event) => {
       }
     );
 
-    // Create notification for question owner
-    try {
-      const questionOwnerId = question.user_id;
-      
-      // Don't notify if user answers their own question or if it's an AI answer
-      if (questionOwnerId && userId && questionOwnerId !== userId && !isAI) {
-        // Get answerer info
-        const answererResult = await dbOperations.get(tables.users, { id: userId });
-        const answerer = answererResult.Item || { name: 'Someone', avatar: '/img-5.svg' };
-
-        // Get thread info
-        let threadTitle = '';
-        if (question.thread_id) {
-          try {
-            const threadResult = await dbOperations.get(tables.threads, { id: question.thread_id });
-            threadTitle = threadResult.Item?.title || '';
-          } catch (err) {
-            console.error('Failed to get thread info:', err);
-          }
-        }
-
-        // Create notification
-        await createNotification(questionOwnerId, NotificationTypes.NEW_ANSWER, {
-          actorId: userId,
-          actorName: answerer.name,
-          actorAvatar: answerer.avatar,
-          contentType: 'answer',
-          contentId: answerId,
-          relatedContentId: questionId,
-          threadId: question.thread_id,
-          contentPreview: content.trim().substring(0, 100),
-          threadTitle: threadTitle
-        });
-      }
-    } catch (notifError) {
-      console.error('Failed to create new answer notification:', notifError);
-      // Don't fail the request if notification fails
-    }
-
     const newAnswer = {
       id: answerId,
       content: content.trim(),
@@ -327,12 +182,7 @@ exports.addAnswer = async (event) => {
       isPinned: Boolean(isPinned),
       isAI: Boolean(isAI),
       thinking: thinking || null,
-      interactionCount: 0,
-      commentCount: 0,
-      // New metrics (initialize to 0 for new answers)
-      likeCount: 0,
-      saveCount: 0,
-      shareCount: 0
+      interactionCount: 0
     };
 
     console.log('✅ Created answer:', answerId, 'for question:', questionId);
@@ -399,11 +249,7 @@ exports.getAnswerComments = async (event) => {
         timestamp: item.created_at || item.timestamp,
         userId: item.user_id,
         parentId: item.parent_id || null,
-        replies: [],
-        // New metrics
-        likeCount: item.like_count || 0,
-        saveCount: item.save_count || 0,
-        shareCount: item.share_count || 0
+        replies: []
       };
       commentMap.set(comment.id, comment);
       
@@ -497,60 +343,16 @@ exports.addAnswerComment = async (event) => {
 
     await dbOperations.put(tables.comments, comment);
 
-    // Update answer interaction count and comment count
+    // Update answer interaction count
     await dbOperations.update(
       tables.answers,
       { id: answerId },
-      'SET interaction_count = if_not_exists(interaction_count, :zero) + :one, comment_count = if_not_exists(comment_count, :zero) + :one',
+      'SET interaction_count = if_not_exists(interaction_count, :zero) + :one',
       {
         ':zero': 0,
         ':one': 1
       }
     );
-
-    // Create notification for answer owner
-    try {
-      const answer = answerResult.Item;
-      const answerOwnerId = answer.user_id;
-      
-      // Don't notify if user comments on their own answer
-      if (answerOwnerId && answerOwnerId !== userId) {
-        // Get commenter info
-        const commenterResult = await dbOperations.get(tables.users, { id: userId });
-        const commenter = commenterResult.Item || { name: 'Someone', avatar: '/img-5.svg' };
-
-        // Get question to find thread
-        const questionResult = await dbOperations.get(tables.questions, { id: answer.question_id });
-        const question = questionResult.Item;
-
-        // Get thread info
-        let threadTitle = '';
-        if (question && question.thread_id) {
-          try {
-            const threadResult = await dbOperations.get(tables.threads, { id: question.thread_id });
-            threadTitle = threadResult.Item?.title || '';
-          } catch (err) {
-            console.error('Failed to get thread info:', err);
-          }
-        }
-
-        // Create notification
-        await createNotification(answerOwnerId, NotificationTypes.ANSWER_COMMENTED, {
-          actorId: userId,
-          actorName: commenter.name,
-          actorAvatar: commenter.avatar,
-          contentType: 'comment',
-          contentId: commentId,
-          relatedContentId: answerId,
-          threadId: question?.thread_id || null,
-          contentPreview: content.trim().substring(0, 100),
-          threadTitle: threadTitle
-        });
-      }
-    } catch (notifError) {
-      console.error('Failed to create comment notification:', notifError);
-      // Don't fail the request if notification fails
-    }
 
     const newComment = {
       id: commentId,
@@ -559,11 +361,7 @@ exports.addAnswerComment = async (event) => {
       userId: userId,
       answerId: answerId,
       parentId: parentId || null,
-      replies: [],
-      // New metrics (initialize to 0 for new comments)
-      likeCount: 0,
-      saveCount: 0,
-      shareCount: 0
+      replies: []
     };
 
     console.log('✅ Created comment:', commentId, 'for answer:', answerId);

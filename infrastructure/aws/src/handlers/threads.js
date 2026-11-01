@@ -13,22 +13,12 @@ exports.getThreads = async (event) => {
       return handleOptionsRequest();
     }
 
-    const { 
-      filter = 'recent',
-      limit = '20',
-      offset = '0'
-    } = event.queryStringParameters || {};
+    const { filter = 'recent' } = event.queryStringParameters || {};
     
-    const limitNum = parseInt(limit);
-    const offsetNum = parseInt(offset);
-    
-    console.log('Getting threads with filter:', filter, 'limit:', limitNum, 'offset:', offsetNum);
+    console.log('Getting threads with filter:', filter);
     
     // Use GSI for efficient public thread queries
-    // Fetch more than needed for pagination
     let result;
-    const fetchLimit = Math.min(limitNum + offsetNum + 20, 100); // Fetch extra for pagination
-    
     try {
       result = await dbOperations.query(
         tables.threads,
@@ -36,7 +26,7 @@ exports.getThreads = async (event) => {
         { ':isPublic': 'true' },
         'PublicThreadsIndex',
         false,
-        fetchLimit
+        20
       );
       console.log('GSI query successful, found', result.Items?.length || 0, 'threads');
     } catch (gsiError) {
@@ -46,7 +36,7 @@ exports.getThreads = async (event) => {
         tables.threads,
         'is_public = :isPublic',
         { ':isPublic': 'true' },
-        fetchLimit
+        50
       );
       console.log('Scan fallback successful, found', result.Items?.length || 0, 'threads');
     }
@@ -61,22 +51,17 @@ exports.getThreads = async (event) => {
         new Date(a.updated_at || a.updatedAt || 0).getTime()
       );
     } else {
-      // Recent filter should also sort by latest updated time
       sortedItems = sortedItems.sort((a, b) => 
-        new Date(b.updated_at || b.updatedAt || 0).getTime() - 
-        new Date(a.updated_at || a.updatedAt || 0).getTime()
+        new Date(b.created_at || b.createdAt || 0).getTime() - 
+        new Date(a.created_at || a.createdAt || 0).getTime()
       );
     }
     
-    // Apply pagination
-    const totalCount = sortedItems.length;
-    const paginatedItems = sortedItems.slice(offsetNum, offsetNum + limitNum);
-    const hasMore = totalCount > offsetNum + limitNum;
+    // Take only first 20 after sorting
+    sortedItems = sortedItems.slice(0, 20);
     
-    console.log(`📄 Pagination: total=${totalCount}, offset=${offsetNum}, limit=${limitNum}, hasMore=${hasMore}`);
-    
-    // Get user information for each thread creator (use paginated items)
-    const transformedThreads = await Promise.all(paginatedItems.map(async (thread) => {
+    // Get user information for each thread creator
+    const transformedThreads = await Promise.all(sortedItems.map(async (thread) => {
       let creatorInfo = {
         id: thread.creator_id || thread.creatorId,
         name: 'Unknown User',
@@ -102,72 +87,6 @@ exports.getThreads = async (event) => {
         }
       }
 
-      // Get top answer (most liked) for preview
-      let topAnswer = null;
-      try {
-        // Get all questions for this thread
-        const questionsResult = await dbOperations.query(
-          tables.questions,
-          'thread_id = :threadId',
-          { ':threadId': thread.id },
-          'ThreadIdIndex'
-        );
-
-        // Get all answers for all questions
-        const allAnswers = [];
-        for (const question of (questionsResult.Items || [])) {
-          const answersResult = await dbOperations.query(
-            tables.answers,
-            'question_id = :questionId',
-            { ':questionId': question.id },
-            'QuestionIdIndexV2'
-          );
-          allAnswers.push(...(answersResult.Items || []));
-        }
-
-        // Find answer with most likes
-        if (allAnswers.length > 0) {
-          const sortedByLikes = allAnswers.sort((a, b) => 
-            (b.like_count || 0) - (a.like_count || 0)
-          );
-          const topAnswerData = sortedByLikes[0];
-          
-          // Get comment count for top answer
-          let commentCount = topAnswerData.comment_count || 0;
-          if (commentCount === 0) {
-            try {
-              const commentsResult = await dbOperations.query(
-                tables.comments,
-                'answer_id = :answerId',
-                { ':answerId': topAnswerData.id },
-                'AnswerIdIndex'
-              );
-              commentCount = commentsResult.Count || 0;
-            } catch (error) {
-              console.error('Error counting comments for top answer:', error);
-            }
-          }
-
-          topAnswer = {
-            id: topAnswerData.id,
-            content: topAnswerData.content,
-            timestamp: topAnswerData.created_at,
-            userId: topAnswerData.user_id,
-            questionId: topAnswerData.question_id,
-            isPinned: Boolean(topAnswerData.is_pinned),
-            isAI: Boolean(topAnswerData.is_ai),
-            thinking: topAnswerData.thinking || null,
-            interactionCount: topAnswerData.interaction_count || 0,
-            commentCount: commentCount,
-            likeCount: topAnswerData.like_count || 0,
-            saveCount: topAnswerData.save_count || 0,
-            shareCount: topAnswerData.share_count || 0
-          };
-        }
-      } catch (error) {
-        console.error('Failed to get top answer for thread:', thread.id, error);
-      }
-
       return {
         id: thread.id,
         title: thread.title,
@@ -178,14 +97,8 @@ exports.getThreads = async (event) => {
         questionCount: thread.question_count || 0,
         answerCount: thread.answer_count || 0,
         interactionCount: (thread.question_count || 0) + (thread.answer_count || 0),
-        // New metrics
-        viewCount: thread.view_count || 0,
-        likeCount: thread.like_count || 0,
-        saveCount: thread.save_count || 0,
-        shareCount: thread.share_count || 0,
         questions: [],
-        category: thread.category,
-        topAnswer: topAnswer
+        category: thread.category
       };
     }));
 
@@ -196,11 +109,7 @@ exports.getThreads = async (event) => {
       statusCode: 200,
       body: JSON.stringify({
         threads: transformedThreads,
-        count: transformedThreads.length,
-        total: totalCount,
-        hasMore: hasMore,
-        offset: offsetNum,
-        limit: limitNum
+        count: transformedThreads.length
       })
     });
 
@@ -331,11 +240,6 @@ exports.createThread = async (event) => {
       questionCount: questions.length,
       answerCount: initialAnswers?.length || 0,
       interactionCount: questions.length + (initialAnswers?.length || 0),
-      // New metrics (initialize to 0 for new threads)
-      viewCount: 0,
-      likeCount: 0,
-      saveCount: 0,
-      shareCount: 0,
       questions: questions.map(q => ({
         id: q.id || crypto.randomUUID(),
         content: q.content,
@@ -464,11 +368,6 @@ exports.getThread = async (event) => {
       questionCount: questions.length,
       answerCount: totalAnswerCount,
       interactionCount: questions.length + totalAnswerCount,
-      // New metrics
-      viewCount: thread.view_count || 0,
-      likeCount: thread.like_count || 0,
-      saveCount: thread.save_count || 0,
-      shareCount: thread.share_count || 0,
       questions,
       category: thread.category
     };
@@ -549,42 +448,16 @@ exports.getThreadAnswers = async (event) => {
         return timeB - timeA;
       });
 
-      // Get comment counts for each answer (calculate dynamically if not in DB)
-      const answers = await Promise.all(sortedAnswers.map(async (answer) => {
-        let commentCount = answer.comment_count || 0;
-        
-        // If comment_count is 0 or doesn't exist, calculate it dynamically
-        if (commentCount === 0) {
-          try {
-            const commentsResult = await dbOperations.query(
-              tables.comments,
-              'answer_id = :answerId',
-              { ':answerId': answer.id },
-              'AnswerIdIndex'
-            );
-            commentCount = commentsResult.Count || 0;
-          } catch (error) {
-            console.error('Error counting comments for answer:', answer.id, error);
-            commentCount = 0;
-          }
-        }
-
-        return {
-          id: answer.id,
-          content: answer.content,
-          timestamp: answer.created_at || answer.timestamp,
-          userId: answer.user_id,
-          questionId: answer.question_id,
-          isPinned: Boolean(answer.is_pinned),
-          isAI: Boolean(answer.is_ai),
-          thinking: answer.thinking || null,
-          interactionCount: answer.interaction_count || 0,
-          commentCount: commentCount,
-          // New metrics
-          likeCount: answer.like_count || 0,
-          saveCount: answer.save_count || 0,
-          shareCount: answer.share_count || 0
-        };
+      const answers = sortedAnswers.map(answer => ({
+        id: answer.id,
+        content: answer.content,
+        timestamp: answer.created_at || answer.timestamp,
+        userId: answer.user_id,
+        questionId: answer.question_id,
+        isPinned: Boolean(answer.is_pinned),
+        isAI: Boolean(answer.is_ai),
+        thinking: answer.thinking || null,
+        interactionCount: answer.interaction_count || 0
       }));
 
       if (answers.length > 0) {

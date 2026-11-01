@@ -259,13 +259,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                   Full Name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
                     type="text"
                     placeholder="Enter your full name"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    className={`!pl-10 ${errors.name ? 'border-red-500' : ''}`}
+                    className={`pl-10 ${errors.name ? 'border-red-500' : ''}`}
                   />
                 </div>
                 {errors.name && (
@@ -280,7 +280,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                   Username
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm pointer-events-none">@</span>
+                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm">@</span>
                   <Input
                     type="text"
                     placeholder="username"
@@ -290,7 +290,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                       handleInputChange('alias', value);
                       setAliasAvailable(null);
                     }}
-                    className={`!pl-9 ${errors.alias ? 'border-red-500' : aliasAvailable === true ? 'border-green-500' : aliasAvailable === false ? 'border-red-500' : ''}`}
+                    className={`pl-8 ${errors.alias ? 'border-red-500' : aliasAvailable === true ? 'border-green-500' : aliasAvailable === false ? 'border-red-500' : ''}`}
                     maxLength={20}
                   />
                   <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
@@ -325,13 +325,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   type="email"
                   placeholder="Enter your email"
                   value={formData.email}
                   onChange={(e) => handleInputChange('email', e.target.value)}
-                  className={`!pl-10 ${errors.email ? 'border-red-500' : ''}`}
+                  className={`pl-10 ${errors.email ? 'border-red-500' : ''}`}
                 />
               </div>
               {errors.email && (
@@ -344,13 +344,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Enter your password"
                   value={formData.password}
                   onChange={(e) => handleInputChange('password', e.target.value)}
-                  className={`!pl-10 !pr-10 ${errors.password ? 'border-red-500' : ''}`}
+                  className={`pl-10 pr-10 ${errors.password ? 'border-red-500' : ''}`}
                 />
                 <Button
                   type="button"
@@ -373,13 +373,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                   Confirm Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                   <Input
                     type={showConfirmPassword ? 'text' : 'password'}
                     placeholder="Confirm your password"
                     value={formData.confirmPassword}
                     onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
-                    className={`!pl-10 !pr-10 ${errors.confirmPassword ? 'border-red-500' : ''}`}
+                    className={`pl-10 pr-10 ${errors.confirmPassword ? 'border-red-500' : ''}`}
                   />
                   <Button
                     type="button"
@@ -399,7 +399,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
             <Button
               type="submit"
-              className="w-full bg-green-600 hover:bg-green-700 text-white"
+              className="w-full bg-gray-800 hover:bg-gray-700 text-white"
               disabled={isLoading}
             >
               {isLoading ? (

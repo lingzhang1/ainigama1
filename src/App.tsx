@@ -1,33 +1,20 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useAppContext } from './context/AppContext';
-import { NotificationProvider } from './context/NotificationContext';
 import { useWebSocket } from './hooks/useWebSocket';
-import { generateThreadUrl } from './hooks/useThreadNavigation';
 import { wsService } from './services/websocket';
 import { AllowlistCheck } from './components/Auth/AllowlistCheck';
 import { LoginScreen } from './components/Auth/LoginScreen';
 import { ForumFeed } from './components/ForumFeed/ForumFeed';
-import { CategoriesPage } from './components/ForumFeed/CategoriesPage';
 import { PrivateChat } from './components/PrivateChat/PrivateChat';
 import { PublicThread } from './components/PublicThread/PublicThread';
-import UserCenter from './components/UserCenter/UserCenter';
-import { AccountManagement } from './components/Account/AccountManagement';
-import { NotificationBell } from './components/Notifications/NotificationBell';
-import { NotificationCenter } from './components/Notifications/NotificationCenter';
-import { User, Notification } from './types';
+import { User } from './types';
 import { initializeMobileTouchHandlers } from './utils/touchHandler';
 
 const AppContent: React.FC = () => {
   const { state, dispatch } = useAppContext();
-  const navigate = useNavigate();
-  const location = useLocation();
   const [isAllowlistApproved, setIsAllowlistApproved] = React.useState(false);
   const [isCheckingAllowlist, setIsCheckingAllowlist] = React.useState(true);
-  const [showNotifications, setShowNotifications] = React.useState(false);
-
-  // Get current route to determine view mode
-  const currentPath = location.pathname;
 
   // Initialize WebSocket connection
   useWebSocket(state.currentUser?.id || '');
@@ -79,119 +66,15 @@ const AppContent: React.FC = () => {
     dispatch({ type: 'SET_GUEST_MODE', payload: true });
   };
 
-  // Auto-detect view mode based on current URL path
-  React.useEffect(() => {
-    if (currentPath.startsWith('/thread/')) {
-      if (state.viewMode !== 'public-thread') {
-        console.log('🔄 Setting view mode to public-thread based on URL:', currentPath);
-        dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
-      }
-    } else if (currentPath === '/private') {
-      if (state.viewMode !== 'private') {
-        dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
-      }
-    } else if (currentPath === '/') {
-      // Clear current thread when returning to forum, but only if not in categories or other non-route views
-      // Don't reset if we're in a valid view mode (forum, categories, user-center, account, public-thread, private)
-      if (state.viewMode !== 'forum' && 
-          state.viewMode !== 'categories' && 
-          state.viewMode !== 'user-center' && 
-          state.viewMode !== 'account' &&
-          state.viewMode !== 'public-thread' &&
-          state.viewMode !== 'private') {
-        console.log('🔄 Setting view mode to forum, clearing current thread');
-        dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' });
-        dispatch({ type: 'SET_CURRENT_THREAD', payload: null });
-      }
-    }
-  }, [currentPath, state.viewMode, dispatch]);
-
-  const handleNotificationClick = (notification: Notification) => {
-    console.log('🔔 Notification clicked:', notification);
-    console.log('🔍 Notification keys:', Object.keys(notification));
-    console.log('🔍 Notification threadId:', notification.threadId);
-    console.log('🔍 Notification thread_id:', (notification as any).thread_id);
-    console.log('🔍 Full notification object:', JSON.stringify(notification, null, 2));
-    
-    if (!notification.threadId) {
-      console.error('❌ No thread ID in notification');
-      console.error('Available keys:', Object.keys(notification));
-      return;
-    }
-
-    // Generate appropriate URL based on notification type and content
-    let url: string;
-
-    switch (notification.contentType) {
-      case 'comment':
-        // Navigate to the comment within an answer
-        if (notification.relatedContentId) {
-          url = generateThreadUrl({
-            threadId: notification.threadId,
-            answerId: notification.relatedContentId,
-            commentId: notification.contentId,
-            highlight: true,
-            from: 'notification'
-          });
-        } else {
-          // Fallback if relatedContentId is missing
-          url = generateThreadUrl({
-            threadId: notification.threadId,
-            highlight: true,
-            from: 'notification'
-          });
-        }
-        break;
-
-      case 'answer':
-        // Navigate to specific answer
-        url = generateThreadUrl({
-          threadId: notification.threadId,
-          answerId: notification.contentId,
-          highlight: true,
-          from: 'notification'
-        });
-        break;
-
-      case 'thread':
-      default:
-        // Navigate to thread
-        url = generateThreadUrl({
-          threadId: notification.threadId,
-          highlight: true,
-          from: 'notification'
-        });
-        break;
-    }
-
-    console.log('🔗 Navigating from notification to:', url);
-    console.log('📍 Current location before navigation:', location.pathname);
-    
-    // Navigate to the URL
-    navigate(url);
-    
-    // Force scroll to top to ensure clean navigation
-    setTimeout(() => {
-      console.log('📍 New location after navigation:', window.location.pathname);
-    }, 100);
-  };
-
   const renderCurrentView = () => {
     switch (state.viewMode) {
       case 'private':
         return <PrivateChat onLogout={handleLogout} />;
       case 'public-thread':
         return <PublicThread onLogout={handleLogout} />;
-      case 'user-center':
-        return <UserCenter onBack={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })} />;
-      case 'account':
-        return <AccountManagement onBack={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })} />;
-      case 'categories':
-        console.log('📂 Rendering CategoriesPage');
-        return <CategoriesPage onClose={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' })} />;
       case 'forum':
       default:
-        return <ForumFeed onLogout={handleLogout} onShowNotifications={() => setShowNotifications(true)} />;
+        return <ForumFeed onLogout={handleLogout} />;
     }
   };
 
@@ -200,7 +83,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading Ainigama...</p>
         </div>
       </div>
@@ -216,7 +99,7 @@ const AppContent: React.FC = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading Ainigama...</p>
         </div>
       </div>
@@ -230,7 +113,7 @@ const AppContent: React.FC = () => {
           <p className="text-red-600 mb-4">{state.error}</p>
           <button 
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             Retry
           </button>
@@ -244,42 +127,11 @@ const AppContent: React.FC = () => {
     return <LoginScreen onLogin={handleLogin} />;
   }
 
-  // Wrap with NotificationProvider if user is authenticated
-  const content = (
+  return (
     <div className="min-h-screen bg-gray-50">
-      {/* Notification Bell - Fixed position (hidden on mobile for forum view as it's in footer, hidden in private chat and public-thread) */}
-      {state.currentUser && (
-        <div className={`fixed top-4 right-4 z-50 ${
-          state.viewMode === 'forum' ? 'hidden md:block' : 
-          state.viewMode === 'private' || state.viewMode === 'public-thread' ? 'hidden' : ''
-        }`}>
-          <NotificationBell onClick={() => setShowNotifications(true)} />
-        </div>
-      )}
-
-      {/* Notification Center */}
-      {state.currentUser && (
-        <NotificationCenter
-          isOpen={showNotifications}
-          onClose={() => setShowNotifications(false)}
-          onNavigate={handleNotificationClick}
-        />
-      )}
-
       {renderCurrentView()}
     </div>
   );
-
-  // Wrap with NotificationProvider if authenticated (not guest)
-  if (state.currentUser && !state.isGuestMode) {
-    return (
-      <NotificationProvider userId={state.currentUser.id}>
-        {content}
-      </NotificationProvider>
-    );
-  }
-
-  return content;
 };
 
 const App: React.FC = () => {
@@ -287,25 +139,9 @@ const App: React.FC = () => {
     <AppProvider>
       <Router>
         <Routes>
-          {/* Home page */}
           <Route path="/" element={<AppContent />} />
-          
-          {/* Private chat */}
+          <Route path="/thread/:id" element={<AppContent />} />
           <Route path="/private" element={<AppContent />} />
-          
-          {/* Thread-level routes with deep linking support */}
-          <Route path="/thread/:threadId" element={<AppContent />} />
-          
-          {/* Question-level deep linking */}
-          <Route path="/thread/:threadId/question/:questionId" element={<AppContent />} />
-          
-          {/* Answer-level deep linking */}
-          <Route path="/thread/:threadId/answer/:answerId" element={<AppContent />} />
-          
-          {/* Comment-level deep linking */}
-          <Route path="/thread/:threadId/answer/:answerId/comment/:commentId" element={<AppContent />} />
-          
-          {/* Fallback for unknown routes */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

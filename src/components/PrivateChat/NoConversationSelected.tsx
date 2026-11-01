@@ -34,7 +34,7 @@ export const NoConversationSelected: React.FC<NoConversationSelectedProps> = ({
             : 'Start a new conversation to begin chatting with AI'
           }
         </p>
-        <Button onClick={onStartChat} className="bg-green-600 hover:bg-green-700 text-white">
+        <Button onClick={onStartChat}>
           {isGuest ? 'Start Guest Chat' : 'Start Chatting with DeepSeek'}
         </Button>
       </div>

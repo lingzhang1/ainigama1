@@ -1,5 +1,5 @@
 import React from 'react';
-import { Lock, Globe, Settings, Leaf } from 'lucide-react';
+import { Lock, Globe, Settings } from 'lucide-react';
 import { Button } from '../ui/button';
 
 /**
@@ -21,7 +21,6 @@ interface ChatHeaderProps {
   isGuest: boolean;
   onToggleThinking: () => void;
   onMakePublic: () => void;
-  onReturnToForum: () => void;
 }
 
 export const ChatHeader: React.FC<ChatHeaderProps> = ({
@@ -30,56 +29,39 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
   canPublish,
   isGuest,
   onToggleThinking,
-  onMakePublic,
-  onReturnToForum
+  onMakePublic
 }) => {
   return (
-    <header className="bg-white border-b p-3 md:p-4 flex items-center justify-between">
-      <div className="flex items-center min-w-0 flex-1 gap-2">
-        {/* Foliage Icon to return to forum */}
-        <Button
-          onClick={onReturnToForum}
-          variant="ghost"
-          size="sm"
-          className="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0"
-          title="Return to forum"
-        >
-          <Leaf className="w-5 h-5 text-green-600" />
-        </Button>
-        
-        <Lock className="w-4 h-4 md:w-5 md:h-5 text-gray-500 flex-shrink-0" />
-        <h3 className="text-sm md:text-lg font-semibold text-green-700 truncate">
+    <header className="bg-white border-b p-4 flex items-center justify-between hidden md:flex">
+      <div className="flex items-center">
+        <Lock className="w-5 h-5 mr-2 text-gray-500" />
+        <h3 className="text-lg font-medium text-gray-800">
           {conversationTitle}
         </h3>
       </div>
       
-      <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-        {/* Toggle AI Thinking Button - Hidden on mobile to save space */}
+      <div className="flex items-center gap-2">
+        {/* Toggle AI Thinking Button */}
         <Button
           onClick={onToggleThinking}
           variant="ghost"
           size="sm"
-          className="hidden md:flex items-center gap-2"
+          className="flex items-center gap-2"
           title={showThinking ? 'Hide AI thinking' : 'Show AI thinking'}
         >
           <Settings className="w-4 h-4" />
-          <span className="hidden lg:inline">{showThinking ? 'Hide Thinking' : 'Show Thinking'}</span>
+          {showThinking ? 'Hide Thinking' : 'Show Thinking'}
         </Button>
         
-        {/* Publish Button */}
+        {/* Make Public Button */}
         <Button
           onClick={onMakePublic}
-          size="sm"
-          className="flex items-center gap-1 md:gap-2 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50"
+          variant="outline"
+          className="flex items-center gap-2"
           disabled={!canPublish || isGuest}
         >
           <Globe className="w-4 h-4" />
-          <span className="hidden sm:inline">
-            {isGuest ? 'Sign In to Publish' : 'Publish'}
-          </span>
-          <span className="sm:hidden">
-            {isGuest ? 'Sign In' : 'Publish'}
-          </span>
+          {isGuest ? 'Sign In to Publish' : 'Make Public'}
         </Button>
       </div>
     </header>

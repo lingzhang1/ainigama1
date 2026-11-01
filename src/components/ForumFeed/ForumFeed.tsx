@@ -1,22 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search as SearchIcon, TrendingUp as TrendingUpIcon, Sparkles as SparklesIcon, Clock as ClockIcon, Plus as PlusIcon, ChevronDown, Lock, Globe, X, Loader as Loader2, Heart, Bookmark, MessageCircle, HelpCircle, MessageSquare, Leaf, Grid, Home, User, Bell } from 'lucide-react';
+import { Search as SearchIcon, TrendingUp as TrendingUpIcon, Clock as ClockIcon, Plus as PlusIcon, ChevronDown, Lock, Globe, Menu, X, Loader as Loader2 } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Card, CardContent } from '../ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { Badge } from '../ui/badge';
+import { FloatingActionButton } from '../ui/FloatingActionButton';
 import { NewThreadModal } from './NewThreadModal';
 import { Thread } from '../../types';
 import { useAppContext } from '../../context/AppContext';
-import { engagementTracker } from '../../services/engagementTracker';
+import { formatDistanceToNow } from 'date-fns';
 import { useMobileDrawer } from '../../hooks/useMobileDrawer';
 import { useSwipeGesture } from '../../hooks/useSwipeGesture';
-import { useNotifications } from '../../context/NotificationContext';
 
 interface ForumFeedProps {
   onLogout: () => void;
-  onShowNotifications?: () => void;
 }
 
 const suggestedTopics = [
@@ -27,17 +26,30 @@ const suggestedTopics = [
   'Dating after divorce'
 ];
 
+const popularQuestions = [
+  {
+    question: 'How do you rebuild trust after it\'s been broken?',
+    answers: '15 answers',
+    category: 'Relationships'
+  },
+  {
+    question: 'What are signs of emotional manipulation in relationships?',
+    answers: '23 answers',
+    category: 'Psychology'
+  },
+  {
+    question: 'How important is physical intimacy in a long-term relationship?',
+    answers: '31 answers',
+    category: 'Intimacy'
+  }
+];
 
-export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotifications }) => {
+export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout }) => {
   const { state, dispatch } = useAppContext();
-  const navigate = useNavigate();
   const isGuest = state.isGuestMode && !state.isAuthenticated;
-  const notificationContext = state.currentUser && !state.isGuestMode ? useNotifications() : null;
+  const [searchQuery, setSearchQuery] = useState('');
   const [threads, setThreads] = useState<Thread[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [page, setPage] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
   const [showNewThreadDropdown, setShowNewThreadDropdown] = useState(false);
   const [showNewThreadModal, setShowNewThreadModal] = useState(false);
   const [showPublicThreadModal, setShowPublicThreadModal] = useState(false);
@@ -47,7 +59,6 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
     question: ''
   });
   const [isCreatingThread, setIsCreatingThread] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const { isOpen: isLeftDrawerOpen, isMobile, toggle: toggleLeftDrawer, close: closeLeftDrawer, open: openLeftDrawer } = useMobileDrawer();
   const { isOpen: isRightDrawerOpen, toggle: toggleRightDrawer, close: closeRightDrawer, open: openRightDrawer } = useMobileDrawer();
 
@@ -73,98 +84,43 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
     }
   }, [isLeftDrawerOpen, showNewThreadDropdown]);
 
-  // ✅ PERFORMANCE FIX: Pagination with infinite scroll
-  const PAGE_SIZE = 10;
-  
-  const loadThreads = async (pageNum: number = 0, append: boolean = false) => {
-    try {
-      if (!append) {
+  useEffect(() => {
+    const loadThreads = async () => {
+      try {
         setIsLoading(true);
-      } else {
-        setIsLoadingMore(true);
-      }
-      
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
-      const offset = pageNum * PAGE_SIZE;
-      
-      // Add userId for recommendations
-      const userIdParam = state.currentUser?.id ? `&userId=${state.currentUser.id}` : '';
-      
-      console.log(`📄 Loading threads page ${pageNum} (filter: ${state.feedFilter}, limit: ${PAGE_SIZE}, offset: ${offset})`);
-      
-      const response = await fetch(
-        `${apiUrl}/threads?filter=${state.feedFilter}&limit=${PAGE_SIZE}&offset=${offset}${userIdParam}`
-      );
-      
-      if (response.ok) {
-        const data = await response.json();
-        const threadsArray = data.threads || [];
-        const hasMoreData = data.hasMore ?? (threadsArray.length === PAGE_SIZE);
+        // Use local Node.js server for development, AWS for production
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3002/api';
+        console.log('Loading threads from:', apiUrl);
         
-        console.log(`✅ Loaded ${threadsArray.length} threads, hasMore: ${hasMoreData}`, data.recommendationType ? `(${data.recommendationType})` : '');
+        const response = await fetch(`${apiUrl}/threads?filter=${state.feedFilter}`);
         
-        if (append) {
-          setThreads(prev => [...prev, ...threadsArray]);
-        } else {
+        if (response.ok) {
+          const loadedThreads = await response.json();
+          // Extract threads array from response object
+          const threadsArray = loadedThreads.threads || loadedThreads;
+          console.log('Loaded threads:', threadsArray.length);
           setThreads(threadsArray);
           dispatch({ type: 'SET_THREADS', payload: threadsArray });
+        } else {
+          console.error('Failed to load threads:', response.status, response.statusText);
         }
-        
-        setHasMore(hasMoreData);
-        setPage(pageNum);
-      } else {
-        console.error('Failed to load threads:', response.status, response.statusText);
+      } catch (error) {
+        console.error('Failed to load threads:', error);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to load threads:', error);
-    } finally {
-      setIsLoading(false);
-      setIsLoadingMore(false);
-    }
-  };
+    };
 
-  // Initial load and filter change
-  useEffect(() => {
-    setPage(0);
-    setHasMore(true);
-    loadThreads(0, false);
+    loadThreads();
   }, [state.feedFilter]);
 
-  // Infinite scroll handler
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    
-    // Load more when user scrolls within 1.5x viewport height from bottom
-    if (
-      scrollHeight - scrollTop <= clientHeight * 1.5 &&
-      hasMore &&
-      !isLoading &&
-      !isLoadingMore
-    ) {
-      console.log('📜 Infinite scroll triggered, loading page:', page + 1);
-      loadThreads(page + 1, true);
-    }
-  };
-
   const handleThreadClick = (threadId: string) => {
-    // Track view with unified tracker
-    if (state.currentUser?.id) {
-      engagementTracker.trackView(state.currentUser.id, threadId);
-    }
-    
-    // Update local view count
-    setThreads(prev => prev.map(thread => 
-      thread.id === threadId 
-        ? { ...thread, viewCount: thread.viewCount + 1 }
-        : thread
-    ));
-    
-    // Navigate using React Router
-    navigate(`/thread/${threadId}`);
+    dispatch({ type: 'SET_CURRENT_THREAD', payload: threadId });
+    dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
   };
 
   const handleNewThread = () => {
-    navigate('/private');
+    dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
   };
 
   const handleCreatePublicThread = async () => {
@@ -203,11 +159,10 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
         const newThread = await response.json();
         console.log('✅ Successfully created public thread:', newThread.id);
         
-        // Update app state and navigate
+        // Update app state
         dispatch({ type: 'ADD_THREAD', payload: newThread });
-        
-        // Navigate using React Router
-        navigate(`/thread/${newThread.id}`);
+        dispatch({ type: 'SET_CURRENT_THREAD', payload: newThread.id });
+        dispatch({ type: 'SET_VIEW_MODE', payload: 'public-thread' });
         
         // Reset form and close modal
         setPublicThreadForm({ title: '', category: 'General', question: '' });
@@ -231,58 +186,22 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
 
   return (
     <div className="flex w-full h-screen bg-gray-50">
-      {/* Mobile Header - Evenly distributed icons */}
-      <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b z-30 px-2 py-2 flex items-center justify-around pointer-events-auto">
-        {/* Foliage Icon with Menu functionality */}
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 bg-white border-b z-30 px-4 py-3 flex items-center justify-between pointer-events-auto">
         <button
           onClick={toggleLeftDrawer}
           className="p-2 hover:bg-gray-100 rounded-lg"
           aria-label="Toggle menu"
         >
-          <Leaf className="w-5 h-5 text-green-600" />
+          <Menu className="w-6 h-6 text-gray-700" />
         </button>
-        
-        {/* Trending Icon */}
-        <button
-          onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'trending' })}
-          className={`p-2 rounded-lg ${state.feedFilter === 'trending' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-600'}`}
-          aria-label="Trending"
-        >
-          <TrendingUpIcon className="w-5 h-5" />
-        </button>
-        
-        {/* Recommendation Icon */}
-        <button
-          onClick={() => {
-            console.log('✨ Recommend icon clicked - showing recommended feeds');
-            dispatch({ type: 'SET_FEED_FILTER', payload: 'recommended' });
-          }}
-          className={`p-2 rounded-lg ${state.feedFilter === 'recommended' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-600'}`}
-          aria-label="Recommended for you"
-          title="For You"
-        >
-          <SparklesIcon className="w-5 h-5" />
-        </button>
-        
-        {/* Category Icon - Navigate to categories page */}
-        <button
-          onClick={() => {
-            console.log('🔲 Category icon clicked - navigating to categories page');
-            dispatch({ type: 'SET_VIEW_MODE', payload: 'categories' });
-          }}
-          className={`p-2 rounded-lg ${state.viewMode === 'categories' ? 'bg-green-100 text-green-700' : 'hover:bg-gray-100 text-gray-600'}`}
-          aria-label="Categories"
-        >
-          <Grid className="w-5 h-5" />
-        </button>
-        
-        {/* Search Icon */}
+        <h1 className="text-lg font-semibold text-gray-800">MELON</h1>
         <button
           onClick={toggleRightDrawer}
-          className="p-2 hover:bg-gray-100 rounded-lg text-gray-600"
-          aria-label="Search"
+          className="p-2 hover:bg-gray-100 rounded-lg"
+          aria-label="Toggle suggestions"
         >
-          <SearchIcon className="w-5 h-5" />
+          <SearchIcon className="w-6 h-6 text-gray-700" />
         </button>
       </div>
 
@@ -320,7 +239,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
           <div className="relative">
             <Button 
               onClick={() => setShowNewThreadDropdown(!showNewThreadDropdown)}
-              className="w-full bg-green-600 hover:bg-green-700 text-white h-auto py-3 flex items-center justify-between"
+              className="w-full bg-gray-800 hover:bg-gray-700 text-white h-auto py-3 flex items-center justify-between"
             >
               <div className="flex items-center">
                 <PlusIcon className="w-4 h-4 mr-3" />
@@ -334,7 +253,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
               <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-50">
                 <button
                   onClick={() => {
-                    navigate('/private');
+                    dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
                     setShowNewThreadDropdown(false);
                     closeLeftDrawer();
                   }}
@@ -383,7 +302,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
                 onClick={() => {
-                  navigate('/');
+                  dispatch({ type: 'SET_VIEW_MODE', payload: 'forum' });
                   closeLeftDrawer();
                 }}
               >
@@ -397,7 +316,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
                     : 'text-gray-700 hover:bg-gray-50'
                 }`}
                 onClick={() => {
-                  navigate('/private');
+                  dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
                   closeLeftDrawer();
                 }}
               >
@@ -412,20 +331,13 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
               Categories
             </div>
             <nav className="space-y-1">
-              {[
-                { name: 'General', color: 'bg-green-400' },
-                { name: 'Relationships', color: 'bg-pink-400' },
-                { name: 'Psychology', color: 'bg-indigo-400' },
-                { name: 'Marriage', color: 'bg-rose-400' },
-                { name: 'Friendship', color: 'bg-amber-400' },
-                { name: 'Intimacy', color: 'bg-violet-400' }
-              ].map((category) => (
+              {['Relationships', 'Psychology', 'Marriage', 'Friendship', 'Intimacy'].map((category) => (
                 <div
-                  key={category.name}
+                  key={category}
                   className="flex items-center px-3 py-2 text-gray-700 text-base hover:bg-gray-50 rounded-md cursor-pointer"
                 >
-                  <div className={`w-4 h-4 mr-3 ${category.color} rounded-full`}></div>
-                  {category.name}
+                  <div className="w-4 h-4 mr-3 bg-gray-300 rounded-full"></div>
+                  {category}
                 </div>
               ))}
             </nav>
@@ -455,26 +367,12 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
               <div className="text-sm font-normal text-gray-800">
                 {state.currentUser?.name}
               </div>
-              <div className="flex flex-col gap-1">
-                <button 
-                  onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'user-center' })}
-                  className="text-xs text-green-600 hover:text-green-800 text-left"
-                >
-                  User Center
-                </button>
-                <button 
-                  onClick={() => dispatch({ type: 'SET_VIEW_MODE', payload: 'account' })}
-                  className="text-xs text-green-600 hover:text-green-800 text-left"
-                >
-                  Account Management
-                </button>
-                <button 
-                  onClick={onLogout}
-                  className="text-xs text-gray-500 hover:text-gray-700 text-left"
-                >
-                  Sign Out
-                </button>
-              </div>
+              <button 
+                onClick={onLogout}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                Sign Out
+              </button>
             </div>
           </div>
           )}
@@ -483,27 +381,63 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
 
       {/* Main Content */}
       <main className="flex-1 overflow-hidden md:mt-0 flex flex-col">
+        {/* Header - Sticky on scroll */}
+        <header className="bg-white border-b p-4 sticky top-14 md:top-0 z-20 shadow-sm">
+          <div className="flex flex-col space-y-3 md:space-y-0 md:flex-row md:items-center md:justify-between mb-3 md:mb-4">
+            <h1 className="text-lg md:text-xl font-normal text-gray-800 hidden md:block">Knowledge Feed</h1>
+            <div className="flex gap-2 w-full md:w-auto">
+              <Button
+                variant={state.feedFilter === 'recent' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'recent' })}
+                className="flex items-center gap-2 flex-1 md:flex-none justify-center"
+              >
+                <ClockIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Recent</span>
+              </Button>
+              <Button
+                variant={state.feedFilter === 'trending' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => dispatch({ type: 'SET_FEED_FILTER', payload: 'trending' })}
+                className="flex items-center gap-2 flex-1 md:flex-none justify-center"
+              >
+                <TrendingUpIcon className="w-4 h-4" />
+                <span className="hidden sm:inline">Trending</span>
+              </Button>
+            </div>
+          </div>
+
+          <div className="relative">
+            <SearchIcon className="absolute w-4 h-4 top-1/2 left-3 transform -translate-y-1/2 text-gray-400" />
+            <Input
+              className="w-full pl-10 h-12 md:h-10"
+              placeholder="Search topics, questions, and answers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </header>
+
         {/* Thread List */}
-        <div className="p-4 md:p-6 overflow-y-auto flex-1 pt-16 md:pt-4 mb-16 md:mb-0" onScroll={handleScroll}>
+        <div className="p-4 md:p-6 overflow-y-auto flex-1 mt-14">
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
               <span className="ml-3 text-gray-600">Loading threads...</span>
             </div>
           ) : threads.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500 mb-4">No threads found</p>
-              <Button onClick={handleNewThread} className="bg-green-600 hover:bg-green-700 text-white">
+              <Button onClick={handleNewThread}>
                 Create the first thread
               </Button>
             </div>
           ) : (
-          <>
           <div className="space-y-4">
             {filteredThreads.map((thread) => (
               <Card
                 key={thread.id}
-                className="border border-gray-200 hover:border-green-300 hover:shadow-md transition-all cursor-pointer touch-manipulation"
+                className="border border-gray-200 hover:shadow-md transition-shadow cursor-pointer touch-manipulation"
                 onClick={() => {
                   handleThreadClick(thread.id);
                   closeLeftDrawer();
@@ -522,76 +456,38 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
                 }}
               >
                 <CardContent className="p-3 md:p-4">
-                  {/* Title of Thread */}
-                  <h3 className="text-base md:text-lg font-semibold text-gray-800 leading-6 md:leading-7 mb-3">
-                    {thread.title}
-                  </h3>
+                  <div className="flex items-start justify-between mb-2 md:mb-3">
+                    <h3 className="text-base md:text-lg font-normal text-gray-800 leading-6 md:leading-7 flex-1 mr-4">
+                      {thread.title}
+                    </h3>
+                    {thread.category && (
+                      <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs flex-shrink-0">
+                        {thread.category}
+                      </Badge>
+                    )}
+                  </div>
 
-                  {/* User Avatar + Question Icon + Answer Icon */}
-                  <div className="flex items-center text-xs text-gray-600 gap-3 mb-3">
-                    <div className="flex items-center gap-1.5">
-                      <Avatar className="w-5 h-5">
+                  <div className="flex flex-wrap items-center text-xs md:text-sm text-gray-500 gap-2 md:gap-4">
+                    <div className="flex items-center">
+                      <Avatar className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2">
                         <AvatarImage src={thread.creator.avatar} alt={thread.creator.name} />
                         <AvatarFallback>{thread.creator.name.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <span className="text-gray-700">{thread.creator.name}</span>
+                      <span>{thread.creator.name}</span>
                     </div>
-                    
-                    <div className="flex items-center gap-1">
-                      <HelpCircle className="w-4 h-4 text-gray-500" />
-                      <span>{thread.questionCount}</span>
-                    </div>
-                    
-                    <div className="flex items-center gap-1">
-                      <MessageSquare className="w-4 h-4 text-gray-500" />
-                      <span>{thread.answerCount}</span>
-                    </div>
-                  </div>
 
-                  {/* Preview of Most Liked Answer */}
-                  {thread.topAnswer && (
-                    <>
-                      <div className="text-sm text-gray-700 line-clamp-2 mb-2 leading-relaxed">
-                        {thread.topAnswer.content}
-                      </div>
-                      
-                      {/* Like, Save, Comments of the Answer */}
-                      <div className="flex items-center gap-4 text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <Heart className="w-4 h-4" />
-                          <span className="text-xs">{thread.topAnswer.likeCount || 0}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Bookmark className="w-4 h-4" />
-                          <span className="text-xs">{thread.topAnswer.saveCount || 0}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <MessageCircle className="w-4 h-4" />
-                          <span className="text-xs">{thread.topAnswer.commentCount || 0}</span>
-                        </div>
-                      </div>
-                    </>
-                  )}
+                    <div className="flex items-center">
+                      <ClockIcon className="w-3.5 h-3.5 mr-2" />
+                      <span>Updated {formatDistanceToNow(thread.updatedAt)} ago</span>
+                    </div>
+
+                    <span>{thread.questionCount} questions</span>
+                    <span>{thread.answerCount} answers</span>
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
-          
-          {/* Loading more indicator */}
-          {isLoadingMore && (
-            <div className="flex items-center justify-center py-6">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-green-500"></div>
-              <span className="ml-3 text-gray-600 text-sm">Loading more threads...</span>
-            </div>
-          )}
-          
-          {/* End of results indicator */}
-          {!hasMore && threads.length > 0 && (
-            <div className="text-center py-6 text-gray-500 text-sm">
-              You've reached the end
-            </div>
-          )}
-          </>
           )}
         </div>
       </main>
@@ -646,7 +542,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
                   <select 
                     value={publicThreadForm.category}
                     onChange={(e) => setPublicThreadForm(prev => ({ ...prev, category: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="General">General</option>
                     <option value="Relationships">Relationships</option>
@@ -672,16 +568,16 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
                 </div>
 
                 {/* Privacy Notice */}
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex items-start space-x-3">
                     <div className="flex-shrink-0">
-                      <Globe className="h-5 w-5 text-green-600 mt-0.5" />
+                      <Globe className="h-5 w-5 text-blue-600 mt-0.5" />
                     </div>
                     <div className="text-sm">
-                      <p className="text-green-800 font-medium mb-1">
+                      <p className="text-blue-800 font-medium mb-1">
                         This will be public
                       </p>
-                      <p className="text-green-700">
+                      <p className="text-blue-700">
                         Your thread will be visible to all community members. Others can add answers and engage in discussions.
                       </p>
                     </div>
@@ -704,7 +600,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
                 <Button 
                   onClick={handleCreatePublicThread}
                   disabled={!publicThreadForm.title.trim() || !publicThreadForm.question.trim() || isCreatingThread}
-                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white"
+                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white"
                 >
                   {isCreatingThread ? (
                     <>
@@ -729,7 +625,7 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
         />
       )}
 
-      {/* Right Sidebar - Search Panel */}
+      {/* Right Sidebar */}
       <aside className={`
         w-72 h-full bg-white border-l overflow-y-auto
         fixed md:relative
@@ -743,167 +639,79 @@ export const ForumFeed: React.FC<ForumFeedProps> = ({ onLogout, onShowNotificati
         <div className="p-4">
           {/* Mobile Close Button */}
           <div className="md:hidden flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-gray-800">Search</h2>
+            <h2 className="text-lg font-semibold text-gray-800">Suggestions</h2>
             <button
               onClick={closeRightDrawer}
               className="p-2 hover:bg-gray-100 rounded-lg"
-              aria-label="Close search"
+              aria-label="Close suggestions"
             >
               <X className="w-5 h-5 text-gray-700" />
             </button>
           </div>
-          
-          {/* Search Input */}
-          <div className="relative mb-6">
-            <SearchIcon className="absolute w-4 h-4 top-1/2 left-3 transform -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <Input
-              className="w-full !pl-10 h-10 focus:border-green-500 focus:ring-green-500"
-              placeholder="Search topics, questions..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              autoFocus
-            />
+          <div className="mb-6">
+            <h2 className="text-sm font-normal text-gray-800 mb-4">
+              Suggested Topics
+            </h2>
+            <div className="space-y-2">
+              {suggestedTopics.map((topic, index) => (
+                <div 
+                  key={index} 
+                  className="bg-gray-50 rounded-md p-3 hover:bg-gray-100 cursor-pointer touch-manipulation"
+                  style={{ 
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'rgba(0, 0, 0, 0.1)'
+                  }}
+                >
+                  <div className="text-sm text-gray-800">{topic}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Search Results or Empty State */}
-          {searchQuery ? (
-            <div>
-              <h3 className="text-sm font-semibold text-green-700 mb-3">
-                Search Results ({filteredThreads.length})
-              </h3>
-              {filteredThreads.length === 0 ? (
-                <div className="text-center py-8 text-gray-500 text-sm">
-                  No threads found matching "{searchQuery}"
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredThreads.slice(0, 5).map((thread) => (
-                    <div
-                      key={thread.id}
-                      onClick={() => {
-                        handleThreadClick(thread.id);
-                        closeRightDrawer();
-                      }}
-                      className="p-3 bg-gray-50 rounded-md hover:bg-gray-100 cursor-pointer"
-                    >
-                      <div className="text-sm font-medium text-gray-800 mb-1 line-clamp-2">
-                        {thread.title}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {thread.category} • {thread.answerCount} answers
-                      </div>
-                    </div>
-                  ))}
-                  {filteredThreads.length > 5 && (
-                    <div className="text-xs text-gray-500 text-center pt-2">
-                      and {filteredThreads.length - 5} more...
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div>
-              <h2 className="text-sm font-semibold text-green-700 mb-4">
-                Suggested Topics
-              </h2>
-              <div className="space-y-2">
-                {suggestedTopics.map((topic, index) => (
-                  <div 
-                    key={index} 
-                    className="bg-gray-50 rounded-md p-3 hover:bg-gray-100 cursor-pointer touch-manipulation"
-                    style={{ 
-                      touchAction: 'manipulation',
-                      WebkitTapHighlightColor: 'rgba(0, 0, 0, 0.1)'
-                    }}
-                  >
-                    <div className="text-sm text-gray-800">{topic}</div>
+          <div>
+            <h2 className="text-sm font-normal text-gray-800 mb-4">
+              Popular Questions
+            </h2>
+            <div className="space-y-0">
+              {popularQuestions.map((item, index) => (
+                <div
+                  key={index}
+                  className={`py-4 hover:bg-gray-50 cursor-pointer px-2 rounded touch-manipulation ${
+                    index < popularQuestions.length - 1 ? 'border-b border-gray-100' : ''
+                  }`}
+                  style={{ 
+                    touchAction: 'manipulation',
+                    WebkitTapHighlightColor: 'rgba(0, 0, 0, 0.1)'
+                  }}
+                >
+                  <div className="text-sm text-gray-800 leading-5 mb-2">
+                    {item.question}
                   </div>
-                ))}
-              </div>
+                  <div className="flex items-center text-xs text-gray-500">
+                    <span>{item.answers}</span>
+                    <span className="mx-2">•</span>
+                    <span>{item.category}</span>
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
+          </div>
         </div>
       </aside>
 
-      {/* Mobile Footer Navigation */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t z-30 safe-area-bottom">
-        <div className="flex items-center justify-around px-2 py-2">
-          {/* Home Icon */}
-          <button
-            onClick={() => {
-              navigate('/');
-              dispatch({ type: 'SET_FEED_FILTER', payload: 'trending' });
-              closeLeftDrawer();
-              closeRightDrawer();
-            }}
-            className="flex flex-col items-center justify-center p-2 hover:bg-gray-100 rounded-lg min-w-[60px]"
-            aria-label="Home"
-          >
-            <Home className={`w-5 h-5 ${state.viewMode === 'forum' && state.feedFilter === 'trending' ? 'text-green-600' : 'text-gray-600'}`} />
-            <span className="text-xs mt-0.5 text-gray-600">Home</span>
-          </button>
-
-          {/* Private Threads Icon */}
-          <button
-            onClick={() => {
-              navigate('/private');
-              closeLeftDrawer();
-              closeRightDrawer();
-            }}
-            className="flex flex-col items-center justify-center p-2 hover:bg-gray-100 rounded-lg min-w-[60px]"
-            aria-label="Private chats"
-          >
-            <MessageSquare className={`w-5 h-5 ${state.viewMode === 'private' ? 'text-green-600' : 'text-gray-600'}`} />
-            <span className="text-xs mt-0.5 text-gray-600">Chats</span>
-          </button>
-
-          {/* New Thread Button */}
-          <button
-            onClick={() => setShowNewThreadModal(true)}
-            className="flex flex-col items-center justify-center p-2 bg-green-600 hover:bg-green-700 rounded-lg min-w-[60px] text-white -mt-2"
-            aria-label="New thread"
-          >
-            <div className="bg-green-600 hover:bg-green-700 rounded-full p-2 shadow-lg">
-              <PlusIcon className="w-6 h-6 text-white" />
-            </div>
-          </button>
-
-          {/* Notifications Icon */}
-          {state.currentUser && onShowNotifications && (
-            <button
-              onClick={onShowNotifications}
-              className="flex flex-col items-center justify-center p-2 hover:bg-gray-100 rounded-lg min-w-[60px] relative"
-              aria-label="Notifications"
-            >
-              <Bell className="w-5 h-5 text-gray-600" />
-              {notificationContext && notificationContext.unreadCount > 0 && (
-                <span className="absolute top-1 right-3 inline-flex items-center justify-center w-4 h-4 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                  {notificationContext.unreadCount > 9 ? '9+' : notificationContext.unreadCount}
-                </span>
-              )}
-              <span className="text-xs mt-0.5 text-gray-600">Alerts</span>
-            </button>
-          )}
-
-          {/* My/Profile Icon */}
-          <button
-            onClick={toggleLeftDrawer}
-            className="flex flex-col items-center justify-center p-2 hover:bg-gray-100 rounded-lg min-w-[60px]"
-            aria-label="My profile"
-          >
-            <User className={`w-5 h-5 ${isLeftDrawerOpen ? 'text-green-600' : 'text-gray-600'}`} />
-            <span className="text-xs mt-0.5 text-gray-600">My</span>
-          </button>
-        </div>
-      </div>
+      {/* Floating Action Button - Mobile Only */}
+      <FloatingActionButton
+        onClick={() => setShowNewThreadModal(true)}
+        icon={<PlusIcon className="w-6 h-6" />}
+        label="New"
+      />
 
       {/* New Thread Selection Modal */}
       <NewThreadModal
         isOpen={showNewThreadModal}
         onClose={() => setShowNewThreadModal(false)}
         onSelectPrivateChat={() => {
-          navigate('/private');
+          dispatch({ type: 'SET_VIEW_MODE', payload: 'private' });
         }}
         onSelectPublicThread={() => {
           if (isGuest) {

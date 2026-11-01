@@ -106,35 +106,3 @@ exports.default = async (event) => {
     body: JSON.stringify({ message: 'Default route' })
   };
 };
-
-// Subscribe to notifications
-exports.subscribeNotifications = async (event) => {
-  const connectionId = event.requestContext.connectionId;
-  const { userId } = JSON.parse(event.body || '{}');
-
-  try {
-    // Update connection to enable notifications
-    await dynamodb.update({
-      TableName: connectionsTable,
-      Key: { connectionId },
-      UpdateExpression: 'SET subscribeNotifications = :true, userId = :userId',
-      ExpressionAttributeValues: {
-        ':true': true,
-        ':userId': userId
-      }
-    }).promise();
-
-    console.log('✅ User subscribed to notifications:', userId);
-
-    return {
-      statusCode: 200,
-      body: JSON.stringify({ message: 'Subscribed to notifications successfully' })
-    };
-  } catch (error) {
-    console.error('Subscribe notifications error:', error);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to subscribe to notifications' })
-    };
-  }
-};

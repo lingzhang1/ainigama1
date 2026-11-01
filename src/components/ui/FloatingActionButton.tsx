@@ -21,13 +21,13 @@ export const FloatingActionButton: React.FC<FloatingActionButtonProps> = ({
       className={cn(
         "fixed bottom-6 right-6 z-40",
         "flex items-center justify-center gap-2",
-        "bg-white border-2 border-green-500",
-        "hover:bg-green-50",
+        "bg-gradient-to-r from-blue-500 to-blue-600",
+        "hover:from-blue-600 hover:to-blue-700",
         "active:scale-95",
-        "text-green-600 font-medium",
+        "text-white font-medium",
         "rounded-full shadow-lg hover:shadow-xl",
         "transition-all duration-200 ease-in-out",
-        "focus:outline-none focus:ring-2 focus:ring-green-400 focus:ring-offset-2",
+        "focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2",
         label ? "px-5 py-4 min-w-[56px]" : "w-14 h-14",
         "md:hidden", // Only show on mobile
         className

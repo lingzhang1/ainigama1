@@ -57,7 +57,7 @@ export class DeepSeekService {
 
       // Use fullStream to handle all delta types
       for await (const delta of result.fullStream) {
-        // console.log('📦 Received delta:', delta.type);
+        console.log('📦 Received delta:', delta.type);
 
         switch (delta.type) {
           case 'start':

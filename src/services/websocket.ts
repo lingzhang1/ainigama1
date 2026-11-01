@@ -8,11 +8,11 @@ const isAWSWebSocket = (url: string) => {
 
 class WebSocketService {
   public socket: Socket | null = null;
-  public nativeWs: WebSocket | null = null;
-  public isAWS: boolean = false;
-  public eventHandlers: Map<string, Function[]> = new Map();
+  private nativeWs: WebSocket | null = null;
+  private isAWS: boolean = false;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
+  private eventHandlers: Map<string, Function[]> = new Map();
   private recentMessages: Map<string, number> = new Map();
 
   connect(userId: string) {

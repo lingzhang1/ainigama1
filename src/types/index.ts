@@ -22,13 +22,6 @@ export interface Question {
   userId: string;
   threadId: string;
   isSummary?: boolean; // Indicates if this is an AI-generated summary question
-  // New metrics
-  likeCount: number;
-  saveCount: number;
-  shareCount: number;
-  // User-specific states
-  isLiked?: boolean;
-  isSaved?: boolean;
 }
 
 export interface Answer {
@@ -40,15 +33,7 @@ export interface Answer {
   isPinned: boolean;
   isAI: boolean;
   interactionCount: number;
-  commentCount: number;
   thinking?: string; // AI thinking process
-  // New metrics
-  likeCount: number;
-  saveCount: number;
-  shareCount: number;
-  // User-specific states
-  isLiked?: boolean;
-  isSaved?: boolean;
 }
 
 export interface Comment {
@@ -59,13 +44,6 @@ export interface Comment {
   answerId: string;
   parentId?: string;
   replies?: Comment[];
-  // New metrics
-  likeCount: number;
-  saveCount: number;
-  shareCount: number;
-  // User-specific states
-  isLiked?: boolean;
-  isSaved?: boolean;
 }
 
 export interface Thread {
@@ -78,18 +56,8 @@ export interface Thread {
   questionCount: number;
   answerCount: number;
   interactionCount: number;
-  // New metrics
-  viewCount: number;
-  likeCount: number;
-  saveCount: number;
-  shareCount: number;
-  // User-specific states
-  isLiked?: boolean;
-  isSaved?: boolean;
   questions: Question[];
   category?: string;
-  // Top answer preview (for forum feed)
-  topAnswer?: Answer;
 }
 
 export interface PrivateConversation {
@@ -101,135 +69,5 @@ export interface PrivateConversation {
   title?: string;
 }
 
-export type ViewMode = 'forum' | 'private' | 'public-thread' | 'user-center' | 'account' | 'categories';
-export type FeedFilter = 'recent' | 'trending' | 'recommended';
-
-// Metrics API Response Types
-export interface MetricResponse {
-  success: boolean;
-  message?: string;
-}
-
-export interface ViewResponse extends MetricResponse {
-  viewCount: number;
-}
-
-export interface LikeResponse extends MetricResponse {
-  action: 'liked' | 'unliked';
-  likeCount: number;
-  isLiked: boolean;
-}
-
-export interface SaveResponse extends MetricResponse {
-  action: 'saved' | 'unsaved';
-  saveCount: number;
-  isSaved: boolean;
-}
-
-export interface ShareResponse extends MetricResponse {
-  shareCount: number;
-  shareUrl: string;
-}
-
-export interface LikesData {
-  likeCount: number;
-  isLiked: boolean;
-  recentLikes: Array<{
-    userId: string;
-    userName: string;
-    userAvatar: string;
-    timestamp: string;
-  }>;
-}
-
-export interface SavesData {
-  saves: Array<{
-    contentType: string;
-    contentId: string;
-    content: {
-      title: string;
-      preview: string;
-      creator: string;
-    };
-    timestamp: string;
-  }>;
-}
-
-export interface SharesData {
-  shareCount: number;
-  shareMethods: Record<string, number>;
-  recentShares: Array<{
-    userId: string;
-    shareMethod: string;
-    timestamp: string;
-  }>;
-}
-
-// ==================== NOTIFICATION TYPES ====================
-
-export type NotificationType =
-  | 'new_answer'
-  | 'answer_liked'
-  | 'answer_commented'
-  | 'answer_saved'
-  | 'answer_shared'
-  | 'comment_liked'
-  | 'comment_replied'
-  | 'thread_liked'
-  | 'thread_saved'
-  | 'thread_shared';
-
-export interface Notification {
-  id: string;
-  recipientId: string;
-  actorId?: string;
-  type: NotificationType;
-  contentType: 'thread' | 'answer' | 'comment';
-  contentId: string;
-  relatedContentId?: string;
-  threadId: string;
-  message: string;
-  metadata: {
-    actorName: string;
-    actorAvatar: string;
-    contentPreview: string;
-    threadTitle: string;
-  };
-  isRead: boolean;
-  createdAt: Date;
-  readAt?: Date;
-}
-
-export interface NotificationResponse {
-  notifications: Notification[];
-  unreadCount: number;
-  hasMore: boolean;
-  nextOffset?: number;
-}
-
-// ==================== RECOMMENDATION TYPES ====================
-
-export type InteractionType = 'view' | 'like' | 'save' | 'share' | 'question' | 'answer' | 'time_spent';
-
-export interface UserInteraction {
-  userId: string;
-  threadId: string;
-  interactionType: InteractionType;
-  metadata?: {
-    timeSpentSeconds?: number;
-  };
-}
-
-export interface UserPreferences {
-  userId: string;
-  categoryAffinities: Record<string, number>; // { "tech": 45, "science": 30, ... }
-  favoriteCreators: string[];
-  totalEngagementScore: number;
-  lastUpdated: Date;
-}
-
-export interface RecommendedThreadsResponse {
-  threads: Thread[];
-  hasMore: boolean;
-  recommendationType: 'personalized' | 'cold_start' | 'exploration';
-}
+export type ViewMode = 'forum' | 'private' | 'public-thread';
+export type FeedFilter = 'recent' | 'trending';

@@ -1,8 +1,8 @@
 import React from 'react';
-import { Lock, Globe, MessageSquare, Trash2, X, User, Settings } from 'lucide-react';
+import { Lock, Globe, MessageSquare, Trash2, X } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { PrivateConversation, User as UserType } from '../../types';
+import { PrivateConversation, User } from '../../types';
 import { formatDistanceToNow } from 'date-fns';
 
 /**
@@ -22,7 +22,7 @@ import { formatDistanceToNow } from 'date-fns';
 interface ConversationSidebarProps {
   conversations: PrivateConversation[];
   currentConversationId: string | null;
-  currentUser: UserType | null;
+  currentUser: User | null;
   isGuest: boolean;
   isOpen: boolean;
   isMobile: boolean;
@@ -33,8 +33,6 @@ interface ConversationSidebarProps {
   onLogout: () => void;
   onSignIn: () => void;
   onClose: () => void;
-  onGoToUserCenter: () => void;
-  onGoToAccount: () => void;
 }
 
 export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
@@ -50,9 +48,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
   onGoToForum,
   onLogout,
   onSignIn,
-  onClose,
-  onGoToUserCenter,
-  onGoToAccount
+  onClose
 }) => {
   return (
     <aside className={`
@@ -76,7 +72,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
             >
               <X className="w-5 h-5 text-gray-700" />
             </button>
-            <h2 className="text-lg font-semibold text-green-700 flex items-center">
+            <h2 className="text-lg font-semibold text-gray-800 flex items-center">
               <Lock className="w-5 h-5 mr-2" />
               Private Chat
               {isGuest && (
@@ -100,15 +96,7 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
         </div>
         
         {/* New Conversation Button */}
-        <Button 
-          onClick={() => {
-            onNewConversation();
-            if (isMobile) {
-              onClose();
-            }
-          }} 
-          className="w-full bg-green-600 hover:bg-green-700 text-white"
-        >
+        <Button onClick={onNewConversation} className="w-full">
           <MessageSquare className="w-4 h-4 mr-2" />
           New Conversation
         </Button>
@@ -130,12 +118,16 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
           <div
             key={conversation.id}
             className={`p-4 md:p-3 border-b cursor-pointer hover:bg-gray-50 active:bg-gray-100 group relative transition-colors ${
-              currentConversationId === conversation.id ? 'bg-green-50 border-green-300' : ''
+              currentConversationId === conversation.id ? 'bg-blue-50 border-blue-200' : ''
             }`}
             onClick={() => {
-              // Only select if it's a different conversation
+              // Always set the conversation, even if it's the same one
+              // This ensures the UI refreshes properly
               if (currentConversationId !== conversation.id) {
                 onSelectConversation(conversation);
+              } else {
+                // If clicking the same conversation, force a refresh
+                onSelectConversation({ ...conversation });
               }
               // Close drawer on mobile after selection
               if (isMobile) {
@@ -193,28 +185,12 @@ export const ConversationSidebar: React.FC<ConversationSidebarProps> = ({
               <div className="text-sm font-normal text-gray-800">
                 {currentUser?.name}
               </div>
-              <div className="flex flex-col space-y-2">
-                <button 
-                  onClick={onGoToUserCenter}
-                  className="text-xs text-green-600 hover:text-green-700 flex items-center space-x-1"
-                >
-                  <User className="w-3 h-3" />
-                  <span>User Center</span>
-                </button>
-                <button 
-                  onClick={onGoToAccount}
-                  className="text-xs text-teal-600 hover:text-teal-700 flex items-center space-x-1"
-                >
-                  <Settings className="w-3 h-3" />
-                  <span>Account Management</span>
-                </button>
-                <button 
-                  onClick={onLogout}
-                  className="text-xs text-gray-500 hover:text-gray-700 flex items-center space-x-1"
-                >
-                  <span>Sign Out</span>
-                </button>
-              </div>
+              <button 
+                onClick={onLogout}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                Sign Out
+              </button>
             </div>
           </div>
         )}

@@ -34,7 +34,7 @@ export const NewQuestionInput: React.FC<NewQuestionInputProps> = ({
       <Button
         variant="outline"
         onClick={() => setIsExpanded(true)}
-        className="w-full md:w-auto flex items-center gap-2 h-10 px-4 border-dashed hover:border-solid border-green-300 text-green-600 hover:bg-green-50"
+        className="w-full md:w-auto flex items-center gap-2 h-10 px-4 border-dashed hover:border-solid hover:bg-gray-50"
       >
         <Plus className="w-4 h-4" />
         Add Another Question
@@ -64,7 +64,7 @@ export const NewQuestionInput: React.FC<NewQuestionInputProps> = ({
             placeholder="What else would you like to ask the community?"
             value={newQuestion}
             onChange={(e) => onQuestionChange(e.target.value)}
-            className="min-h-[100px] focus:border-green-500 focus:ring-green-500"
+            className="min-h-[100px]"
             autoFocus
           />
           <div className="flex justify-end gap-2">
@@ -79,7 +79,6 @@ export const NewQuestionInput: React.FC<NewQuestionInputProps> = ({
               onClick={handleAddQuestion}
               disabled={!newQuestion.trim() || isAddingQuestion}
               size="sm"
-              className="bg-green-600 hover:bg-green-700 text-white"
             >
               {isAddingQuestion ? (
                 <>
