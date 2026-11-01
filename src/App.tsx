@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AppProvider, useAppContext } from './context/AppContext';
 import { useWebSocket } from './hooks/useWebSocket';
 import { wsService } from './services/websocket';
-import { AllowlistCheck } from './components/Auth/AllowlistCheck';
 import { LoginScreen } from './components/Auth/LoginScreen';
 import { ForumFeed } from './components/ForumFeed/ForumFeed';
 import { PrivateChat } from './components/PrivateChat/PrivateChat';
@@ -13,8 +12,6 @@ import { initializeMobileTouchHandlers } from './utils/touchHandler';
 
 const AppContent: React.FC = () => {
   const { state, dispatch } = useAppContext();
-  const [isAllowlistApproved, setIsAllowlistApproved] = React.useState(false);
-  const [isCheckingAllowlist, setIsCheckingAllowlist] = React.useState(true);
 
   // Initialize WebSocket connection
   useWebSocket(state.currentUser?.id || '');
@@ -24,17 +21,6 @@ const AppContent: React.FC = () => {
     // Initialize touch handlers for mobile compatibility
     initializeMobileTouchHandlers();
     console.log('✅ Mobile touch handlers initialized');
-  }, []);
-
-  // Check allowlist approval on mount
-  React.useEffect(() => {
-    const checkAllowlistStatus = () => {
-      const approved = localStorage.getItem('ainigama_allowlist_approved');
-      setIsAllowlistApproved(approved === 'true');
-      setIsCheckingAllowlist(false);
-    };
-
-    checkAllowlistStatus();
   }, []);
 
   const handleLogin = (user: User) => {
@@ -60,12 +46,6 @@ const AppContent: React.FC = () => {
     dispatch({ type: 'LOGOUT' });
   };
 
-  const handleAllowlistApproved = () => {
-    setIsAllowlistApproved(true);
-    // Enable guest mode by default after allowlist approval
-    dispatch({ type: 'SET_GUEST_MODE', payload: true });
-  };
-
   const renderCurrentView = () => {
     switch (state.viewMode) {
       case 'private':
@@ -77,23 +57,6 @@ const AppContent: React.FC = () => {
         return <ForumFeed onLogout={handleLogout} />;
     }
   };
-
-  // Show loading while checking allowlist
-  if (isCheckingAllowlist) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading Ainigama...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show allowlist check if not approved
-  if (!isAllowlistApproved) {
-    return <AllowlistCheck onApproved={handleAllowlistApproved} />;
-  }
 
   if (state.isLoading) {
     return (
